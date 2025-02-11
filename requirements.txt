@@ -1,3 +1,5 @@
-pandas
-numpy
-spacy
+pandas==2.2.3
+numpy==2.2.2
+spacy==3.8.4
+dash==2.18.2
+jupyter==1.1.1
