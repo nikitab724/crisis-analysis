@@ -6,7 +6,7 @@ COPY data /app/data/
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir -r ../requirements.txt
+RUN pip install --no-cache-dir -r ../requirements.txt && python -m spacy download en_core_web_sm
 
 EXPOSE 8888
 
