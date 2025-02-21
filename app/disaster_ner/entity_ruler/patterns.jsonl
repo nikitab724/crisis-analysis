@@ -1,0 +1,102 @@
+{"label":"DISASTER","pattern":"Earthquake"}
+{"label":"DISASTER","pattern":"Seismic Event"}
+{"label":"DISASTER","pattern":"Tremor"}
+{"label":"DISASTER","pattern":"Tsunami"}
+{"label":"DISASTER","pattern":"Tidal Wave"}
+{"label":"DISASTER","pattern":"Volcanic Eruption"}
+{"label":"DISASTER","pattern":"Volcanic Explosion"}
+{"label":"DISASTER","pattern":"Landslide"}
+{"label":"DISASTER","pattern":"Rockslide"}
+{"label":"DISASTER","pattern":"Mudslide"}
+{"label":"DISASTER","pattern":"Avalanche"}
+{"label":"DISASTER","pattern":"Snow Avalanche"}
+{"label":"DISASTER","pattern":"Sinkhole"}
+{"label":"DISASTER","pattern":"Ground Collapse"}
+{"label":"DISASTER","pattern":"Hurricane"}
+{"label":"DISASTER","pattern":"Cyclone"}
+{"label":"DISASTER","pattern":"Typhoon"}
+{"label":"DISASTER","pattern":"Superstorm"}
+{"label":"DISASTER","pattern":"Tornado"}
+{"label":"DISASTER","pattern":"Twister"}
+{"label":"DISASTER","pattern":"Blizzard"}
+{"label":"DISASTER","pattern":"Snowstorm"}
+{"label":"DISASTER","pattern":"Ice Storm"}
+{"label":"DISASTER","pattern":"Freezing Rain"}
+{"label":"DISASTER","pattern":"Hailstorm"}
+{"label":"DISASTER","pattern":"Hailstorm Event"}
+{"label":"DISASTER","pattern":"Dust Storm"}
+{"label":"DISASTER","pattern":"Sandstorm"}
+{"label":"DISASTER","pattern":"Derecho"}
+{"label":"DISASTER","pattern":"Windstorm"}
+{"label":"DISASTER","pattern":"Flood"}
+{"label":"DISASTER","pattern":"Severe Flooding"}
+{"label":"DISASTER","pattern":"Flash Flood"}
+{"label":"DISASTER","pattern":"Sudden Flood"}
+{"label":"DISASTER","pattern":"Storm Surge"}
+{"label":"DISASTER","pattern":"Coastal Flooding"}
+{"label":"DISASTER","pattern":"Seiche"}
+{"label":"DISASTER","pattern":"Lake Surge"}
+{"label":"DISASTER","pattern":"Drought"}
+{"label":"DISASTER","pattern":"Severe Drought"}
+{"label":"DISASTER","pattern":"Heatwave"}
+{"label":"DISASTER","pattern":"Extreme Heatwave"}
+{"label":"DISASTER","pattern":"Wildfire"}
+{"label":"DISASTER","pattern":"Forest Fire"}
+{"label":"DISASTER","pattern":"Brush Fire"}
+{"label":"DISASTER","pattern":"Firestorm"}
+{"label":"DISASTER","pattern":"Cold Snap"}
+{"label":"DISASTER","pattern":"Extreme Cold"}
+{"label":"DISASTER","pattern":"Polar Vortex"}
+{"label":"DISASTER","pattern":"Pandemic"}
+{"label":"DISASTER","pattern":"Global Pandemic"}
+{"label":"DISASTER","pattern":"Epidemic"}
+{"label":"DISASTER","pattern":"Disease Outbreak"}
+{"label":"DISASTER","pattern":"Insect Plague"}
+{"label":"DISASTER","pattern":"Locust Swarm"}
+{"label":"DISASTER","pattern":"Animal Stampede"}
+{"label":"DISASTER","pattern":"Asteroid Impact"}
+{"label":"DISASTER","pattern":"Meteor Strike"}
+{"label":"DISASTER","pattern":"Solar Flare"}
+{"label":"DISASTER","pattern":"Geomagnetic Storm"}
+{"label":"DISASTER","pattern":"Gamma-Ray Burst"}
+{"label":"DISASTER","pattern":"Nuclear Disaster"}
+{"label":"DISASTER","pattern":"Radiation Leak"}
+{"label":"DISASTER","pattern":"Nuclear Meltdown"}
+{"label":"DISASTER","pattern":"Chemical Spill"}
+{"label":"DISASTER","pattern":"Toxic Spill"}
+{"label":"DISASTER","pattern":"Hazardous Waste Leak"}
+{"label":"DISASTER","pattern":"Industrial Explosion"}
+{"label":"DISASTER","pattern":"Factory Explosion"}
+{"label":"DISASTER","pattern":"Plant Explosion"}
+{"label":"DISASTER","pattern":"Dam Failure"}
+{"label":"DISASTER","pattern":"Dam Collapse"}
+{"label":"DISASTER","pattern":"Blackout"}
+{"label":"DISASTER","pattern":"Power Grid Failure"}
+{"label":"DISASTER","pattern":"Terrorist Attack"}
+{"label":"DISASTER","pattern":"Bombing Attack"}
+{"label":"DISASTER","pattern":"War"}
+{"label":"DISASTER","pattern":"Military Conflict"}
+{"label":"DISASTER","pattern":"Civil Unrest"}
+{"label":"DISASTER","pattern":"Riots"}
+{"label":"DISASTER","pattern":"Mass Shooting"}
+{"label":"DISASTER","pattern":"Active Shooter Incident"}
+{"label":"DISASTER","pattern":"Cyberattack"}
+{"label":"DISASTER","pattern":"Cybersecurity Breach"}
+{"label":"DISASTER","pattern":"Deforestation"}
+{"label":"DISASTER","pattern":"Forest Degradation"}
+{"label":"DISASTER","pattern":"Desertification"}
+{"label":"DISASTER","pattern":"Soil Erosion"}
+{"label":"DISASTER","pattern":"Environmental Degradation"}
+{"label":"DISASTER","pattern":"Oil Spill"}
+{"label":"DISASTER","pattern":"Massive Oil Spill"}
+{"label":"DISASTER","pattern":"Radioactive Contamination"}
+{"label":"DISASTER","pattern":"Radiation Exposure"}
+{"label":"DISASTER","pattern":"Transportation Accident"}
+{"label":"DISASTER","pattern":"Major Crash"}
+{"label":"DISASTER","pattern":"Structural Collapse"}
+{"label":"DISASTER","pattern":"Building Collapse"}
+{"label":"DISASTER","pattern":"Mine Disaster"}
+{"label":"DISASTER","pattern":"Underground Collapse"}
+{"label":"DISASTER","pattern":"Gas Leak Explosion"}
+{"label":"DISASTER","pattern":"Pipeline Explosion"}
+{"label":"DISASTER","pattern":"Chemical Explosion"}
