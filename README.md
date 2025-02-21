@@ -16,27 +16,16 @@ After that is complete, it's time to run the image and create your first contain
 
 To do this, run the command:
 
-**docker run --rm -p 8888:8888 crisis-analysis**
+_**UPDATE**_
 
-This will run the container that you specified (crisis-analysis) and bind port 8888 on your computer to port 8888 (-p tag) in the container for the Jupyter server to communicate through
+run **docker run -p 8888:8888 -v ${pwd}/app:/app -v ${pwd}/data:/data crisis-analysis**
 
-The --rm tag specifies that this container will be removed after you close it
+This will run the container off the image that you specified (crisis-analysis) and bind port 8888 on your computer to port 8888 (-p tag) in the container for the Jupyter server to communicate through
+
+**NEW**: The v tags will essentially let your container and the host pc share files from the directories that are specified. If you're on a linux based OS, replace ${pwd} with $(pwd)
+
+This removes the need to copy over files after you're done working, just save and that's it. This also allows you to freely add data to the data folder (same goes for the app folder) without having to rebuild the image or even stop the running containerf.
 
 Now in the terminal you should see that your container is running and you should be able to see the link that points to where you can access your Jupyter Notebooks ([your_ip_address]:8888)
-
-You can now work on the datasets and everything else that is currently in the repo (given that you added it in the data folder before building the image)
-
-It is important to remember that Docker containers are not state machines (once you turn them off their memory is erased and any data on there too)
-
-To ensure your work is saved locally on your pc, you need to run this command (basically run this any time you are done with some work and want to push it to the repo):
-
-**docker cp [container_name]:app/dataset_test.ipynb ./app**
-
-The cp command is bidirectional (read about it more by running "docker cp --help", but essentially you are copying a file from the container's memory over to yours)
-**Replace the brackets with the actual container name** (not the image name "crisis-analysis" but the randomly generated name you get when you run the image). 
-You can check the name by opening Docker desktop and viewing the name of the currently running container
-
-Obviously, if you are working in a different Notebook then change the name of that too (dataset_test.ipynb by default)
-Keep the ./app part the same as this specifies the destination for this file to be in the app folder with the other python file.
 
 Good luck, let me know if anything is confusing you
