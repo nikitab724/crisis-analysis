@@ -1,0 +1,697 @@
+disasters,locations,count,severity
+earthquake,mexico,656,16.39426879662156
+wildfires,california,580,14.477646165866673
+earthquake,iran,381,9.459121119547959
+earthquake,iraq,263,6.483312298112742
+hurricane,florida,206,5.045845325046579
+wildfire,california,196,4.793658136789357
+earthquake,mexico city,179,4.36493991675208
+hurricane,texas,69,1.5908808459226407
+flood,sri lanka,66,1.5152246894454742
+hurricane,puerto rico,45,0.9856315941053084
+hurricane,caribbean,45,0.9856315941053084
+hurricane,houston,41,0.8847567188024198
+hurricane,miami,34,0.7082256870223644
+hurricane,u.s.,31,0.6325695305451979
+hurricane,san juan,21,0.3803823422879761
+hurricane,cuba,18,0.3047261858108096
+tornado,florida,17,0.27950746698508744
+hurricane,st.,16,0.25428874815936525
+hurricane,mexico,15,0.22907002933364307
+hurricane,irma,13,0.17863259168219875
+hurricane,georgia,13,0.17863259168219875
+hurricane,us,12,0.15341387285647656
+flood,texas,12,0.15341387285647656
+hurricane,harvey,12,0.15341387285647656
+earthquake,israel,12,0.15341387285647656
+hurricane,new york,11,0.1281951540307544
+hurricane,north carolina,11,0.1281951540307544
+floods,texas,11,0.1281951540307544
+earthquake,kuwait,10,0.10297643520503222
+earthquake,central mexico,10,0.10297643520503222
+earthquake,california,10,0.10297643520503222
+hurricane,washington,10,0.10297643520503222
+hurricane,puerto,10,0.10297643520503222
+hurricane,atlantic,10,0.10297643520503222
+hurricane,dominica,9,0.07775771637931003
+hurricane,orlando,8,0.05253899755358786
+wildfires,portugal,8,0.05253899755358786
+hurricane,jacksonville,8,0.05253899755358786
+wildfires,northern california,8,0.05253899755358786
+earthquake,mexico city's,8,0.05253899755358786
+earthquake,japan,7,0.027320278727865684
+earthquakes,mexico,7,0.027320278727865684
+brush fire,california,7,0.027320278727865684
+hurricane,south florida,7,0.027320278727865684
+hurricane,miami beach,6,0.0021015599021435073
+wildfire,santa cruz,6,0.0021015599021435073
+hurricanes,irma,6,0.0021015599021435073
+flood,harvey,6,0.0021015599021435073
+flood,houston,6,0.0021015599021435073
+floods,harvey,6,0.0021015599021435073
+earthquake,u.s.,6,0.0021015599021435073
+hurricane,the east coast,6,0.0021015599021435073
+hurricane,naples,5,-0.02311715892357867
+hurricane,haiti,5,-0.02311715892357867
+earthquake,kurdistan,5,-0.02311715892357867
+tornado,south florida,5,-0.02311715892357867
+hurricane,south carolina,5,-0.02311715892357867
+hurricanes,harvey,5,-0.02311715892357867
+hurricane,new york city,5,-0.02311715892357867
+hurricane,east coast,5,-0.02311715892357867
+hurricane,uk,5,-0.02311715892357867
+tornado,orlando,5,-0.02311715892357867
+flood,kalutara district,4,-0.04833587774930085
+tornado,palm bay,4,-0.04833587774930085
+flood,us,4,-0.04833587774930085
+floods,houston,4,-0.04833587774930085
+earthquake,kurdistan iran,4,-0.04833587774930085
+flooded,houston,4,-0.04833587774930085
+hurricanes,u.s.,4,-0.04833587774930085
+floods,sri lanka,4,-0.04833587774930085
+earthquake,turkey,4,-0.04833587774930085
+hurricane,hacienda,4,-0.04833587774930085
+hurricane,california,4,-0.04833587774930085
+hurricane,chicago,4,-0.04833587774930085
+hurricane,fulton,4,-0.04833587774930085
+hurricane,connecticut,4,-0.04833587774930085
+earthquake,l.a,4,-0.04833587774930085
+hurricane,louisiana,4,-0.04833587774930085
+hurricane,mexico city,4,-0.04833587774930085
+wildfires,new york,4,-0.04833587774930085
+wildfires,italy,4,-0.04833587774930085
+hurricane,the united states,4,-0.04833587774930085
+wildfires,oregon,4,-0.04833587774930085
+hurricane,ocean park,4,-0.04833587774930085
+hurricane,new orleans,4,-0.04833587774930085
+hurricane,us virgin,4,-0.04833587774930085
+cyclone,myanmar,4,-0.04833587774930085
+wildfires,colorado,4,-0.04833587774930085
+hurricane,st,4,-0.04833587774930085
+hurricane,portugal,4,-0.04833587774930085
+wildfire,washington,4,-0.04833587774930085
+wildfires,the bay area,4,-0.04833587774930085
+flooding,houston,3,-0.07355459657502303
+earthquake,russia,3,-0.07355459657502303
+earthquake,north korea,3,-0.07355459657502303
+hurricane,colorado,3,-0.07355459657502303
+storm surge,florida,3,-0.07355459657502303
+earthquake,oviedo,3,-0.07355459657502303
+earthquake,paredon,3,-0.07355459657502303
+hurricane,north korea,3,-0.07355459657502303
+flood,india,3,-0.07355459657502303
+hurricane,rico,3,-0.07355459657502303
+hurricane,british virgin,3,-0.07355459657502303
+tsunami,mexico,3,-0.07355459657502303
+wildfires,north bay,3,-0.07355459657502303
+cyclone,manipur,3,-0.07355459657502303
+tornado,broward county,3,-0.07355459657502303
+earthquake,taiwan,3,-0.07355459657502303
+flood,matara,3,-0.07355459657502303
+forest fire,california,3,-0.07355459657502303
+tornado,illinois,3,-0.07355459657502303
+wildfires,russia,3,-0.07355459657502303
+cyclone,sri lanka,3,-0.07355459657502303
+earthquake,venezuela,3,-0.07355459657502303
+earthquakes,de arquitectura,3,-0.07355459657502303
+wildfires,mogadishu,3,-0.07355459657502303
+hurricane,carolinas,3,-0.07355459657502303
+hurricane,massachusetts,3,-0.07355459657502303
+hurricanes,uk,3,-0.07355459657502303
+hurricane,myrtle beach,3,-0.07355459657502303
+wildfire,portugal,3,-0.07355459657502303
+earthquake,costa rica,3,-0.07355459657502303
+earthquake,china,3,-0.07355459657502303
+flood,china,3,-0.07355459657502303
+hurricane,minnesota,3,-0.07355459657502303
+earthquake,mexicos,3,-0.07355459657502303
+wildfire,italy,3,-0.07355459657502303
+earthquake,l.a.,3,-0.07355459657502303
+earthquake,calgary,3,-0.07355459657502303
+earthquake,denver,3,-0.07355459657502303
+hurricane,new jersey,3,-0.07355459657502303
+earthquake,mota,3,-0.07355459657502303
+hurricanes,california,3,-0.07355459657502303
+wildfire,russia,3,-0.07355459657502303
+hurricanes,puerto rico,3,-0.07355459657502303
+hurricane,orange county,2,-0.0987733154007452
+hurricane,virginia beach,2,-0.0987733154007452
+hurricane,miami-dade,2,-0.0987733154007452
+hurricane,virginia,2,-0.0987733154007452
+flooded,us,2,-0.0987733154007452
+hurricane,tampa bay area,2,-0.0987733154007452
+hurricane,tampa bay,2,-0.0987733154007452
+hurricane,palm beach,2,-0.0987733154007452
+hurricane,palm beach county,2,-0.0987733154007452
+hurricane,iran,2,-0.0987733154007452
+flood,sri lanka's,2,-0.0987733154007452
+hurricane,volusia,2,-0.0987733154007452
+hurricane,watts,2,-0.0987733154007452
+hurricane,maria,2,-0.0987733154007452
+hurricane,west  ,2,-0.0987733154007452
+flood,israel,2,-0.0987733154007452
+tornado,palm bay #,2,-0.0987733154007452
+hurricanes,florida,2,-0.0987733154007452
+hurricane,san diego,2,-0.0987733154007452
+tornado,houston,2,-0.0987733154007452
+hurricane,despacito,2,-0.0987733154007452
+hurricane,tennessee,2,-0.0987733154007452
+hurricane,fort lauderdale news -  ,2,-0.0987733154007452
+hurricane,daytona beach,2,-0.0987733154007452
+landslides,sri lanka,2,-0.0987733154007452
+hurricane,the virgin islands,2,-0.0987733154007452
+hurricane,europe,2,-0.0987733154007452
+storm surge,georgia,2,-0.0987733154007452
+hurricanes,america,2,-0.0987733154007452
+hurricane,nc,2,-0.0987733154007452
+hurricane,buhari,2,-0.0987733154007452
+superstorm,uk,2,-0.0987733154007452
+hurricanes,texas,2,-0.0987733154007452
+hurricane,britain,2,-0.0987733154007452
+tornado,atlantic,2,-0.0987733154007452
+hurricane,gulf,2,-0.0987733154007452
+hurricane,australia,2,-0.0987733154007452
+hurricane,arkansas,2,-0.0987733154007452
+hurricane,arizona,2,-0.0987733154007452
+tornado,brevard county,2,-0.0987733154007452
+hurricane,america,2,-0.0987733154007452
+hurricane,alabama,2,-0.0987733154007452
+hurricane,united states,2,-0.0987733154007452
+hurricane,denver,2,-0.0987733154007452
+hurricane,@cbs12,2,-0.0987733154007452
+hurricane,@53rdwrs,2,-0.0987733154007452
+heatwave,california,2,-0.0987733154007452
+tornado,fort lauderdale,2,-0.0987733154007452
+flooded,texas,2,-0.0987733154007452
+hurricane,smith county,2,-0.0987733154007452
+wildfires,puerto rico,2,-0.0987733154007452
+tornado,winter park,2,-0.0987733154007452
+earthquake,arizona,2,-0.0987733154007452
+earthquake,usgs,2,-0.0987733154007452
+earthquake,boston,2,-0.0987733154007452
+earthquake,burma,2,-0.0987733154007452
+wildfires,las vegas,2,-0.0987733154007452
+tremors,mexico city,2,-0.0987733154007452
+wildfires,costly bay area,2,-0.0987733154007452
+earthquake,springfield,2,-0.0987733154007452
+earthquake,southern mexico,2,-0.0987733154007452
+earthquake,gulf,2,-0.0987733154007452
+war,california,2,-0.0987733154007452
+earthquake,houston,2,-0.0987733154007452
+war,texas,2,-0.0987733154007452
+earthquake,jojutla,2,-0.0987733154007452
+earthquake,picos,2,-0.0987733154007452
+wildfire,sonoma,2,-0.0987733154007452
+earthquake,pakistan,2,-0.0987733154007452
+earthquake,ottawa,2,-0.0987733154007452
+earthquake,new mexico,2,-0.0987733154007452
+earthquake,las vegas,2,-0.0987733154007452
+earthquake,london,2,-0.0987733154007452
+earthquake,los angeles,2,-0.0987733154007452
+earthquake,middle east,2,-0.0987733154007452
+wildfire,northern california,2,-0.0987733154007452
+earthquake,miami,2,-0.0987733154007452
+earthquake,mexico city:,2,-0.0987733154007452
+earthquake,@trutawar,2,-0.0987733154007452
+wildfire,napa county,2,-0.0987733154007452
+wildfires,sonoma county,2,-0.0987733154007452
+tornado,texas,2,-0.0987733154007452
+tornado,west palm beach,2,-0.0987733154007452
+building collapse,mexico,2,-0.0987733154007452
+wildfires,us,2,-0.0987733154007452
+buildings collapse,mexico,2,-0.0987733154007452
+wildfires,the california sun,2,-0.0987733154007452
+hurricanes,atlantic,1,-0.12399203422646737
+wildfire,sarasota,1,-0.12399203422646737
+hurricanes,europe,1,-0.12399203422646737
+hurricanes,chicago,1,-0.12399203422646737
+wildfire,sonoma county,1,-0.12399203422646737
+hurricanes,asia,1,-0.12399203422646737
+hurricane,st thomas,1,-0.12399203422646737
+wildfires,texas,1,-0.12399203422646737
+hurricane,wrightsville beach,1,-0.12399203422646737
+hurricane,wilin,1,-0.12399203422646737
+wildfires,spain,1,-0.12399203422646737
+hurricane,west virginia,1,-0.12399203422646737
+wildfire,u.s.,1,-0.12399203422646737
+hurricane,west michigan,1,-0.12399203422646737
+wildfire,us,1,-0.12399203422646737
+hurricane,west,1,-0.12399203422646737
+hurricanes,houston,1,-0.12399203422646737
+wildfire,santa rosa,1,-0.12399203422646737
+wildfire,santa rosa city,1,-0.12399203422646737
+wildfire,ventura county,1,-0.12399203422646737
+wildfire,north bay,1,-0.12399203422646737
+wildfires,vineyards,1,-0.12399203422646737
+wildfires,utah,1,-0.12399203422646737
+hurricane,south floridas east coast  ,1,-0.12399203422646737
+wildfire,"orange,",1,-0.12399203422646737
+hurricanes,nyc unites,1,-0.12399203422646737
+wildfire,pia22048,1,-0.12399203422646737
+hurricanes,north korea,1,-0.12399203422646737
+hurricane,south jersey,1,-0.12399203422646737
+wildfires,u.s aid,1,-0.12399203422646737
+hurricanes,michio,1,-0.12399203422646737
+hurricane,southeast texas,1,-0.12399203422646737
+hurricanes,mexico,1,-0.12399203422646737
+wildfire,san diegans,1,-0.12399203422646737
+hurricanes,m.d.,1,-0.12399203422646737
+hurricanes,l.a.,1,-0.12399203422646737
+hurricanes,kaku,1,-0.12399203422646737
+wildfire,san francisco,1,-0.12399203422646737
+wildfire,santa,1,-0.12399203422646737
+wildfire,usa,1,-0.12399203422646737
+wildfires,pittsburgh,1,-0.12399203422646737
+hurricane,texas county's,1,-0.12399203422646737
+wildfires,nebraska,1,-0.12399203422646737
+hurricane,tampa bay  ,1,-0.12399203422646737
+wildfires,michigan,1,-0.12399203422646737
+hurricane,u.s territories,1,-0.12399203422646737
+wildfires,solano county,1,-0.12399203422646737
+hurricane,turkey,1,-0.12399203422646737
+wildfires,minn,1,-0.12399203422646737
+wildfires,santa rosa,1,-0.12399203422646737
+wildfires,mt. sac  ,1,-0.12399203422646737
+hurricane,toronto,1,-0.12399203422646737
+wildfires,santa,1,-0.12399203422646737
+hurricane,waco,1,-0.12399203422646737
+wildfires,nevada county,1,-0.12399203422646737
+hurricane,the united states of america,1,-0.12399203422646737
+wildfires,new york city,1,-0.12399203422646737
+hurricane,tci beach,1,-0.12399203422646737
+hurricane,the nc coast,1,-0.12399203422646737
+wildfires,san francisco,1,-0.12399203422646737
+hurricane,the mississippi delta,1,-0.12399203422646737
+wildfires,san diego  ,1,-0.12399203422646737
+wildfires,outfront,1,-0.12399203422646737
+hurricane,u.s.v.i.,1,-0.12399203422646737
+wildfires,kansas,1,-0.12399203422646737
+wildfires,iran,1,-0.12399203422646737
+wildfires,houston,1,-0.12399203422646737
+wildfires,@nasa,1,-0.12399203422646737
+wildfires,anaheim hills,1,-0.12399203422646737
+hurricane,st. croix,1,-0.12399203422646737
+hurricane,st. pete-clearwater,1,-0.12399203422646737
+hurricane,va,1,-0.12399203422646737
+wildfires,arizona,1,-0.12399203422646737
+wildfires,australia,1,-0.12399203422646737
+wildfires,b.c. vintner's,1,-0.12399203422646737
+hurricane,surf city,1,-0.12399203422646737
+wildfires,bay area,1,-0.12399203422646737
+hurricane,utah,1,-0.12399203422646737
+hurricane,swansboro,1,-0.12399203422646737
+wildfires,catalonia,1,-0.12399203422646737
+wildfires,cincinnati,1,-0.12399203422646737
+wildfire,new mexico,1,-0.12399203422646737
+hurricane,us east coast,1,-0.12399203422646737
+wildfires,sonoma,1,-0.12399203422646737
+wildfires,fort ross,1,-0.12399203422646737
+wildfires,harvey,1,-0.12399203422646737
+hurricane,us east coast - cnn,1,-0.12399203422646737
+tornado,shanghai,1,-0.12399203422646737
+hurricanes,syria,1,-0.12399203422646737
+tornadoes,houston,1,-0.12399203422646737
+tornado,minnesota,1,-0.12399203422646737
+tornado,midwest,1,-0.12399203422646737
+tornado,miami beach,1,-0.12399203422646737
+tornado,marco island,1,-0.12399203422646737
+tornado,louisiana,1,-0.12399203422646737
+tornado,wolverhampton,1,-0.12399203422646737
+tornado,lego,1,-0.12399203422646737
+tornado,kirkville,1,-0.12399203422646737
+tornado,kansas,1,-0.12399203422646737
+tornado,johns county,1,-0.12399203422646737
+tornadoes,california,1,-0.12399203422646737
+tornado,howard,1,-0.12399203422646737
+wildfire,mexico,1,-0.12399203422646737
+tremor,iran,1,-0.12399203422646737
+tremor,iraq,1,-0.12399203422646737
+tornado,harris county,1,-0.12399203422646737
+tremor,mexico,1,-0.12399203422646737
+tornado,gr.4,1,-0.12399203422646737
+tremors,iran,1,-0.12399203422646737
+tornado,georgia coast,1,-0.12399203422646737
+tremors,iraq,1,-0.12399203422646737
+tornado,georgia,1,-0.12399203422646737
+tornado,fort pierce,1,-0.12399203422646737
+tornado,fort lauderdale airport,1,-0.12399203422646737
+tornado,mora county,1,-0.12399203422646737
+tornado,myrtle beach,1,-0.12399203422646737
+tornado,whaton,1,-0.12399203422646737
+tornado,new zealand,1,-0.12399203422646737
+tornado,pennsylvania,1,-0.12399203422646737
+tornado,palm beach county,1,-0.12399203422646737
+tornado,south carolina,1,-0.12399203422646737
+tornado,south dakota,1,-0.12399203422646737
+tornado,palm bay --&gt,1,-0.12399203422646737
+tornado,south lake tahoe,1,-0.12399203422646737
+tornado,palm bay #hurricaneirma,1,-0.12399203422646737
+tornado,st.,1,-0.12399203422646737
+tornado,tennessee,1,-0.12399203422646737
+tornado,u.s.,1,-0.12399203422646737
+tornado,palm bay  ,1,-0.12399203422646737
+tornado,us,1,-0.12399203422646737
+tornado,va,1,-0.12399203422646737
+tornado,valley city,1,-0.12399203422646737
+tornado,volusia,1,-0.12399203422646737
+tornado,wellington,1,-0.12399203422646737
+tornado,west lake,1,-0.12399203422646737
+tornado,orange county,1,-0.12399203422646737
+tornado,oklahoma,1,-0.12399203422646737
+tornado,ocean ridge,1,-0.12399203422646737
+tornado,north york,1,-0.12399203422646737
+hurricane,shreveport,1,-0.12399203422646737
+tornado,weston,1,-0.12399203422646737
+tremors,mexico,1,-0.12399203422646737
+tornado,fort,1,-0.12399203422646737
+tornado,elk city,1,-0.12399203422646737
+storm surges,florida,1,-0.12399203422646737
+storm surge,st.,1,-0.12399203422646737
+wildfire,atlanta,1,-0.12399203422646737
+storm surge,miami,1,-0.12399203422646737
+storm surge,irma,1,-0.12399203422646737
+storm surge,houston,1,-0.12399203422646737
+wildfire,bay area,1,-0.12399203422646737
+wildfire,calif,1,-0.12399203422646737
+wildfire,canada,1,-0.12399203422646737
+sinkholes,florida,1,-0.12399203422646737
+wildfire,central california,1,-0.12399203422646737
+sinkhole,puerto rico,1,-0.12399203422646737
+plant explosions,houston,1,-0.12399203422646737
+wildfire,colorado,1,-0.12399203422646737
+mudslides,california,1,-0.12399203422646737
+wildfire,delaware county,1,-0.12399203422646737
+wildfire,fieri,1,-0.12399203422646737
+wildfire,glen ellen,1,-0.12399203422646737
+wildfire,iran,1,-0.12399203422646737
+landslides,iraq,1,-0.12399203422646737
+landslides,iran,1,-0.12399203422646737
+tornado,san lawrence,1,-0.12399203422646737
+landslide,puerto rico,1,-0.12399203422646737
+hurricanes,us,1,-0.12399203422646737
+wildfire,@forestservice,1,-0.12399203422646737
+wars,mexico,1,-0.12399203422646737
+tornado,dade,1,-0.12399203422646737
+superstorm,harvey,1,-0.12399203422646737
+tornado,crescent beach,1,-0.12399203422646737
+tornado,columbia river,1,-0.12399203422646737
+tornado,china,1,-0.12399203422646737
+tornado,chatham county,1,-0.12399203422646737
+tornado,carson city,1,-0.12399203422646737
+tornado,canton,1,-0.12399203422646737
+tornado,california,1,-0.12399203422646737
+tremors,new zealand,1,-0.12399203422646737
+tremors,uae,1,-0.12399203422646737
+typhoon,california,1,-0.12399203422646737
+tornado,boynton beach,1,-0.12399203422646737
+tornado,boston va,1,-0.12399203422646737
+war,cuba,1,-0.12399203422646737
+tornado,belle haven va,1,-0.12399203422646737
+war,iraq,1,-0.12399203422646737
+tornado,beaumont,1,-0.12399203422646737
+tornado,barnwell county,1,-0.12399203422646737
+tornado,australia,1,-0.12399203422646737
+war,puerto,1,-0.12399203422646737
+tornado,@cbs12,1,-0.12399203422646737
+war,san miguel county,1,-0.12399203422646737
+tidal wave,iran,1,-0.12399203422646737
+war,u.s.,1,-0.12399203422646737
+landslide,sri lanka,1,-0.12399203422646737
+blackout,puerto rico,1,-0.12399203422646737
+hurricane,satellite beach,1,-0.12399203422646737
+earthquake,school,1,-0.12399203422646737
+earthquake,rabosco,1,-0.12399203422646737
+earthquake,raradio,1,-0.12399203422646737
+earthquake,rattles mexico,1,-0.12399203422646737
+earthquake,san antonio,1,-0.12399203422646737
+earthquake,san diego,1,-0.12399203422646737
+earthquake,san francisco del mar,1,-0.12399203422646737
+earthquake,scotland,1,-0.12399203422646737
+earthquake,toronto,1,-0.12399203422646737
+earthquake,seattle,1,-0.12399203422646737
+earthquake,south bay,1,-0.12399203422646737
+earthquake,south mexico:,1,-0.12399203422646737
+earthquake,texas,1,-0.12399203422646737
+earthquake,the middle east,1,-0.12399203422646737
+earthquake,the united kingdom,1,-0.12399203422646737
+earthquake,quran,1,-0.12399203422646737
+earthquake,puerto,1,-0.12399203422646737
+earthquake,persia,1,-0.12399203422646737
+earthquake,oaxaca,1,-0.12399203422646737
+earthquake,northern ireland,1,-0.12399203422646737
+earthquake,north pacific,1,-0.12399203422646737
+earthquake,new zealand,1,-0.12399203422646737
+earthquake,new york,1,-0.12399203422646737
+earthquake,new mexico  ,1,-0.12399203422646737
+earthquake,najaf,1,-0.12399203422646737
+earthquake,mutek mexico,1,-0.12399203422646737
+earthquake,mo  ,1,-0.12399203422646737
+earthquake,milwaukee,1,-0.12399203422646737
+earthquake,mexico.,1,-0.12399203422646737
+earthquake,mexico city school,1,-0.12399203422646737
+earthquake,mexico city event,1,-0.12399203422646737
+earthquake,mexico city - sun,1,-0.12399203422646737
+earthquake,the united states,1,-0.12399203422646737
+earthquake,uae,1,-0.12399203422646737
+flooded,harvey,1,-0.12399203422646737
+flood,florida,1,-0.12399203422646737
+firestorms,california,1,-0.12399203422646737
+flash flood,houston,1,-0.12399203422646737
+flash flood,texas,1,-0.12399203422646737
+flash floods,puerto rico,1,-0.12399203422646737
+flood,cambodia,1,-0.12399203422646737
+flood,"eur300,000",1,-0.12399203422646737
+flood,fort,1,-0.12399203422646737
+earthquake,uk,1,-0.12399203422646737
+flood,houston-area,1,-0.12399203422646737
+flood,iran,1,-0.12399203422646737
+flood,irma,1,-0.12399203422646737
+flood,san diego,1,-0.12399203422646737
+flood,u.s.,1,-0.12399203422646737
+flood,west houston,1,-0.12399203422646737
+firestorm,california,1,-0.12399203422646737
+earthquakes,wilin,1,-0.12399203422646737
+earthquakes,north korea,1,-0.12399203422646737
+earthquakes,mexico city,1,-0.12399203422646737
+earthquakes,japan,1,-0.12399203422646737
+earthquakes,iraq,1,-0.12399203422646737
+earthquakes,iran,1,-0.12399203422646737
+earthquakes,costa rice,1,-0.12399203422646737
+earthquakes,california,1,-0.12399203422646737
+earthquakes,"calif , usa!  ",1,-0.12399203422646737
+earthquake,yellowstone,1,-0.12399203422646737
+earthquake,west coast,1,-0.12399203422646737
+earthquake,washington,1,-0.12399203422646737
+earthquake,vogue mexico,1,-0.12399203422646737
+earthquake,valley,1,-0.12399203422646737
+earthquake,us,1,-0.12399203422646737
+earthquake,united kingdom,1,-0.12399203422646737
+earthquake,mexico city -,1,-0.12399203422646737
+earthquake,metro):#kim kardashian-west,1,-0.12399203422646737
+earthquake,mass.,1,-0.12399203422646737
+earthquake,australia,1,-0.12399203422646737
+earthquake,@nasa,1,-0.12399203422646737
+earthquake,@ravensantana,1,-0.12399203422646737
+earthquake,@rwhelanwsj,1,-0.12399203422646737
+earthquake,adams county,1,-0.12399203422646737
+earthquake,algeria,1,-0.12399203422646737
+earthquake,arena,1,-0.12399203422646737
+earthquake,b.c.'s,1,-0.12399203422646737
+earthquake,maria,1,-0.12399203422646737
+earthquake,baghdad,1,-0.12399203422646737
+earthquake,benito,1,-0.12399203422646737
+earthquake,bhuj,1,-0.12399203422646737
+earthquake,bonsang,1,-0.12399203422646737
+earthquake,britain,1,-0.12399203422646737
+earthquake,c@fespamexico,1,-0.12399203422646737
+earthquake,@liampayne mexico,1,-0.12399203422646737
+cyclone,uk,1,-0.12399203422646737
+cyclone,odisha,1,-0.12399203422646737
+cyclone,north east,1,-0.12399203422646737
+cyclone,maungtaw  ,1,-0.12399203422646737
+cyclone,india,1,-0.12399203422646737
+cyclone,california,1,-0.12399203422646737
+cyclone,bangladesh,1,-0.12399203422646737
+cyclone,@nwslittlerock,1,-0.12399203422646737
+chemical spills,texas,1,-0.12399203422646737
+buildings collapsed,mexico,1,-0.12399203422646737
+buildings collapse,mexico city,1,-0.12399203422646737
+brush fires,california,1,-0.12399203422646737
+brush fire,zuma beach,1,-0.12399203422646737
+brush fire,mount wilson  ,1,-0.12399203422646737
+brush fire,anaheim hills,1,-0.12399203422646737
+blackout,us,1,-0.12399203422646737
+earthquake,canada,1,-0.12399203422646737
+earthquake,caribbean,1,-0.12399203422646737
+earthquake,central mexico  ,1,-0.12399203422646737
+earthquake,idfs mexico,1,-0.12399203422646737
+earthquake,los topos,1,-0.12399203422646737
+earthquake,latin america,1,-0.12399203422646737
+earthquake,kurdistan region,1,-0.12399203422646737
+earthquake,kompany,1,-0.12399203422646737
+earthquake,kermanshah(iran,1,-0.12399203422646737
+earthquake,kermanshah province,1,-0.12399203422646737
+earthquake,karzin county,1,-0.12399203422646737
+earthquake,kankakee,1,-0.12399203422646737
+earthquake,kamran,1,-0.12399203422646737
+earthquake,kabul,1,-0.12399203422646737
+earthquake,joz,1,-0.12399203422646737
+earthquake,italy,1,-0.12399203422646737
+earthquake,irma,1,-0.12399203422646737
+earthquake,india,1,-0.12399203422646737
+earthquake,halabja  ,1,-0.12399203422646737
+earthquake,clasico,1,-0.12399203422646737
+earthquake,halabja,1,-0.12399203422646737
+earthquake,haiti,1,-0.12399203422646737
+earthquake,guatemala,1,-0.12399203422646737
+earthquake,god,1,-0.12399203422646737
+earthquake,fuerza mexico,1,-0.12399203422646737
+earthquake,fresno,1,-0.12399203422646737
+earthquake,florida,1,-0.12399203422646737
+earthquake,dubai,1,-0.12399203422646737
+earthquake,delaware,1,-0.12399203422646737
+earthquake,del terremoto,1,-0.12399203422646737
+earthquake,de mexico,1,-0.12399203422646737
+earthquake,cuba,1,-0.12399203422646737
+earthquake,costa rice,1,-0.12399203422646737
+earthquake,comfort,1,-0.12399203422646737
+flooded,florida,1,-0.12399203422646737
+flooded,las vegas,1,-0.12399203422646737
+hurricane,santa clarita,1,-0.12399203422646737
+blackout,san juan,1,-0.12399203422646737
+hurricane,lee county  ,1,-0.12399203422646737
+hurricane,los angeles,1,-0.12399203422646737
+hurricane,maine,1,-0.12399203422646737
+hurricane,manatee county,1,-0.12399203422646737
+hurricane,manhattan beach,1,-0.12399203422646737
+hurricane,maryland,1,-0.12399203422646737
+hurricane,md  ,1,-0.12399203422646737
+hurricane,midwest,1,-0.12399203422646737
+hurricane,md.,1,-0.12399203422646737
+hurricane,melania,1,-0.12399203422646737
+hurricane,memorial park,1,-0.12399203422646737
+hurricane,metro atlanta,1,-0.12399203422646737
+hurricane,miami city,1,-0.12399203422646737
+hurricane,miami-dade county,1,-0.12399203422646737
+hurricane,lee county,1,-0.12399203422646737
+hurricane,lebanon,1,-0.12399203422646737
+hurricane,latin america's,1,-0.12399203422646737
+hurricane,latin america,1,-0.12399203422646737
+hurricane,lake county,1,-0.12399203422646737
+hurricane,kuwait,1,-0.12399203422646737
+hurricane,klein,1,-0.12399203422646737
+hurricane,kenya,1,-0.12399203422646737
+hurricane,kentucky,1,-0.12399203422646737
+hurricane,jersey,1,-0.12399203422646737
+hurricane,jacksonville beach,1,-0.12399203422646737
+hurricane,indiana,1,-0.12399203422646737
+hurricane,hungary,1,-0.12399203422646737
+hurricane,houston-area,1,-0.12399203422646737
+hurricane,harvey  ,1,-0.12399203422646737
+hurricane,harris county,1,-0.12399203422646737
+hurricane,gulf of mexico,1,-0.12399203422646737
+hurricane,michigan,1,-0.12399203422646737
+hurricane,monroe county,1,-0.12399203422646737
+flooded,penang,1,-0.12399203422646737
+hurricane,rico beach,1,-0.12399203422646737
+hurricane,pasco county,1,-0.12399203422646737
+hurricane,pbc jail,1,-0.12399203422646737
+hurricane,pearland,1,-0.12399203422646737
+hurricane,philadelphia,1,-0.12399203422646737
+hurricane,pittsburgh,1,-0.12399203422646737
+hurricane,plaza del,1,-0.12399203422646737
+hurricane,russia,1,-0.12399203422646737
+hurricane,myers beach,1,-0.12399203422646737
+hurricane,sacramento,1,-0.12399203422646737
+hurricane,san angelo  ,1,-0.12399203422646737
+hurricane,san francisco,1,-0.12399203422646737
+hurricane,san juan  ,1,-0.12399203422646737
+hurricane,san juan - refugee,1,-0.12399203422646737
+hurricane,san juan airport,1,-0.12399203422646737
+hurricane,p.r.,1,-0.12399203422646737
+hurricane,osceola county,1,-0.12399203422646737
+hurricane,olivia,1,-0.12399203422646737
+hurricane,oklahoma city,1,-0.12399203422646737
+hurricane,oklahoma,1,-0.12399203422646737
+hurricane,ohio,1,-0.12399203422646737
+hurricane,oakland,1,-0.12399203422646737
+hurricane,nova,1,-0.12399203422646737
+hurricane,north philadelphia,1,-0.12399203422646737
+hurricane,north coast,1,-0.12399203422646737
+hurricane,north carolina's,1,-0.12399203422646737
+hurricane,news@11,1,-0.12399203422646737
+hurricane,new mexico,1,-0.12399203422646737
+hurricane,new england,1,-0.12399203422646737
+hurricane,nebraska,1,-0.12399203422646737
+hurricane,nassau county,1,-0.12399203422646737
+hurricane,n.s.,1,-0.12399203422646737
+hurricane,guayama,1,-0.12399203422646737
+hurricane,fort myers,1,-0.12399203422646737
+hurricane,fort,1,-0.12399203422646737
+hurricane,@kris6news,1,-0.12399203422646737
+hurricane,@bwdleague,1,-0.12399203422646737
+hurricane,@citizens_fla,1,-0.12399203422646737
+hurricane,@crowdrescuehq,1,-0.12399203422646737
+hurricane,@greensboro_nc,1,-0.12399203422646737
+hurricane,@jillgilardi,1,-0.12399203422646737
+hurricane,@jonathan_hr_law,1,-0.12399203422646737
+hurricane,@nbuhayar,1,-0.12399203422646737
+hurricane,florida county,1,-0.12399203422646737
+hurricane,@nwslittlerock,1,-0.12399203422646737
+hurricane,@progressflorida,1,-0.12399203422646737
+hurricane,@ravensantana,1,-0.12399203422646737
+hurricane,^newsweek,1,-0.12399203422646737
+hurricane,alexandria,1,-0.12399203422646737
+hurricane,algeria,1,-0.12399203422646737
+heatwave,costly bay area,1,-0.12399203422646737
+forest fire,northern california,1,-0.12399203422646737
+floods,west houston,1,-0.12399203422646737
+floods,us,1,-0.12399203422646737
+floods,u.s.,1,-0.12399203422646737
+floods,south jersey,1,-0.12399203422646737
+floods,south asia,1,-0.12399203422646737
+floods,kabul,1,-0.12399203422646737
+floods,iran,1,-0.12399203422646737
+floods,florida,1,-0.12399203422646737
+floods,beaumont,1,-0.12399203422646737
+floods,asia,1,-0.12399203422646737
+floods,americas gulf,1,-0.12399203422646737
+floods,@argo_xtv,1,-0.12399203422646737
+flooding,south carolina,1,-0.12399203422646737
+flooding,puerto rico,1,-0.12399203422646737
+flooding,florida,1,-0.12399203422646737
+hurricane,anguilla,1,-0.12399203422646737
+hurricane,apollo beach,1,-0.12399203422646737
+hurricane,aransas county,1,-0.12399203422646737
+hurricane,cleveland,1,-0.12399203422646737
+hurricane,florida beach,1,-0.12399203422646737
+hurricane,flordia,1,-0.12399203422646737
+hurricane,fla,1,-0.12399203422646737
+hurricane,f708a#chasingwifi,1,-0.12399203422646737
+hurricane,erie county,1,-0.12399203422646737
+hurricane,el paso,1,-0.12399203422646737
+hurricane,easter n. carolina,1,-0.12399203422646737
+hurricane,disneybrit,1,-0.12399203422646737
+hurricane,delaware,1,-0.12399203422646737
+hurricane,dallas,1,-0.12399203422646737
+hurricane,d.c.,1,-0.12399203422646737
+hurricane,crystal beach,1,-0.12399203422646737
+hurricane,collier county,1,-0.12399203422646737
+hurricane,cocoa beach,1,-0.12399203422646737
+hurricane,charlotte,1,-0.12399203422646737
+hurricane,aransas county's,1,-0.12399203422646737
+hurricane,charleston,1,-0.12399203422646737
+hurricane,canada,1,-0.12399203422646737
+hurricane,cacos,1,-0.12399203422646737
+hurricane,broward county,1,-0.12399203422646737
+hurricane,brooklyn,1,-0.12399203422646737
+hurricane,bronx,1,-0.12399203422646737
+hurricane,bloomberg,1,-0.12399203422646737
+hurricane,beckham,1,-0.12399203422646737
+hurricane,bayfront park,1,-0.12399203422646737
+hurricane,bay beach,1,-0.12399203422646737
+hurricane,bay area,1,-0.12399203422646737
+hurricane,atlantic coast,1,-0.12399203422646737
+hurricane,atlanta,1,-0.12399203422646737
+hurricane,asia,1,-0.12399203422646737
+wildfires,washington,1,-0.12399203422646737
