@@ -2,12 +2,10 @@ FROM --platform=linux/amd64 python:3.12
 
 COPY requirements.txt ./
 
-WORKDIR /app
+RUN pip install --no-cache-dir -r requirements.txt && python -m spacy download en_core_web_sm
 
-RUN pip install --no-cache-dir -r ../requirements.txt && python -m spacy download en_core_web_sm
-
-EXPOSE 8888
+EXPOSE 8888 8050
 
 ENV NAME=World
 
-CMD [ "jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root" ]
+CMD [ "sleep", "infinity" ]
