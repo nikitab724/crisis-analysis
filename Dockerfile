@@ -9,6 +9,7 @@ EXPOSE 8888 8050
 ENV NAME World
 
 COPY app/main.py .
+COPY data/crisis_counts.csv data/crisis_counts.csv
 
 #CMD [ "jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root" ]
 CMD ["python", "main.py", "run", "--ip=0.0.0.0", "--port=8050"]
