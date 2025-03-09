@@ -155,7 +155,8 @@
     "attribute_ruler",
     "lemmatizer",
     "entity_ruler",
-    "ner"
+    "ner",
+    "spacytextblob"
   ],
   "components":[
     "tok2vec",
@@ -165,7 +166,8 @@
     "attribute_ruler",
     "lemmatizer",
     "entity_ruler",
-    "ner"
+    "ner",
+    "spacytextblob"
   ],
   "disabled":[
     "parser",

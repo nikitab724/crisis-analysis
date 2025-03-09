@@ -18,7 +18,9 @@ To do this, run the command:
 
 _**UPDATE**_
 
-run **docker run -p 8888:8888 -v ${pwd}/app:/app -v ${pwd}/data:/data crisis-analysis**
+run **docker run -p 8888:8888 -p 8050:8050 -v ${pwd}/app:/app -v ${pwd}/data:/data crisis-analysis**
+
+or **docker run -p 8888:8888 -p 8050:8050 -v $(pwd)/app:/app -v $(pwd)/data:/data crisis-analysis** on mac
 
 This will run the container off the image that you specified (crisis-analysis) and bind port 8888 on your computer to port 8888 (-p tag) in the container for the Jupyter server to communicate through
 
@@ -28,4 +30,10 @@ This removes the need to copy over files after you're done working, just save an
 
 Now in the terminal you should see that your container is running and you should be able to see the link that points to where you can access your Jupyter Notebooks ([your_ip_address]:8888)
 
-Good luck, let me know if anything is confusing you
+UPDATES:
+Exposed port 8050 to run the Dash app along with 8888 for the notebook
+
+Command to run the notebook is :
+**jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root**
+
+Now, the docker container just runs "sleep infinity", so you can essentially control what you want it to do.
