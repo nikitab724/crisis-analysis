@@ -2,7 +2,7 @@ FROM --platform=linux/amd64 python:3.12
 
 COPY requirements.txt ./
 
-RUN pip install --no-cache-dir -r requirements.txt && python -m spacy download en_core_web_sm
+RUN pip install --no-cache-dir -r requirements.txt && python -m spacy download en_core_web_lg
 
 EXPOSE 8888 8050
 
