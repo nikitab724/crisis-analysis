@@ -18,7 +18,10 @@ def _save_post_data(post_data, output_file, verbose, post_count, lock):
 
             # Write headers only if the file is new
             if not file_exists:
-                writer.writerow(["Post ID", "Author", "Text", "Created At", "URI", "Has Images", "Reply To"])
+                writer.writerow(["Post ID", "Author", "Text", "Created At", "URI", "URL", "Has Images", "Reply To"])
+
+            # Construct the post URL from the URI
+            post_url = f"https://bsky.app/profile/{post_data['author']}/post/{post_data['uri'].split('/')[-1]}"
 
             # Write post data with a unique post ID
             writer.writerow([
@@ -27,6 +30,7 @@ def _save_post_data(post_data, output_file, verbose, post_count, lock):
                 post_data['text'].replace("\n", " "),  # Remove newlines for CSV formatting
                 post_data['created_at'],
                 post_data['uri'],
+                post_url,  # Add the constructed post URL
                 post_data['has_images'],
                 post_data['reply_to'] or "N/A"
             ])
@@ -38,12 +42,13 @@ def _save_post_data(post_data, output_file, verbose, post_count, lock):
         print(f"Saved post #{post_count.value} by @{post_data['author']}: {post_data['text'][:50]}...")
 
 
-def worker_process(queue, output_file, verbose, post_count, lock, stop_event):
+
+def worker_process(queue, output_file, verbose, post_count, lock, stop_event, keyword):
     resolver = IdResolver(cache=DidInMemoryCache())
     while not stop_event.is_set():
         try:
             message = queue.get(timeout=1)
-            process_message(message, resolver, output_file, verbose, post_count, lock)
+            process_message(message, resolver, output_file, verbose, post_count, lock, keyword)
         except multiprocessing.queues.Empty:
             continue
         except Exception as e:
@@ -64,8 +69,8 @@ def client_process(queue, stop_event):
         if not stop_event.is_set():
             print(f"Client process error: {e}")
 
-def process_message(message, resolver, output_file, verbose, post_count, lock):
-    """Process a single message from the firehose"""
+def process_message(message, resolver, output_file, verbose, post_count, lock, keyword=None):
+    """Process a single message from the firehose, filtering posts if a keyword is specified."""
     try:
         commit = parse_subscribe_repos_message(message)
         if not hasattr(commit, 'ops'):
@@ -73,19 +78,24 @@ def process_message(message, resolver, output_file, verbose, post_count, lock):
 
         for op in commit.ops:
             if op.action == 'create' and op.path.startswith('app.bsky.feed.post/'):
-                _process_post(commit, op, resolver, output_file, verbose, post_count, lock)
+                _process_post(commit, op, resolver, output_file, verbose, post_count, lock, keyword)
 
     except Exception as e:
         print(f"Error processing message: {e}")
 
-def _process_post(commit, op, resolver, output_file, verbose, post_count, lock):
-    """Process a single post operation"""
+def _process_post(commit, op, resolver, output_file, verbose, post_count, lock, keyword=None):
+    """Process a single post operation with optional keyword filtering."""
     try:
         author_handle = _resolve_author_handle(commit.repo, resolver)
         car = CAR.from_bytes(commit.blocks)
         for record in car.blocks.values():
             if isinstance(record, dict) and record.get('$type') == 'app.bsky.feed.post':
                 post_data = _extract_post_data(record, commit.repo, op.path, author_handle)
+
+                # Filter based on keyword (case-insensitive)
+                if keyword and keyword.lower() not in post_data['text'].lower():
+                    return  # Skip post if it doesn't contain the keyword
+
                 _save_post_data(post_data, output_file, verbose, post_count, lock)
     except Exception as e:
         print(f"Error processing record: {e}")
@@ -126,23 +136,27 @@ def _get_reply_to(record):
     return reply_ref.get('parent', {}).get('uri')
 
 class FirehoseScraper:
-    def __init__(self, output_file="bluesky_posts.jsonl", verbose=False, num_workers=4):
+    def __init__(self, output_file="bluesky_posts.csv", verbose=False, num_workers=4, keyword=None):
         self.output_file = output_file
-        self.post_count = multiprocessing.Value('i', 0)  # Shared integer
+        self.post_count = multiprocessing.Value('i', 0)
         self.start_time = None
-        self.cache = DidInMemoryCache() 
+        self.cache = DidInMemoryCache()
         self.resolver = IdResolver(cache=self.cache)
         self.verbose = verbose
         self.queue = multiprocessing.Queue()
         self.num_workers = num_workers
         self.workers = []
         self.stop_event = multiprocessing.Event()
-        self.lock = multiprocessing.Lock()  # For thread-safe file writing
-        self.client_proc = None  # Renamed to avoid conflict
+        self.lock = multiprocessing.Lock()
+        self.client_proc = None
+        self.keyword = keyword  # Store keyword
 
     def start_collection(self, duration_seconds=None, post_limit=None):
-        """Start collecting posts from the firehose"""
+        """Start collecting posts with optional filtering by keyword."""
         print(f"Starting collection{f' for {post_limit} posts' if post_limit else ''}...")
+        if self.keyword:
+            print(f"Filtering posts that contain the keyword: '{self.keyword}'")
+
         self.start_time = time.time()
         end_time = self.start_time + duration_seconds if duration_seconds else None
 
@@ -150,71 +164,40 @@ class FirehoseScraper:
         for _ in range(self.num_workers):
             p = multiprocessing.Process(
                 target=worker_process,
-                args=(
-                    self.queue, 
-                    self.output_file, 
-                    self.verbose, 
-                    self.post_count, 
-                    self.lock, 
-                    self.stop_event
-                )
+                args=(self.queue, self.output_file, self.verbose, self.post_count, self.lock, self.stop_event, self.keyword)
             )
             p.start()
             self.workers.append(p)
 
+        # Start the client process
+        self.client_proc = multiprocessing.Process(
+            target=client_process,
+            args=(self.queue, self.stop_event)
+        )
+        self.client_proc.start()
 
-        # Handle KeyboardInterrupt in the main process
-        def signal_handler(sig, frame):
-            print("\nCollection stopped by user.")
-            self._stop_collection()
-            sys.exit(0)
-
-        signal.signal(signal.SIGINT, signal_handler)
-
-        while True:
-            # Start the client in a separate process
-            self.client_proc = multiprocessing.Process(
-                target=client_process,
-                args=(self.queue, self.stop_event)
-            )
-            self.client_proc.start()
-
-            # Monitor the collection
-            try:
-                while True:
-                    if self.stop_event.is_set():
-                        break
-                    if duration_seconds and time.time() > end_time:
-                        print("\nTime limit reached.")
-                        self._stop_collection()
-                        break
-                    elif post_limit and self.post_count.value >= post_limit:
-                        print("\nPost limit reached.")
-                        self._stop_collection()
-                        break
-                    if not self.client_proc.is_alive():
-                        if not self.stop_event.is_set():
-                            # Client process exited unexpectedly
-                            print("\nClient process exited unexpectedly.")
-                            self._stop_collection()
-
-                            break
-                        else:
-                            # Stop event is set; exit the loop
-                            break
-                    time.sleep(1)
-                else:
-                    # If the collection completed successfully, break out of the retry loop
-                    break
+        # Monitor collection
+        try:
+            while True:
                 if self.stop_event.is_set():
                     break
-            except KeyboardInterrupt:
-                print("\nCollection interrupted by user.")
-                self._stop_collection()
-                break
-            except Exception as e:
-                error_details = f"{type(e).__name__}: {str(e)}" if str(e) else f"{type(e).__name__}"
-                print(f"\nConnection error: {error_details}")
+                if duration_seconds and time.time() > end_time:
+                    print("\nTime limit reached.")
+                    self._stop_collection()
+                    break
+                elif post_limit and self.post_count.value >= post_limit:
+                    print("\nPost limit reached.")
+                    self._stop_collection()
+                    break
+                if not self.client_proc.is_alive():
+                    if not self.stop_event.is_set():
+                        print("\nClient process exited unexpectedly.")
+                        self._stop_collection()
+                    break
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nCollection interrupted by user.")
+            self._stop_collection()
 
         self._stop_collection()
 
@@ -241,12 +224,12 @@ class FirehoseScraper:
         print(f"Output saved to: {self.output_file}")
 
 if __name__ == "__main__":
-    output_file = "bluesky_posts.csv"  # Save to CSV instead of JSONL
+    output_file = "bluesky_posts.csv"
     verbose = True
     num_workers = 4
+    keyword = input("Enter a keyword to filter posts (leave blank for all posts): ").strip() or None
 
-    archiver = FirehoseScraper(output_file=output_file, verbose=verbose, num_workers=num_workers)
+    archiver = FirehoseScraper(output_file=output_file, verbose=verbose, num_workers=num_workers, keyword=keyword)
     
-    # Collect exactly 10 posts
-    archiver.start_collection(post_limit=100)
-
+    # Collect exactly 100 posts
+    archiver.start_collection(post_limit=5)
