@@ -1,0 +1,44 @@
+disaster_type,location,count,avg_sentiment,severity,latitude,longitude
+disease,Texas,1,-0.7,,31.2638905,-98.5456116
+earthquake,China,1,0.4,,35.0000663,104.999955
+earthquake,Russia,2,-0.51,,64.6863136,97.7453061
+earthquake,afghanistan,1,-0.64,,33.7680065,66.2385139
+earthquake,saudi arabia,2,0.48,,25.6242618,42.3528328
+flood,Hundred,1,-0.56,,39.6838042,-80.4589785
+flood,Kodiak,1,-0.49,,57.7901661,-152.4067073
+flood,Oregon,1,-0.08,,43.9792797,-120.737257
+flood,San Diego,1,0.34,,32.7174202,-117.162772
+hurricane & tornado,Canada,2,-0.545,,61.0666922,-107.991707
+hurricane & tornado,Florida,1,0.59,,27.7567667,-81.4639835
+hurricane & tornado,Houston,1,0.48,,29.7589382,-95.3676974
+hurricane & tornado,Kalispell,1,-0.2,,48.202158,-114.315321
+hurricane & tornado,Kalkaska,1,0.46,,44.6780512,-85.1002509
+hurricane & tornado,Louisville,1,-0.61,,38.2542376,-85.759407
+hurricane & tornado,Miami,1,-0.6,,25.7741728,-80.19362
+hurricane & tornado,New Mexico,1,0.3,,34.5802074,-105.996047
+hurricane & tornado,Rico,1,-0.27,,37.6926863,-108.031502
+hurricane & tornado,japan,1,-0.64,,36.5748441,139.2394179
+industrial accident,myanmar,1,-0.25,,17.1750495,95.9999652
+industrial accident,ukraine,1,-0.79,,49.4871968,31.2718321
+meteor crash,yemen,1,0.25,,16.3471243,47.8915271
+societal crime,Appleton,1,-0.13,,44.2613967,-88.4069744
+societal crime,Arab,2,-0.0949999999999999,,34.3181497,-86.4958219
+societal crime,Berkeley,1,0.68,,37.8708393,-122.272863
+societal crime,Canadian,1,-0.54,,35.5438102,-98.0031532
+societal crime,Century,1,0.08,,30.9732384,-87.2638628
+societal crime,Congress,1,-0.4,,34.153848499999995,-112.85491907497467
+societal crime,Dallas,1,-0.44,,32.7762719,-96.7968559
+societal crime,El Salvador,1,0.56,,13.8000382,-88.9140683
+societal crime,Gaza,6,-0.6903125,,-23.328398,32.8066057
+societal crime,German,1,-0.15,,51.1638175,10.4478313
+societal crime,Nova,1,0.2,,46.6851951,16.6779487
+societal crime,Palestine,1,-0.67,,31.7621153,-95.6307891
+societal crime,Russia,3,0.0849999999999999,0.0,64.6863136,97.7453061
+societal crime,Toronto,1,-0.72,,43.6534817,-79.3839347
+societal crime,Virginia,1,-0.76,,37.1232245,-78.4927721
+societal crime,Washington,1,-0.81,,38.8950368,-77.0365427
+societal crime,israel,1,-0.71,,30.8124247,34.8594762
+transportation accident,australia,1,-0.4,,-24.7761086,134.755
+wildfire,America,1,0.5,,39.7837304,-100.445882
+wildfire,Spring,1,-0.51,0.0,30.0795707,-95.4187924
+wildfire,White House,1,-0.57,,38.8976997,-77.03655315

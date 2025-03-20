@@ -1,24 +1,15 @@
 import pandas as pd
-import re
 import torch
+from preprocess_text import preprocess_text
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from transformers import DataCollatorWithPadding
 from datasets import Dataset
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 # Load dataset
 df = pd.read_csv('train.csv')
-
-# Preprocess text
-def preprocess_text(text):
-    text = re.sub(r'http\S+', '', text)  # Remove links
-    text = re.sub(r'#\w+', '', text)  # Remove hashtags
-    text = re.sub(r'@\w+', '', text)  # Remove mentions
-    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
-    text = text.lower()  # Convert to lowercase
-    return text
-
 df['text'] = df['text'].apply(preprocess_text)
 
 # Split dataset
@@ -54,9 +45,9 @@ model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_l
 # Training arguments
 training_args = TrainingArguments(
     output_dir='./results',
-    num_train_epochs=3,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
+    num_train_epochs=5,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
     warmup_steps=500,
     weight_decay=0.01,
     logging_dir='./logs',
@@ -88,11 +79,17 @@ print(f"Using device: {device}")
 trainer.train()
 
 # Save model
-model.save_pretrained('./saved_model_2')
-tokenizer.save_pretrained('./saved_model_2')
+model.save_pretrained('./saved_model_4')
+tokenizer.save_pretrained('./saved_model_4')
 
 # Evaluate model
 predictions = trainer.predict(val_dataset)
 preds = predictions.predictions.argmax(-1)
+precision = precision_score(val_labels, preds)
+recall = recall_score(val_labels, preds)
+f1 = f1_score(val_labels, preds)
 accuracy = accuracy_score(val_labels, preds)
-print(f'Validation Accuracy: {accuracy}')
+print(f'Validation Precision: {precision}')
+print(f'Validation Recall   : {recall}')
+print(f'Validation F1 Score : {f1}')
+print(f'Validation Accuracy : {accuracy}')
