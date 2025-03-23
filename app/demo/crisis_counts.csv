@@ -1,239 +1,213 @@
 disasters,locations,count,avg_sentiment,severity
-wildfire,california,250,-0.04,10.561650215247013
-earthquake,mexico,204,-0.04,8.57990399767757
-earthquake,iran,128,-0.01,5.305714594736751
-earthquake,iraq,88,-0.01,3.5824570142415832
-earthquake,mexico city,56,-0.01,2.2038509498454486
-hurricane,puerto rico,21,-0.07,0.6960005669121766
-earthquake,# mexico,16,-0.17,0.48059336935028063
-flood,srilanka,13,0.09,0.35134905081314305
-flood,sri lanka,10,-0.05,0.22210473227600538
-hurricane,florida,9,0.26,0.1790232927636262
-wildfire,portugal,7,-0.36,0.09286041373886779
-earthquake,israel,6,-0.16,0.04977897422648859
-flood,texas,6,-0.06,0.04977897422648859
-earthquake,mexicos,6,0.11,0.04977897422648859
-wildfire,italy,6,-0.3,0.04977897422648859
-wildfire,russia,6,-0.3,0.04977897422648859
-earthquake,kurdistan iran,4,0.5,-0.03638390479826981
-earthquake,mexico city  ,4,0.03,-0.03638390479826981
-flood,houston,4,0.27,-0.03638390479826981
-earthquake,kurdistan,4,0.5,-0.03638390479826981
-flood,harvey,4,0.02,-0.03638390479826981
-brush fire,california,4,0.17,-0.03638390479826981
-hurricane,puerto rico 's,4,-0.02,-0.03638390479826981
-hurricane,san juan,4,0.25,-0.03638390479826981
-earthquake,morelos,4,-0.25,-0.03638390479826981
-earthquake,oaxaca,4,0.28,-0.03638390479826981
-earthquake,khanaqin city,4,-0.08,-0.03638390479826981
-earthquake,japan,4,0.5,-0.03638390479826981
-earthquake,california,4,0.12,-0.03638390479826981
-flood,puerto rico,3,-0.21,-0.07946534431064901
-earthquake,# mexico 's,3,-0.07,-0.07946534431064901
-hurricane,maho beach,3,0.5,-0.07946534431064901
-hurricane,u.s.,3,0.08,-0.07946534431064901
-hurricane,miami,3,0.1,-0.07946534431064901
-wildfire,mogadishu,3,0.5,-0.07946534431064901
-tornado,oklahoma,3,-0.11,-0.07946534431064901
-wildfire,disneyland,3,0.12,-0.07946534431064901
-wildfire,santa rosa,3,0.13,-0.07946534431064901
-earthquake,kermanshah province,3,0.36,-0.07946534431064901
-earthquake,u.s.,3,0.06,-0.07946534431064901
-earthquake,de arquitectura,3,-1.0,-0.07946534431064901
-earthquake,darbendixan,3,0.5,-0.07946534431064901
-earthquake,puebla,2,-0.25,-0.12254678382302821
-earthquake,kc,2,-0.1,-0.12254678382302821
-earthquake,mexico city 's,2,-0.6,-0.12254678382302821
-flood,# irma,2,0.17,-0.12254678382302821
-landslide,sri lanka,2,0.05,-0.12254678382302821
-superstorm,uk,2,0.5,-0.12254678382302821
-storm surge,florida,2,0.59,-0.12254678382302821
-tornado,california,2,0.35,-0.12254678382302821
-tornado,kenaston sask,2,0.49,-0.12254678382302821
-hurricane,st martin,2,0.5,-0.12254678382302821
-hurricane,myrtle beach,2,0.85,-0.12254678382302821
-hurricane,texas,2,-0.25,-0.12254678382302821
-wildfire,tubbs fire,2,-0.14,-0.12254678382302821
-wildfire,sonoma,2,-0.63,-0.12254678382302821
-wildfire,sonoma county,2,0.24,-0.12254678382302821
-tornado,sc,2,0.5,-0.12254678382302821
-tremor,mexico,2,0.0,-0.12254678382302821
-tornado,fort lauderdale,2,-0.36,-0.12254678382302821
-tornado,florida,2,0.15,-0.12254678382302821
-tornado,fl,2,-0.25,-0.12254678382302821
-hurricane,houston,2,-0.35,-0.12254678382302821
-earthquake,calgary,2,-0.57,-0.12254678382302821
-earthquake,kermanshah,2,0.1,-0.12254678382302821
-hurricane,# kingdom,2,0.16,-0.12254678382302821
-flood,sri lanka 's,2,-0.8,-0.12254678382302821
-flood,us,2,0.5,-0.12254678382302821
-earthquake,halabja,2,0.07,-0.12254678382302821
-earthquake,# azerbaijan,2,0.43,-0.12254678382302821
-forest fire,california,2,0.33,-0.12254678382302821
-tornado,winter park,2,-0.14,-0.12254678382302821
-tornado,se fl,2,-0.5,-0.12254678382302821
-wildfire,usa,2,-0.4,-0.12254678382302821
-wildfire,us,2,0.03,-0.12254678382302821
-wildfire,crosby beach,2,-0.08,-0.12254678382302821
-earthquake,mexico # breaking112  ,1,-0.05,-0.16562822333540742
-earthquake,new york,1,0.14,-0.16562822333540742
-earthquake,kermanshah(iran,1,0.6,-0.16562822333540742
-earthquake,kermanshah city,1,0.1,-0.16562822333540742
-earthquake,jojutla mexico,1,-0.25,-0.16562822333540742
-earthquake,jojutla,1,-0.22,-0.16562822333540742
-earthquake,frida,1,-0.2,-0.16562822333540742
-earthquake,houston,1,0.3,-0.16562822333540742
-earthquake,grand chandelier rock by,1,0.5,-0.16562822333540742
-earthquake,arizona,1,-0.2,-0.16562822333540742
-earthquake,calif,1,0.78,-0.16562822333540742
-earthquake,cali,1,-0.12,-0.16562822333540742
-earthquake,canada,1,-0.4,-0.16562822333540742
-earthquake,china,1,0.1,-0.16562822333540742
-earthquake,costa rica,1,0.11,-0.16562822333540742
-earthquake,corpus christi,1,-0.2,-0.16562822333540742
-earthquake,dubai,1,0.1,-0.16562822333540742
-earthquake,francis &,1,-0.45,-0.16562822333540742
-earthquake,azerbaijan,1,0.1,-0.16562822333540742
-earthquake,anchorage,1,0.5,-0.16562822333540742
-earthquake,baghdad,1,0.3,-0.16562822333540742
-drought,srilanka,1,-0.12,-0.16562822333540742
-earthquake,# mexico city,1,-0.2,-0.16562822333540742
-earthquake,# serpolrzehab kurdistan,1,-0.2,-0.16562822333540742
-earthquake,oax .,1,0.12,-0.16562822333540742
-earthquake,north korea,1,0.78,-0.16562822333540742
-earthquake,new zealand,1,0.18,-0.16562822333540742
-brush fire,zuma beach,1,0.1,-0.16562822333540742
-blackout,us,1,-1.0,-0.16562822333540742
-earthquake,@maryam_rajavi,1,-0.38,-0.16562822333540742
-earthquake,@tokyotech_en,1,0.1,-0.16562822333540742
-building collapse,mexico,1,-0.05,-0.16562822333540742
-cyclone,rajasthan,1,-0.2,-0.16562822333540742
-cyclone,tripura,1,-0.13,-0.16562822333540742
-hurricane,# irma,1,0.21,-0.16562822333540742
-hurricane,# dominica,1,0.2,-0.16562822333540742
-heatwave,town square,1,0.14,-0.16562822333540742
-flood,west houston,1,0.1,-0.16562822333540742
-flood,south carolina,1,-0.07,-0.16562822333540742
-flood,puerto,1,-0.2,-0.16562822333540742
-flood,ne,1,0.11,-0.16562822333540742
-flood,sri lanka #,1,-0.05,-0.16562822333540742
-flood,# harvey,1,-0.1,-0.16562822333540742
-firestorm,california,1,0.2,-0.16562822333540742
-epidemic,puerto rico,1,0.38,-0.16562822333540742
-flood,bexar county,1,0.5,-0.16562822333540742
-flood,florida,1,-0.07,-0.16562822333540742
-flood,crosby,1,0.21,-0.16562822333540742
-flood,india,1,0.8,-0.16562822333540742
-flood,kingsbury,1,0.1,-0.16562822333540742
-earthquake,venezuela,1,0.31,-0.16562822333540742
-earthquake,usa,1,0.78,-0.16562822333540742
-earthquake,us,1,0.5,-0.16562822333540742
-earthquake,yellowstone,1,0.1,-0.16562822333540742
-earthquake,offshore chiapas,1,0.47,-0.16562822333540742
-earthquake,pakistan,1,-0.33,-0.16562822333540742
-earthquake,prayforiraq,1,-0.2,-0.16562822333540742
-earthquake,rabosco,1,0.1,-0.16562822333540742
-earthquake,raradio,1,-1.0,-0.16562822333540742
-earthquake,san diego,1,0.19,-0.16562822333540742
-earthquake,scotland,1,-0.2,-0.16562822333540742
-earthquake,taiwan,1,-0.05,-0.16562822333540742
-earthquake,texas,1,0.15,-0.16562822333540742
-earthquake,topeka,1,-1.0,-0.16562822333540742
-earthquake,toronto,1,-0.75,-0.16562822333540742
-earthquake,turkey,1,-0.01,-0.16562822333540742
-earthquake,kuwait,1,0.35,-0.16562822333540742
-earthquake,mexico #,1,0.4,-0.16562822333540742
-earthquake,new mexico,1,0.22,-0.16562822333540742
-earthquake,mexico city - sun,1,-0.4,-0.16562822333540742
-earthquake,mexico # amlive #,1,-0.2,-0.16562822333540742
-hurricane,usa,1,0.25,-0.16562822333540742
-hurricane,usvi,1,-0.31,-0.16562822333540742
-hurricane,washington,1,0.88,-0.16562822333540742
-oil spill,harvey,1,0.25,-0.16562822333540742
-tornado,@clashroyale,1,1.0,-0.16562822333540742
-tornado,brevard county,1,0.14,-0.16562822333540742
-tornado,australia,1,0.6,-0.16562822333540742
-mudslide,srilanka,1,-0.25,-0.16562822333540742
-mudslide,california,1,-0.5,-0.16562822333540742
-hurricane,tx,1,0.5,-0.16562822333540742
-hurricane,sw mexico,1,-0.07,-0.16562822333540742
-landslide,iraq,1,-1.0,-0.16562822333540742
-landslide,iran,1,-1.0,-0.16562822333540742
-landslide,aizawl,1,-0.16,-0.16562822333540742
-hurricane,maine,1,0.12,-0.16562822333540742
-hurricane,mexico,1,0.3,-0.16562822333540742
-hurricane,saint - martin,1,-0.25,-0.16562822333540742
-hurricane,st. croix,1,-0.31,-0.16562822333540742
-hurricane,puerto rico #,1,0.25,-0.16562822333540742
-hurricane,nw coast,1,-0.13,-0.16562822333540742
-hurricane,nw,1,0.2,-0.16562822333540742
-hurricane,northeastern united states,1,-0.05,-0.16562822333540742
-hurricane,dominica,1,-0.38,-0.16562822333540742
-hurricane,louisiana,1,-0.05,-0.16562822333540742
-hurricane,harvey,1,0.2,-0.16562822333540742
-hurricane,grand turk,1,0.25,-0.16562822333540742
-hurricane,cuba,1,-0.05,-0.16562822333540742
-tornado,ne,1,0.11,-0.16562822333540742
-tornado,nd,1,0.1,-0.16562822333540742
-tornado,miami,1,0.5,-0.16562822333540742
-tornado,merritt island,1,-0.15,-0.16562822333540742
-tornado,melbourne,1,-0.25,-0.16562822333540742
-tornado,manchester,1,0.5,-0.16562822333540742
-tornado,lakewood park,1,0.43,-0.16562822333540742
-tornado,i-75,1,0.21,-0.16562822333540742
-tornado,golden,1,0.48,-0.16562822333540742
-tornado,howard,1,0.1,-0.16562822333540742
-tornado,heilongjiang,1,-0.6,-0.16562822333540742
-tornado,hard rock stadium,1,-0.1,-0.16562822333540742
-tornado,broward county,1,-0.19,-0.16562822333540742
-tornado,chester #,1,0.1,-0.16562822333540742
-tornado,china,1,-0.6,-0.16562822333540742
-tornado,erie,1,0.48,-0.16562822333540742
-landslide,srilanka,1,-0.1,-0.16562822333540742
-sinkhole,puerto rico,1,-0.08,-0.16562822333540742
-tornado,webcam,1,-1.0,-0.16562822333540742
-tornado,valley city,1,0.1,-0.16562822333540742
-tornado,the riverhouse grill,1,-0.5,-0.16562822333540742
-tremor,iran,1,-0.2,-0.16562822333540742
-tornado,umatilla,1,-0.16,-0.16562822333540742
-tornado,u.s.,1,0.21,-0.16562822333540742
-tornado,st johns co,1,0.12,-0.16562822333540742
-tornado,st. lucie county,1,0.1,-0.16562822333540742
-tornado,st. martin,1,0.29,-0.16562822333540742
-tornado,ohio,1,-0.02,-0.16562822333540742
-tornado,polk county,1,0.2,-0.16562822333540742
-tornado,palm bay # hurricaneirma,1,-0.5,-0.16562822333540742
-tornado,seattle,1,0.6,-0.16562822333540742
-tornado,south dakota,1,0.1,-0.16562822333540742
-wildfire,canada,1,-0.5,-0.16562822333540742
-wildfire,atlanta,1,-0.2,-0.16562822333540742
-wildfire,australia,1,-0.13,-0.16562822333540742
-wildfire,ca,1,0.11,-0.16562822333540742
-wildfire,arizona,1,-0.12,-0.16562822333540742
-tremor,iraq,1,-0.2,-0.16562822333540742
-tremor,mexico city,1,0.18,-0.16562822333540742
-tremor,new zealand,1,0.18,-0.16562822333540742
-tornado,west palm beach,1,0.29,-0.16562822333540742
-tornado,wolverhampton,1,-0.25,-0.16562822333540742
-wildfire,mount st. joseph,1,0.14,-0.16562822333540742
-wildfire,idaho,1,-0.2,-0.16562822333540742
-wildfire,las vegas,1,-0.3,-0.16562822333540742
-wildfire,minn.,1,0.5,-0.16562822333540742
-wildfire,mishawaka,1,0.14,-0.16562822333540742
-wildfire,fort ross,1,-0.04,-0.16562822333540742
-wildfire,nurse,1,0.68,-0.16562822333540742
-wildfire,nh,1,0.5,-0.16562822333540742
-wildfire,new york  ,1,0.14,-0.16562822333540742
-wildfire,napa valley,1,-0.29,-0.16562822333540742
-wildfire,napa,1,0.5,-0.16562822333540742
-wildfire,napa county,1,-0.05,-0.16562822333540742
-wildfire,n. california,1,-0.3,-0.16562822333540742
-wildfire,sarasota,1,-0.2,-0.16562822333540742
-wildfire,spain,1,-0.7,-0.16562822333540742
-wildfire,solano county,1,0.5,-0.16562822333540742
-wildfire,san francisco,1,-0.2,-0.16562822333540742
-wildfire,topeka,1,0.7,-0.16562822333540742
-wildfire,states,1,-0.24,-0.16562822333540742
-wildfire,weather,1,-0.2,-0.16562822333540742
-wildfire,wisconsin,1,-0.2,-0.16562822333540742
-wildfire,yosemite,1,0.1,-0.16562822333540742
+Wildfire,california,254,-0.03,9.758336945993058
+Earthquake,mexico,221,-0.05,8.463395267803236
+Earthquake,iran,127,-0.02,4.774773517807985
+Earthquake,iraq,88,-0.01,3.2443878981291037
+Earthquake,mexico city,63,-0.03,2.2633714752580256
+Hurricane,puerto rico,26,-0.05,0.811467169408831
+Flood,sri lanka,13,-0.17,0.3013386295158706
+Flood,srilanka,13,0.09,0.3013386295158706
+Hurricane,florida,11,0.24,0.22285731568618442
+Earthquake,israel,6,-0.16,0.026654031111968894
+Earthquake,mexicos,6,0.11,0.026654031111968894
+Flood,texas,6,-0.06,0.026654031111968894
+Flood,harvey,5,0.0,-0.012586625802874209
+Flood,houston,4,0.27,-0.05182728271771731
+Earthquake,khanaqin city,4,-0.08,-0.05182728271771731
+Earthquake,japan,4,0.5,-0.05182728271771731
+Earthquake,morelos,4,-0.25,-0.05182728271771731
+Earthquake,oaxaca,4,0.28,-0.05182728271771731
+Earthquake,kurdistan,4,0.5,-0.05182728271771731
+Earthquake,kurdistan iran,4,0.5,-0.05182728271771731
+Hurricane,san juan,4,0.25,-0.05182728271771731
+Hurricane,u.s.,4,0.12,-0.05182728271771731
+Hurricane,miami,4,0.2,-0.05182728271771731
+Wildfire,portugal,4,-0.4,-0.05182728271771731
+Wildfire,mogadishu,3,0.5,-0.09106793963256041
+Wildfire,russia,3,-0.3,-0.09106793963256041
+Wildfire,santa rosa,3,0.13,-0.09106793963256041
+Wildfire,disneyland,3,0.12,-0.09106793963256041
+Flood,puerto rico,3,-0.21,-0.09106793963256041
+Flood,florida,3,0.37,-0.09106793963256041
+Wildfire,italy,3,-0.3,-0.09106793963256041
+Earthquake,kermanshah province,3,0.36,-0.09106793963256041
+Earthquake,de arquitectura,3,-1.0,-0.09106793963256041
+Earthquake,darbendixan,3,0.5,-0.09106793963256041
+Earthquake,california,3,0.13,-0.09106793963256041
+Earthquake,u.s.,3,0.06,-0.09106793963256041
+Hurricane,maho beach,3,0.5,-0.09106793963256041
+Hurricane,oklahoma,3,-0.11,-0.09106793963256041
+Earthquake,azerbaijan,2,0.27,-0.1303085965474035
+Flood,irma,2,0.17,-0.1303085965474035
+Earthquake,puebla,2,-0.25,-0.1303085965474035
+Earthquake,kc,2,-0.1,-0.1303085965474035
+Earthquake,halabja,2,0.07,-0.1303085965474035
+Earthquake,kermanshah,2,0.1,-0.1303085965474035
+Earthquake,calgary,2,-0.57,-0.1303085965474035
+Wildfire,sonoma,2,-0.63,-0.1303085965474035
+Wildfire,tubbs fire,2,-0.14,-0.1303085965474035
+Hurricane,uk,2,0.5,-0.1303085965474035
+Hurricane,st martin,2,0.5,-0.1303085965474035
+Hurricane,se fl,2,-0.5,-0.1303085965474035
+Hurricane,myrtle beach,2,0.85,-0.1303085965474035
+Hurricane,texas,2,-0.25,-0.1303085965474035
+Hurricane,california,2,0.35,-0.1303085965474035
+Flood,us,2,0.5,-0.1303085965474035
+Hurricane,houston,2,-0.35,-0.1303085965474035
+Hurricane,dominica,2,-0.09,-0.1303085965474035
+Hurricane,sc,2,0.5,-0.1303085965474035
+Hurricane,kingdom,2,0.16,-0.1303085965474035
+Hurricane,kenaston sask,2,0.49,-0.1303085965474035
+Hurricane,fort lauderdale,2,-0.36,-0.1303085965474035
+Wildfire,sonoma county,2,0.24,-0.1303085965474035
+Landslide,srilanka,2,-0.18,-0.1303085965474035
+Wildfire,us,2,0.03,-0.1303085965474035
+Wildfire,usa,2,-0.4,-0.1303085965474035
+Landslide,sri lanka,2,0.05,-0.1303085965474035
+Wildfire,crosby beach,2,-0.08,-0.1303085965474035
+Hurricane,winter park,2,-0.14,-0.1303085965474035
+Earthquake,anchorage,1,0.5,-0.1695492534622466
+Earthquake,francis &,1,-0.45,-0.1695492534622466
+Earthquake,dubai,1,0.1,-0.1695492534622466
+Earthquake,corpus christi,1,-0.2,-0.1695492534622466
+Earthquake,costa rica,1,0.11,-0.1695492534622466
+Earthquake,china,1,0.1,-0.1695492534622466
+Earthquake,canada,1,-0.4,-0.1695492534622466
+Earthquake,cali,1,-0.12,-0.1695492534622466
+Earthquake,calif,1,0.78,-0.1695492534622466
+Earthquake,kermanshah(iran,1,0.6,-0.1695492534622466
+Earthquake,kermanshah city,1,0.1,-0.1695492534622466
+Earthquake,arizona,1,-0.2,-0.1695492534622466
+Earthquake,baghdad,1,0.3,-0.1695492534622466
+Blackout,us,1,-1.0,-0.1695492534622466
+Drought,srilanka,1,-0.12,-0.1695492534622466
+Earthquake,@maryam_rajavi,1,-0.38,-0.1695492534622466
+Earthquake,@tokyotech_en,1,0.1,-0.1695492534622466
+Flood,south carolina,1,-0.07,-0.1695492534622466
+Flood,puerto,1,-0.2,-0.1695492534622466
+Flood,kingsbury,1,0.1,-0.1695492534622466
+Flood,ne,1,0.11,-0.1695492534622466
+Flood,india,1,0.8,-0.1695492534622466
+Earthquake,yellowstone,1,0.1,-0.1695492534622466
+Earthquake,venezuela,1,0.31,-0.1695492534622466
+Flood,crosby,1,0.21,-0.1695492534622466
+Earthquake,usa,1,0.78,-0.1695492534622466
+Flood,bexar county,1,0.5,-0.1695492534622466
+Earthquake,texas,1,0.15,-0.1695492534622466
+Earthquake,taiwan,1,-0.05,-0.1695492534622466
+Earthquake,topeka,1,-1.0,-0.1695492534622466
+Earthquake,toronto,1,-0.75,-0.1695492534622466
+Earthquake,turkey,1,-0.01,-0.1695492534622466
+Earthquake,us,1,0.5,-0.1695492534622466
+Earthquake,prayforiraq,1,-0.2,-0.1695492534622466
+Earthquake,san diego,1,0.19,-0.1695492534622466
+Earthquake,raradio,1,-1.0,-0.1695492534622466
+Earthquake,rabosco,1,0.1,-0.1695492534622466
+Earthquake,offshore chiapas,1,0.47,-0.1695492534622466
+Earthquake,pakistan,1,-0.33,-0.1695492534622466
+Earthquake,serpolrzehab kurdistan,1,-0.2,-0.1695492534622466
+Earthquake,scotland,1,-0.2,-0.1695492534622466
+Earthquake,mexico city - sun,1,-0.4,-0.1695492534622466
+Earthquake,mexico #breaking112,1,-0.05,-0.1695492534622466
+Earthquake,mexico #amlive,1,-0.2,-0.1695492534622466
+Earthquake,new mexico,1,0.22,-0.1695492534622466
+Earthquake,new york,1,0.14,-0.1695492534622466
+Earthquake,new zealand,1,0.18,-0.1695492534622466
+Earthquake,north korea,1,0.78,-0.1695492534622466
+Earthquake,oax.,1,0.12,-0.1695492534622466
+Earthquake,kuwait,1,0.35,-0.1695492534622466
+Earthquake,grand chandelier rocked by,1,0.5,-0.1695492534622466
+Earthquake,houston,1,0.3,-0.1695492534622466
+Earthquake,frida,1,-0.2,-0.1695492534622466
+Earthquake,jojutla,1,-0.22,-0.1695492534622466
+Earthquake,jojutla mexico,1,-0.25,-0.1695492534622466
+Hurricane,howard,1,0.1,-0.1695492534622466
+Hurricane,hard rock stadium,1,-0.1,-0.1695492534622466
+Hurricane,golden,1,0.48,-0.1695492534622466
+Hurricane,ne,1,0.11,-0.1695492534622466
+Hurricane,nd,1,0.1,-0.1695492534622466
+Hurricane,maine,1,0.12,-0.1695492534622466
+Hurricane,merritt island,1,-0.15,-0.1695492534622466
+Hurricane,melbourne,1,-0.25,-0.1695492534622466
+Hurricane,harvey,1,0.2,-0.1695492534622466
+Hurricane,heilongjiang,1,-0.6,-0.1695492534622466
+Hurricane,louisiana,1,-0.05,-0.1695492534622466
+Hurricane,lakewood park,1,0.43,-0.1695492534622466
+Hurricane,i-75,1,0.21,-0.1695492534622466
+Hurricane,irma,1,0.21,-0.1695492534622466
+Hurricane,broward county,1,-0.19,-0.1695492534622466
+Hurricane,chester,1,0.1,-0.1695492534622466
+Hurricane,grand turk,1,0.25,-0.1695492534622466
+Hurricane,china,1,-0.6,-0.1695492534622466
+Hurricane,fl,1,-0.25,-0.1695492534622466
+Hurricane,erie,1,0.48,-0.1695492534622466
+Hurricane,cuba,1,-0.05,-0.1695492534622466
+Hurricane,australia,1,0.6,-0.1695492534622466
+Hurricane,brevard county,1,0.14,-0.1695492534622466
+Hurricane,@clashroyale,1,1.0,-0.1695492534622466
+Heatwave,town square,1,0.14,-0.1695492534622466
+Flood,west houston,1,0.1,-0.1695492534622466
+Hurricane,the riverhouse grill,1,-0.5,-0.1695492534622466
+Hurricane,sw mexico,1,-0.07,-0.1695492534622466
+Hurricane,st. martin,1,0.29,-0.1695492534622466
+Hurricane,st. lucie county,1,0.1,-0.1695492534622466
+Hurricane,st johns co,1,0.12,-0.1695492534622466
+Hurricane,st. croix,1,-0.31,-0.1695492534622466
+Hurricane,seattle,1,0.6,-0.1695492534622466
+Hurricane,south dakota,1,0.1,-0.1695492534622466
+Hurricane,rajasthan,1,-0.2,-0.1695492534622466
+Hurricane,saint-martin,1,-0.25,-0.1695492534622466
+Hurricane,nw,1,0.2,-0.1695492534622466
+Hurricane,northeastern united states,1,-0.05,-0.1695492534622466
+Hurricane,nw coast,1,-0.13,-0.1695492534622466
+Hurricane,ohio,1,-0.02,-0.1695492534622466
+Hurricane,palm bay #hurricaneirma,1,-0.5,-0.1695492534622466
+Hurricane,polk county,1,0.2,-0.1695492534622466
+Hurricane,manchester,1,0.5,-0.1695492534622466
+Hurricane,mexico,1,0.3,-0.1695492534622466
+Landslide,iran,1,-1.0,-0.1695492534622466
+Landslide,california,1,-0.5,-0.1695492534622466
+Hurricane,west palm beach,1,0.29,-0.1695492534622466
+Oil Spill,harvey,1,0.25,-0.1695492534622466
+Landslide,aizawl,1,-0.16,-0.1695492534622466
+Hurricane,wolverhampton,1,-0.25,-0.1695492534622466
+Hurricane,valley city,1,0.1,-0.1695492534622466
+Hurricane,washington,1,0.88,-0.1695492534622466
+Hurricane,webcam,1,-1.0,-0.1695492534622466
+Hurricane,tx,1,0.5,-0.1695492534622466
+Hurricane,umatilla,1,-0.16,-0.1695492534622466
+Hurricane,usa,1,0.25,-0.1695492534622466
+Hurricane,usvi,1,-0.31,-0.1695492534622466
+Hurricane,tripura,1,-0.13,-0.1695492534622466
+Wildfire,fort ross,1,-0.04,-0.1695492534622466
+Wildfire,canada,1,-0.5,-0.1695492534622466
+Wildfire,australia,1,-0.13,-0.1695492534622466
+Wildfire,ca,1,0.11,-0.1695492534622466
+Wildfire,atlanta,1,-0.2,-0.1695492534622466
+Pandemic,puerto rico,1,0.38,-0.1695492534622466
+Structural Collapse,mexico,1,-0.05,-0.1695492534622466
+Wildfire,arizona,1,-0.12,-0.1695492534622466
+Landslide,iraq,1,-1.0,-0.1695492534622466
+Landslide,puerto rico,1,-0.08,-0.1695492534622466
+Wildfire,n. california,1,-0.3,-0.1695492534622466
+Wildfire,mount st. joseph,1,0.14,-0.1695492534622466
+Wildfire,minn.,1,0.5,-0.1695492534622466
+Wildfire,mishawaka,1,0.14,-0.1695492534622466
+Wildfire,las vegas,1,-0.3,-0.1695492534622466
+Wildfire,idaho,1,-0.2,-0.1695492534622466
+Wildfire,nh,1,0.5,-0.1695492534622466
+Wildfire,nurse,1,0.68,-0.1695492534622466
+Wildfire,napa valley,1,-0.29,-0.1695492534622466
+Wildfire,new york,1,0.14,-0.1695492534622466
+Wildfire,napa county,1,-0.05,-0.1695492534622466
+Wildfire,napa,1,0.5,-0.1695492534622466
+Wildfire,solano county,1,0.5,-0.1695492534622466
+Wildfire,san francisco,1,-0.2,-0.1695492534622466
+Wildfire,states,1,-0.24,-0.1695492534622466
+Wildfire,spain,1,-0.7,-0.1695492534622466
+Wildfire,sarasota,1,-0.2,-0.1695492534622466
+Wildfire,topeka,1,0.7,-0.1695492534622466
+Wildfire,weather,1,-0.2,-0.1695492534622466
+Wildfire,wisconsin,1,-0.2,-0.1695492534622466
+Wildfire,yosemite,1,0.1,-0.1695492534622466
+Wildfire,zuma beach,1,0.1,-0.1695492534622466
