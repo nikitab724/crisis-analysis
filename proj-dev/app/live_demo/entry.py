@@ -1,20 +1,12 @@
 import pandas as pd
 from preprocess_text import preprocess_text
-from location_extraction import extract_location, get_lat_lon
+from entity_extraction import clean_text
 import requests
 import os
 
-def predict_crisis(text):
-    response = requests.post('http://127.0.0.1:5000/predict_crisis', json={'text': text})
-    return response.json().get('crisis_prediction')
-
-def predict_sentiment(text):
-    response = requests.post('http://127.0.0.1:5000/predict_sentiment', json={'text': text})
-    return response.json().get('sentiment_prediction')
-
-def predict_crisis_type(text):
-    response = requests.post('http://127.0.0.1:5000/predict_crisis_type', json={'text': text})
-    return response.json().get('crisis_type_prediction')
+def extract_entities(text):
+    response = requests.post('http://127.0.0.1:5000/extract_entities', json={'text': text})
+    return response.json()
 
 def scrape_posts(post_limit=50):
     response = requests.post('http://127.0.0.1:5001/scrape_posts', json={'post_limit': post_limit})
@@ -25,37 +17,41 @@ def filter_posts(df: pd.DataFrame):
     df = df.drop_duplicates(subset=['text'])  # Remove duplicate posts
 
     df['text'] = df['text'].astype(str)
-    df['preprocessed_text'] = df['text'].apply(preprocess_text) # Preprocess post text
+    df['preprocessed_text'] = df['text'].apply(clean_text) # Preprocess post text
 
-    df['prediction'] = df['preprocessed_text'].apply(predict_crisis)
-    df = df[df['prediction'] == 'Crisis']  # Filter out non-crisis posts
-
-    df['location'] = df['preprocessed_text'].apply(extract_location)
-    df = df[df['location'].notnull()]  # Filter out posts without location
-
-    df['sentiment'] = df['preprocessed_text'].apply(predict_sentiment)
-    df = df[df['sentiment'] != 0]  # Filter out neutral sentiment posts
-
-    df['disaster_type'] = df['preprocessed_text'].apply(predict_crisis_type)
+    # Extract entities, sentiment, and location info using pandas Series approach
+    df.loc[:, ["disasters", "locations", "sentiment", "polarity", "city", "state", "region", "country"]] = df["preprocessed_text"].apply(
+        lambda x: pd.Series(extract_entities(x))
+    )
+    
+    # Filter out posts without disasters or locations
+    df = df[df['disasters'].apply(len) > 0]
+    df = df[df['locations'].apply(len) > 0]
 
     return df
 
 def calculate_crisis_counts(df: pd.DataFrame):
-    exploded = df.explode('disaster_type').explode('location')
-    counts = (exploded.groupby(['disaster_type', 'location'])
+    # Drop rows without state information
+    df = df.dropna(subset=["state"])
+    
+    # Explode disasters and group by country, state, and disaster type
+    exploded = df.explode("disasters")
+    counts = (exploded.groupby(["country", "state", "disasters"])
         .agg(
-            count=('disaster_type', 'size'),
-            avg_sentiment=('sentiment', 'mean')
+            count=('disasters', 'size'),  # Count number of disaster reports
+            avg_sentiment=('polarity', 'mean'),
+            cities=('city', lambda x: list(set(x.dropna())))
         )
         .reset_index()
-        .sort_values('count', ascending=False)
+        .sort_values("count", ascending=False)
         .round({'avg_sentiment': 2})
     )
+    
+    # Calculate severity based on count
     counts_mean = counts['count'].mean()
     counts_std = counts['count'].std()
     counts['severity'] = (counts['count'] - counts_mean) / counts_std
-    counts['latitude'], counts['longitude'] = zip(*counts['location'].apply(get_lat_lon))
-    counts = counts.dropna(subset=['latitude', 'longitude'])
+    
     return counts
 
 def main(post_limit=50):
@@ -91,13 +87,6 @@ def main(post_limit=50):
     if os.path.exists(crisis_counts_output_file):
         existing_df = pd.read_csv(crisis_counts_output_file)
         combined_df = pd.concat([existing_df, counts])
-        combined_df = combined_df.groupby(['disaster_type', 'location']).agg(
-            count=('count', 'sum'),
-            avg_sentiment=('avg_sentiment', 'mean'),
-            severity=('severity', 'mean'),
-            latitude=('latitude', 'first'),
-            longitude=('longitude', 'first')
-        ).reset_index()
         combined_df.to_csv(crisis_counts_output_file, index=False)
     else:
         counts.to_csv(crisis_counts_output_file, index=False)
@@ -111,8 +100,3 @@ if __name__ == '__main__':
             break
         except Exception as e:
             print(f"Error: {e}")
-
-
-
-
-

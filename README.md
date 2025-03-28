@@ -18,9 +18,9 @@ To do this, run the command:
 
 _**UPDATE**_
 
-run **docker run -p 8888:8888 -p 8050:8050 -v ${pwd}/app:/app -v ${pwd}/data:/data crisis-analysis**
+run **docker run -p 8888:8888 -p 8050:8050 -v ${pwd}/proj-dev:/proj-dev crisis-analysis**
 
-or **docker run -p 8888:8888 -p 8050:8050 -v $(pwd)/app:/app -v $(pwd)/data:/data crisis-analysis** on mac
+or **docker run -p 8888:8888 -p 8050:8050 -v $(pwd)/proj-dev:/proj-dev crisis-analysis** on mac
 
 This will run the container off the image that you specified (crisis-analysis) and bind port 8888 on your computer to port 8888 (-p tag) in the container for the Jupyter server to communicate through
 
