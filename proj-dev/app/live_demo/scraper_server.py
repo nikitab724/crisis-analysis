@@ -1,6 +1,7 @@
 from blueskyapi_copy import FirehoseScraper
 from flask import Flask, request, jsonify
-import pandas as pd
+import datetime
+import uuid
 
 
 app = Flask(__name__)
@@ -17,12 +18,12 @@ def test_tweet():
     data = request.json
     text = data.get('text', '')
     
-    # Create a post in the same format as the scraper
+    # Create a test post in the exact same format as the real posts
     test_post = {
         'text': text,
-        'author': 'test_user',
-        'created_at': pd.Timestamp.now().isoformat(),
-        'tweet_id': f'test_{pd.Timestamp.now().timestamp()}'
+        'created_at': datetime.datetime.now().isoformat(),
+        'author': 'test_user.bsky.social',
+        'uri': f'at://did:plc:test/{uuid.uuid4()}'
     }
     
     # Return in the same format as scrape_posts

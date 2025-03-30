@@ -185,7 +185,7 @@ def lookup_city_state_country(loc_text, gaz_df, loc_dict):
         "country": country_code
     }
 
-def standardize_row(row):
+def standardize_row(row, gazetteer_df=None, location_dict=None):
     # row["locations"] is a list or possibly empty
     locs = row["locations"]
     
@@ -199,15 +199,17 @@ def standardize_row(row):
         return pd.Series({"city": None, "state": None, "region": None, "country": None})
     
     # Perform the lookup.
-    match_result = lookup_city_state_country(loc_text, gazetteer_df, location_dict)
-    if match_result:
-        # If no state is found, assign the region to the original loc_text.
-        region_val = loc_text if match_result["state"] is None else None
-        return pd.Series({
-            "city": match_result["city"],
-            "state": match_result["state"],
-            "region": match_result["region"],
-            "country": match_result["country"]
-        })
-    else:
-        return pd.Series({"city": None, "state": None, "region": None, "country": None})
+    if gazetteer_df is not None and location_dict is not None:
+        match_result = lookup_city_state_country(loc_text, gazetteer_df, location_dict)
+        if match_result:
+            # If no state is found, assign the region to the original loc_text.
+            region_val = loc_text if match_result["state"] is None else None
+            return pd.Series({
+                "city": match_result["city"],
+                "state": match_result["state"],
+                "region": match_result["region"],
+                "country": match_result["country"]
+            })
+    
+    # If no match or missing gazetteer data, return empty values
+    return pd.Series({"city": None, "state": None, "region": None, "country": None})

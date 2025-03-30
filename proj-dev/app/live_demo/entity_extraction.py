@@ -58,7 +58,7 @@ def clean_text(text: str) -> str:
     # Normalize extra spaces
     return ' '.join(cleaned.split())
 
-nlp = spacy.load("disaster_ner")
+nlp = spacy.load("../disaster_ner")
 
 def test_model(text):
     doc = nlp(text)
