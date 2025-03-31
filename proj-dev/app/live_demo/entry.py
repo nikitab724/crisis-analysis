@@ -213,9 +213,6 @@ def filter_posts(df: pd.DataFrame):
                 result_df[col] = 'Neutral'
             else:
                 result_df[col] = ''
-    
-    # Remove duplicate rows completely
-    result_df = result_df.drop_duplicates()
                 
     return result_df
 

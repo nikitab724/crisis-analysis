@@ -90,6 +90,8 @@ def extract_ent_sent(text):
                 location = location[:-2]
             locations.add(location)  # Use add() for set
     
+    #print("locations in ent sent: ", locations)
+
     if score >= 0.1:
         sentiment = headers[2]
     elif score < 0:

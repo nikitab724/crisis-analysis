@@ -222,12 +222,17 @@ def standardize_row(row, gazetteer_df=None, location_dict=None):
     # For backwards compatibility, return the first location's details at the top level
     # and include the full list as a new field
     first_loc = location_info[0]
+    
+    # Copy the location info list but exclude the first item which is already at the top level
+    remaining_locations = location_info[1:] if len(location_info) > 1 else []
+    
     result = {
         "city": first_loc["city"],
         "state": first_loc["state"],
         "region": first_loc["region"],
         "country": first_loc["country"],
-        "all_locations": location_info  # Add all processed locations
+        "all_locations": remaining_locations  # Only include additional locations beyond the first
     }
     
+    print("result from gazetteer: ", result)
     return pd.Series(result)
