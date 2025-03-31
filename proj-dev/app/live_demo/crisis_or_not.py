@@ -17,7 +17,7 @@ class CrisisOrNot:
             outputs = self.model(**inputs)
         logits = outputs.logits
         predicted_class = torch.argmax(logits, dim=1).item()
-        return 'Crisis' if predicted_class == 1 else 'Not Crisis'            
+        return 'Crisis' if predicted_class == 1 else 'Not Crisis'
     
 if __name__ == '__main__':
     model_name = './saved_model_4'

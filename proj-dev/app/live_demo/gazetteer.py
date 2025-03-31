@@ -186,30 +186,48 @@ def lookup_city_state_country(loc_text, gaz_df, loc_dict):
     }
 
 def standardize_row(row, gazetteer_df=None, location_dict=None):
-    # row["locations"] is a list or possibly empty
+    """
+    Process all locations in the row and return location information.
+    Returns a dictionary with city, state, region, country for each location.
+    """
+    # Get the locations list
     locs = row["locations"]
     
-    # Pick the first location if available.
-    if isinstance(locs, list) and len(locs) > 0:
-        loc_text = locs[0]
-    else:
-        loc_text = None
-
-    if not loc_text:
+    # If no locations or gazetteer data, return empty values
+    if not isinstance(locs, list) or len(locs) == 0 or gazetteer_df is None or location_dict is None:
         return pd.Series({"city": None, "state": None, "region": None, "country": None})
     
-    # Perform the lookup.
-    if gazetteer_df is not None and location_dict is not None:
+    # Process each location
+    location_info = []
+    for loc_text in locs:
+        if not loc_text:
+            continue
+            
+        # Lookup the location
         match_result = lookup_city_state_country(loc_text, gazetteer_df, location_dict)
-        if match_result:
-            # If no state is found, assign the region to the original loc_text.
-            region_val = loc_text if match_result["state"] is None else None
-            return pd.Series({
+        
+        if match_result and match_result.get("state"):
+            location_info.append({
+                "location": loc_text,
                 "city": match_result["city"],
                 "state": match_result["state"],
                 "region": match_result["region"],
                 "country": match_result["country"]
             })
     
-    # If no match or missing gazetteer data, return empty values
-    return pd.Series({"city": None, "state": None, "region": None, "country": None})
+    # If no valid locations found with states, return empty values
+    if not location_info:
+        return pd.Series({"city": None, "state": None, "region": None, "country": None})
+    
+    # For backwards compatibility, return the first location's details at the top level
+    # and include the full list as a new field
+    first_loc = location_info[0]
+    result = {
+        "city": first_loc["city"],
+        "state": first_loc["state"],
+        "region": first_loc["region"],
+        "country": first_loc["country"],
+        "all_locations": location_info  # Add all processed locations
+    }
+    
+    return pd.Series(result)

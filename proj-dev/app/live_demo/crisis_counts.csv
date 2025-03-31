@@ -1,10 +1,41 @@
 country,state,disasters,count,avg_sentiment,cities,severity
-US,Illinois,Hurricane,1,0.0,['Chicago'],
-US,Iowa,War,1,-0.19,['Gaza'],
-US,Georgia,War,1,0.0,['Spain'],
-US,South Carolina,Hurricane,1,0.02,['Judson'],
-US,Florida,War,1,0.08,['Panama City'],
-US,Iowa,War,1,-0.19,['Gaza'],
-US,Indiana,Hurricane,1,0.15,['North Judson'],
-US,Ohio,War,1,0.3,['North Canton'],
-US,Indiana,Hurricane,1,0.17,[],
+US,Iowa,War,12,-0.18,['Gaza'],4.3449776345985125
+US,Tennessee,Hurricane,7,0.06,"['Shelby County', 'Nashville']",2.128152310823761
+US,Kansas,War,6,0.18,['Canada'],1.684787246068811
+US,Ohio,War,6,0.0,"['London', 'Russia']",1.684787246068811
+US,Texas,War,5,0.14,"['Israel', 'Palestine', 'Sudan']",1.2414221813138606
+US,Kentucky,Hurricane,5,0.02,"['Louisville', 'Mount Washington', 'Metcalfe County']",1.2414221813138606
+US,Arkansas,Hurricane,3,0.01,['Crittenden County'],0.35469205180396013
+US,New Jersey,War,3,-0.12,['Magnolia'],0.35469205180396013
+US,New Jersey,Hurricane,2,0.04,['Linden'],-0.08867301295099013
+US,Nevada,Earthquake,2,0.06,['Valmy'],-0.08867301295099013
+US,Pennsylvania,Landslide,2,0.01,['Armagh'],-0.08867301295099013
+US,Ohio,Hurricane,2,0.0,['Scioto County'],-0.08867301295099013
+US,North Carolina,Hurricane,2,-0.04,"['Asheville', 'Cumberland County']",-0.08867301295099013
+US,Maine,War,2,0.05,['China'],-0.08867301295099013
+US,California,Pandemic,2,0.2,['Glendale'],-0.08867301295099013
+US,Massachusetts,Flood,2,0.15,['Boston'],-0.08867301295099013
+US,New York,Hurricane,2,0.0,"['Monroe County', 'Clinton County']",-0.08867301295099013
+US,Florida,Hurricane,1,-0.07,[],-0.5320380777059404
+US,Florida,War,1,0.07,['Panama City'],-0.5320380777059404
+US,California,War,1,0.21,['Ontario'],-0.5320380777059404
+US,Alabama,Hurricane,1,0.04,[],-0.5320380777059404
+US,Alabama,War,1,0.21,['Huntsville'],-0.5320380777059404
+US,California,Wildfire,1,0.0,[],-0.5320380777059404
+US,Indiana,Heatwave,1,0.6,[],-0.5320380777059404
+US,Massachusetts,War,1,0.0,['West Springfield'],-0.5320380777059404
+US,Mississippi,Hurricane,1,0.04,[],-0.5320380777059404
+US,Missouri,War,1,0.1,['Mexico'],-0.5320380777059404
+US,Nebraska,Hurricane,1,0.0,['Lincoln'],-0.5320380777059404
+US,Idaho,War,1,0.0,['France'],-0.5320380777059404
+US,Kansas,Hurricane,1,0.12,[],-0.5320380777059404
+US,New York,Pandemic,1,0.12,['Red Hook'],-0.5320380777059404
+US,Oklahoma,Hurricane,1,0.0,[],-0.5320380777059404
+US,Pennsylvania,War,1,-0.08,['Romania'],-0.5320380777059404
+US,Pennsylvania,Hurricane,1,0.12,['Plains'],-0.5320380777059404
+US,Texas,Drought,1,0.0,[],-0.5320380777059404
+US,Tennessee,War,1,0.0,['India'],-0.5320380777059404
+US,Texas,Earthquake,1,0.5,['Puerto Rico'],-0.5320380777059404
+US,Texas,Hurricane,1,0.33,['Williamson County'],-0.5320380777059404
+US,Texas,Wildfire,1,0.43,['Sudan'],-0.5320380777059404
+US,Utah,War,1,-0.05,['North Salt Lake'],-0.5320380777059404

@@ -73,22 +73,22 @@ headers = ["Negative", "Neutral", "Positive"]
 def extract_ent_sent(text):
     #print(text)
     doc = nlp(clean_text(text))
-    disasters = set()
-    locations = []
+    disasters = set()  # Use set to deduplicate identical disasters
+    locations = set()  # Use set to deduplicate identical locations
     sentiment = headers[1]
     score = doc._.blob.polarity
     
     for ent in doc.ents:
         if ent.label_ == "DISASTER":
             disaster_id = ent.ent_id_ if ent.ent_id_ else ent.text
-            disasters.add(disaster_id)
+            disasters.add(disaster_id)  # Use add() for set
         elif ent.label_ in ["GPE", "LOC", "FAC"]:
             location = ent.text.strip("# ").lower()
             if location.endswith("'s"):
                 location = location[:-2]
-            elif location.endswith("’s"):
+            elif location.endswith("'s"):
                 location = location[:-2]
-            locations.append(location)
+            locations.add(location)  # Use add() for set
     
     if score >= 0.1:
         sentiment = headers[2]
@@ -97,4 +97,4 @@ def extract_ent_sent(text):
     else:
         sentiment = headers[1]
 
-    return {"disasters": disasters, "locations": locations, "sentiment": sentiment, "polarity": score}
+    return {"disasters": list(disasters), "locations": list(locations), "sentiment": sentiment, "polarity": score}
