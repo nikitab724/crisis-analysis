@@ -1,0 +1,306 @@
+2025-03-31 22:54:31,977 - model_server - INFO - Starting model server initialization
+2025-03-31 22:54:31,985 - model_server - INFO - Memory usage before loading models: 942.14 MB
+2025-03-31 22:54:31,985 - model_server - INFO - Loading spaCy model
+2025-03-31 22:54:35,469 - model_server - INFO - Loading gazetteer
+2025-03-31 22:54:35,470 - model_server - INFO - Gazetteer path: /proj-dev/data/US.txt
+2025-03-31 22:54:35,470 - model_server - ERROR - Gazetteer file not found: /proj-dev/data/US.txt
+2025-03-31 22:54:35,470 - model_server - ERROR - Error loading gazetteer: Gazetteer file not found: /proj-dev/data/US.txt
+2025-03-31 22:54:35,507 - model_server - INFO - Memory usage after loading models: 1550.95 MB
+2025-03-31 22:54:35,513 - model_server - INFO - Waitress not available, using Flask development server on port 5000
+2025-03-31 22:54:35,521 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.17.0.2:5000
+2025-03-31 22:54:35,521 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-03-31 23:00:05,249 - model_server - INFO - Starting model server initialization
+2025-03-31 23:00:05,250 - model_server - INFO - Memory usage before loading models: 942.25 MB
+2025-03-31 23:00:05,250 - model_server - INFO - Loading spaCy model
+2025-03-31 23:00:06,887 - model_server - INFO - Loading gazetteer
+2025-03-31 23:00:06,887 - model_server - INFO - Gazetteer path: /proj-dev/data/US.txt
+2025-03-31 23:01:17,437 - model_server - INFO - Loaded gazetteer with 2241204 locations and 1958612 dictionary entries
+2025-03-31 23:01:17,789 - model_server - INFO - Memory usage after loading models: 3016.29 MB
+2025-03-31 23:01:17,797 - model_server - INFO - Waitress not available, using Flask development server on port 5000
+2025-03-31 23:01:17,804 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.17.0.2:5000
+2025-03-31 23:01:17,804 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-03-31 23:05:42,780 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:42] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:43,809 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:43] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:45,819 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:45] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:45,825 - model_server - INFO - Processing text of length 71
+2025-03-31 23:05:46,300 - model_server - INFO - Processed in 0.48 seconds
+2025-03-31 23:05:46,302 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:46] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:46,308 - model_server - INFO - Processing text of length 37
+2025-03-31 23:05:46,332 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:46,333 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:46] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:46,341 - model_server - INFO - Processing text of length 234
+2025-03-31 23:05:46,416 - model_server - INFO - Processed in 0.08 seconds
+2025-03-31 23:05:46,417 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:46] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:46,420 - model_server - INFO - Processing text of length 28
+2025-03-31 23:05:46,430 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:46,431 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:46] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:46,433 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:46] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:47,441 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:47] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:49,451 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:49] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:49,455 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:49] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:50,461 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:50] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:52,467 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:52,469 - model_server - INFO - Processing text of length 37
+2025-03-31 23:05:52,479 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,479 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,481 - model_server - INFO - Processing text of length 67
+2025-03-31 23:05:52,492 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,492 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,495 - model_server - INFO - Processing text of length 1
+2025-03-31 23:05:52,500 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,501 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,503 - model_server - INFO - Processing text of length 34
+2025-03-31 23:05:52,512 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,513 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,514 - model_server - INFO - Processing text of length 28
+2025-03-31 23:05:52,521 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,521 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,523 - model_server - INFO - Processing text of length 42
+2025-03-31 23:05:52,530 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,531 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,533 - model_server - INFO - Processing text of length 36
+2025-03-31 23:05:52,634 - model_server - INFO - Processed in 0.10 seconds
+2025-03-31 23:05:52,634 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,636 - model_server - INFO - Processing text of length 32
+2025-03-31 23:05:52,644 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,645 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,647 - model_server - INFO - Processing text of length 288
+2025-03-31 23:05:52,675 - model_server - INFO - Processed in 0.03 seconds
+2025-03-31 23:05:52,676 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,678 - model_server - INFO - Processing text of length 228
+2025-03-31 23:05:52,696 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,696 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,698 - model_server - INFO - Processing text of length 42
+2025-03-31 23:05:52,705 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,705 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,707 - model_server - INFO - Processing text of length 3
+2025-03-31 23:05:52,712 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,713 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,714 - model_server - INFO - Processing text of length 36
+2025-03-31 23:05:52,720 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,721 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,723 - model_server - INFO - Processing text of length 19
+2025-03-31 23:05:52,728 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,729 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,731 - model_server - INFO - Processing text of length 231
+2025-03-31 23:05:52,750 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,750 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,752 - model_server - INFO - Processing text of length 2
+2025-03-31 23:05:52,757 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:05:52,757 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,759 - model_server - INFO - Processing text of length 209
+2025-03-31 23:05:52,775 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,775 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,777 - model_server - INFO - Processing text of length 202
+2025-03-31 23:05:52,791 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,791 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,793 - model_server - INFO - Processing text of length 138
+2025-03-31 23:05:52,809 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,809 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,810 - model_server - INFO - Processing text of length 240
+2025-03-31 23:05:52,830 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,830 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,832 - model_server - INFO - Processing text of length 69
+2025-03-31 23:05:52,841 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,841 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,843 - model_server - INFO - Processing text of length 84
+2025-03-31 23:05:52,852 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,852 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,854 - model_server - INFO - Processing text of length 48
+2025-03-31 23:05:52,865 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,865 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,867 - model_server - INFO - Processing text of length 6
+2025-03-31 23:05:52,872 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:05:52,872 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,873 - model_server - INFO - Processing text of length 15
+2025-03-31 23:05:52,878 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,879 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,880 - model_server - INFO - Processing text of length 290
+2025-03-31 23:05:52,898 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:52,898 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,900 - model_server - INFO - Processing text of length 88
+2025-03-31 23:05:52,908 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:52,908 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:52,910 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:52] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:53,913 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:53] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:55,920 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:55,923 - model_server - INFO - Processing text of length 8
+2025-03-31 23:05:55,928 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:55,929 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,930 - model_server - INFO - Processing text of length 27
+2025-03-31 23:05:55,937 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:55,938 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,939 - model_server - INFO - Processing text of length 44
+2025-03-31 23:05:55,947 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:55,947 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,949 - model_server - INFO - Processing text of length 13
+2025-03-31 23:05:55,955 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:55,955 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,957 - model_server - INFO - Processing text of length 229
+2025-03-31 23:05:55,973 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:55,973 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,975 - model_server - INFO - Processing text of length 50
+2025-03-31 23:05:55,983 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:55,983 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:55] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:55,985 - model_server - INFO - Processing text of length 270
+2025-03-31 23:05:56,002 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:56,003 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,004 - model_server - INFO - Processing text of length 260
+2025-03-31 23:05:56,023 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:56,024 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,026 - model_server - INFO - Processing text of length 251
+2025-03-31 23:05:56,041 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:56,042 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,043 - model_server - INFO - Processing text of length 25
+2025-03-31 23:05:56,049 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,049 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,051 - model_server - INFO - Processing text of length 94
+2025-03-31 23:05:56,061 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,061 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,062 - model_server - INFO - Processing text of length 87
+2025-03-31 23:05:56,071 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,071 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,073 - model_server - INFO - Processing text of length 13
+2025-03-31 23:05:56,078 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:05:56,078 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,079 - model_server - INFO - Processing text of length 30
+2025-03-31 23:05:56,085 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,086 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,087 - model_server - INFO - Processing text of length 75
+2025-03-31 23:05:56,094 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,094 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,096 - model_server - INFO - Processing text of length 137
+2025-03-31 23:05:56,106 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,106 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,108 - model_server - INFO - Processing text of length 64
+2025-03-31 23:05:56,116 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,116 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,118 - model_server - INFO - Processing text of length 106
+2025-03-31 23:05:56,128 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,128 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,130 - model_server - INFO - Processing text of length 55
+2025-03-31 23:05:56,137 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:56,137 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:56,139 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:56] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:57,147 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:57] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:59,156 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:05:59,158 - model_server - INFO - Processing text of length 192
+2025-03-31 23:05:59,174 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:59,175 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,177 - model_server - INFO - Processing text of length 118
+2025-03-31 23:05:59,188 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:59,188 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,190 - model_server - INFO - Processing text of length 68
+2025-03-31 23:05:59,199 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:59,199 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,201 - model_server - INFO - Processing text of length 93
+2025-03-31 23:05:59,210 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:59,210 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,211 - model_server - INFO - Processing text of length 224
+2025-03-31 23:05:59,229 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:05:59,229 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,230 - model_server - INFO - Processing text of length 21
+2025-03-31 23:05:59,236 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:05:59,237 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:05:59,238 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:05:59] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:00,241 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:00] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:02,249 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:02,251 - model_server - INFO - Processing text of length 171
+2025-03-31 23:06:02,265 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:02,265 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,267 - model_server - INFO - Processing text of length 39
+2025-03-31 23:06:02,273 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:02,274 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,275 - model_server - INFO - Processing text of length 7
+2025-03-31 23:06:02,280 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:06:02,280 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,281 - model_server - INFO - Processing text of length 121
+2025-03-31 23:06:02,290 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:02,290 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,292 - model_server - INFO - Processing text of length 105
+2025-03-31 23:06:02,300 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:02,300 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,302 - model_server - INFO - Processing text of length 183
+2025-03-31 23:06:02,315 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:02,315 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:02,317 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:02] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:03,326 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:03] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:05,329 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "[31m[1mPOST /extract_entities HTTP/1.1[0m" 400 -
+2025-03-31 23:06:05,331 - model_server - INFO - Processing text of length 290
+2025-03-31 23:06:05,352 - model_server - INFO - Processed in 0.02 seconds
+2025-03-31 23:06:05,353 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,355 - model_server - INFO - Processing text of length 76
+2025-03-31 23:06:05,364 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,364 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,366 - model_server - INFO - Processing text of length 51
+2025-03-31 23:06:05,373 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,373 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,374 - model_server - INFO - Processing text of length 21
+2025-03-31 23:06:05,380 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,380 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,382 - model_server - INFO - Processing text of length 4
+2025-03-31 23:06:05,387 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,388 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,389 - model_server - INFO - Processing text of length 5
+2025-03-31 23:06:05,394 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:06:05,394 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,396 - model_server - INFO - Processing text of length 126
+2025-03-31 23:06:05,406 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,407 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,408 - model_server - INFO - Processing text of length 31
+2025-03-31 23:06:05,414 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,414 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,416 - model_server - INFO - Processing text of length 69
+2025-03-31 23:06:05,423 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,424 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,426 - model_server - INFO - Processing text of length 35
+2025-03-31 23:06:05,431 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,432 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,433 - model_server - INFO - Processing text of length 218
+2025-03-31 23:06:05,447 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,447 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,449 - model_server - INFO - Processing text of length 75
+2025-03-31 23:06:05,457 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,458 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,459 - model_server - INFO - Processing text of length 82
+2025-03-31 23:06:05,467 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,467 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,469 - model_server - INFO - Processing text of length 61
+2025-03-31 23:06:05,477 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,477 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,479 - model_server - INFO - Processing text of length 21
+2025-03-31 23:06:05,483 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:06:05,484 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,485 - model_server - INFO - Processing text of length 84
+2025-03-31 23:06:05,493 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,493 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,495 - model_server - INFO - Processing text of length 171
+2025-03-31 23:06:05,507 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,507 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,509 - model_server - INFO - Processing text of length 54
+2025-03-31 23:06:05,515 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,515 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,517 - model_server - INFO - Processing text of length 5
+2025-03-31 23:06:05,521 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:06:05,521 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,522 - model_server - INFO - Processing text of length 87
+2025-03-31 23:06:05,530 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,530 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,532 - model_server - INFO - Processing text of length 22
+2025-03-31 23:06:05,537 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,538 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,539 - model_server - INFO - Processing text of length 41
+2025-03-31 23:06:05,546 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,546 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,547 - model_server - INFO - Processing text of length 72
+2025-03-31 23:06:05,555 - model_server - INFO - Processed in 0.01 seconds
+2025-03-31 23:06:05,555 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
+2025-03-31 23:06:05,557 - model_server - INFO - Processing text of length 10
+2025-03-31 23:06:05,561 - model_server - INFO - Processed in 0.00 seconds
+2025-03-31 23:06:05,562 - werkzeug - INFO - 127.0.0.1 - - [31/Mar/2025 23:06:05] "POST /extract_entities HTTP/1.1" 200 -
