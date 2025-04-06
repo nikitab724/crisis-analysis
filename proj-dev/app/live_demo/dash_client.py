@@ -561,4 +561,4 @@ def update_stats(n_intervals):
         return html.Div(f"Error loading statistics: {e}")
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8051)
+    app.run(debug=True, port=8051)

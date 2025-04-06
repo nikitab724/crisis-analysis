@@ -70,24 +70,18 @@ def default_entity_data():
         'country': None
     }
 
-def scrape_posts(post_limit=50):
+def get_scraped_posts(limit=50):
+    url = "http://127.0.0.1:5001/scrape"
+    params = {"limit": limit}
     try:
-        response = requests.post('http://127.0.0.1:5001/scrape_posts', json={'post_limit': post_limit})
-        response.raise_for_status()  # Raise for HTTP errors
+        response = requests.get(url, params=params)
+        response.raise_for_status()
         data = response.json()
-        posts = data.get('posts', [])
-        if not posts:
-            print("Warning: Scraper returned no posts")
-        return posts
+        return data.get("posts", [])
     except requests.exceptions.RequestException as e:
-        print(f"Error connecting to scraper server: {e}")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON from scraper: {e}")
-        return []
+        return {"Request Error": str(e)}
     except Exception as e:
-        print(f"Unexpected error in scrape_posts: {e}")
-        return []
+        return {"Error": str(e)}
 
 def filter_posts(df: pd.DataFrame):
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
@@ -101,6 +95,9 @@ def filter_posts(df: pd.DataFrame):
     
     # Clean text for entity extraction
     df['preprocessed_text'] = df['text'].apply(clean_text)
+
+    # Drop rows where preprocessed_text is empty (has zero length)
+    df = df[df['preprocessed_text'].str.len() > 0]
     
     # Define required columns for consistency
     required_columns = [
@@ -360,7 +357,7 @@ def reset_csv_files():
 
 def main(post_limit=50):
     reset_csv_files()
-    posts = scrape_posts(post_limit)
+    posts = get_scraped_posts(post_limit)
 
     if not posts:
         print("No posts to process. Skipping this run.")
@@ -372,7 +369,7 @@ def main(post_limit=50):
     except Exception as e:
         print(f"Error creating DataFrame: {e}")
         return
-
+    
     print(f'Scraped {len(df)} posts')
     
     try:

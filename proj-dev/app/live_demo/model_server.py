@@ -194,11 +194,11 @@ if __name__ == '__main__':
         import waitress
         logger.info("Starting model server with waitress on port 5000")
         from waitress import serve
-        serve(app, host="0.0.0.0", port=5000, threads=4)
+        serve(app, port=5000, threads=4)
     except ImportError:
         # Fall back to Flask's development server
         logger.info("Waitress not available, using Flask development server on port 5000")
-        app.run(host="0.0.0.0", port=5000, threaded=True)
+        app.run(port=5000, threaded=True)
     except Exception as e:
         logger.critical(f"Error starting server: {e}")
         sys.exit(1)
