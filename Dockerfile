@@ -1,6 +1,6 @@
 FROM --platform=linux/amd64 python:3.12
 
-COPY requirements.txt ./proj-dev/
+COPY requirements.txt /proj-dev/requirements.txt
 
 WORKDIR /proj-dev
 

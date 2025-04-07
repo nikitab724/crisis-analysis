@@ -3,13 +3,30 @@
 import requests
 import pandas as pd
 import os
-import json
 import time
+import inspect
+
+# Import from your existing pipeline code
 from entry import filter_posts, extract_entities, reset_csv_files, calculate_crisis_counts
 from entry import main as entry_main
 
 def send_test_tweet(text):
-    """Send a test tweet to the scraper server and return the post data."""
+    """
+    Send a test 'tweet' (post) to the Flask server's /test_tweet endpoint.
+    Must have /test_tweet defined on port 5001. That route should return:
+        {
+          "posts": [
+            {
+              "text": "...",
+              "created_at": "...",
+              "author": "...",
+              "uri": "..."
+            }
+          ]
+        }
+    If you do NOT have /test_tweet, you can replace this function with a mock
+    that returns a local post structure directly (i.e. no requests call).
+    """
     try:
         response = requests.post(
             'http://127.0.0.1:5001/test_tweet',
@@ -18,24 +35,32 @@ def send_test_tweet(text):
         )
         response.raise_for_status()
         result = response.json()
+        # 'posts' should be a list with exactly one dict
         return result.get('posts', [])
     except Exception as e:
         print(f"Error sending test tweet: {e}")
         return []
 
 def process_test_tweet(text):
-    """Process a single test tweet through the pipeline."""
-    # Get the paths to output files
+    """
+    Process a single test tweet through the entire 'entry.py' pipeline:
+      1. Backs up existing CSVs (filtered_posts.csv, crisis_counts.csv).
+      2. Sends 'text' to /test_tweet => obtains a single post.
+      3. Monkey-patches entry.get_scraped_posts (or scrape_posts) so that
+         entry_main() only processes that single test post.
+      4. Calls entry_main(), then restores the original function and the CSV backups.
+    """
+    # Paths to output files
     base_dir = os.path.dirname(os.path.abspath(__file__))
     filtered_posts_file = os.path.join(base_dir, "filtered_posts.csv")
     crisis_counts_file = os.path.join(base_dir, "crisis_counts.csv")
     
-    # Make backup of existing files if they exist
+    # 1) Back up existing CSV files, if they exist
     backup_files = {}
     for file_path in [filtered_posts_file, crisis_counts_file]:
         if os.path.exists(file_path):
             backup_path = file_path + ".backup"
-            print(f"Backing up {file_path} to {backup_path}")
+            print(f"Backing up {file_path} -> {backup_path}")
             try:
                 with open(file_path, 'r') as src, open(backup_path, 'w') as dst:
                     dst.write(src.read())
@@ -43,82 +68,62 @@ def process_test_tweet(text):
             except Exception as e:
                 print(f"Error backing up {file_path}: {e}")
     
-    # Send the test tweet
+    # 2) Send the test tweet to get a single post back
     print(f"Sending test tweet: '{text}'")
     posts = send_test_tweet(text)
-    
     if not posts:
-        print("Error: No posts returned from test tweet.")
+        print("Error: No posts returned. Aborting.")
         return
     
-    print(f"Test tweet sent successfully!")
+    print(f"Test tweet sent successfully! Received {len(posts)} post(s).")
+
+    # 3) Monkey-patch the scraping function so 'entry_main()' processes only that single post
+    import entry
+    original_scrape_posts = entry.scrape_posts  # or entry.get_scraped_posts, whichever your 'entry.py' calls
     
-    # Now call main() with only our test post data
-    # The hack here is to temporarily override the scrape_posts function
-    from entry import scrape_posts as original_scrape_posts
-    
-    # Define a replacement function that only returns our test post
-    def mock_scrape_posts(post_limit=None):
-        print("Using mock scraper with test tweet only")
+    def mock_scrape_posts(limit=None):
+        """
+        Returns only the single test post from /test_tweet
+        (ignoring real scraping).
+        """
+        print("Using mock scraper that returns the single test tweet only...")
         return posts
     
-    # Monkey patch the original function
-    import entry
     entry.scrape_posts = mock_scrape_posts
-    
+
     try:
-        # Call main with our test files - note: in current entry.py it uses hardcoded filenames
-        print("Processing test tweet through the full pipeline...")
-        # Check if main accepts post_limit parameter
-        import inspect
+        # 4) Call entry_main() to run the pipeline
+        print("Processing test tweet through entry_main() pipeline...")
         sig = inspect.signature(entry_main)
         if 'post_limit' in sig.parameters:
             entry_main(post_limit=1)
         else:
-            # Fall back to the default parameters
             entry_main()
-        
-        # Check results
+
+        # Check the results in filtered_posts.csv
         if os.path.exists(filtered_posts_file):
             try:
                 df = pd.read_csv(filtered_posts_file)
-                print(f"\nResults: {len(df)} rows in filtered posts file")
-                
-                if len(df) > 1:
-                    print("\nWARNING: Multiple rows were generated from a single test tweet!")
+                print(f"\nfiltered_posts.csv now has {len(df)} rows.")
+                if not df.empty:
+                    print("Sample rows:")
+                    print(df.head(5).to_string(index=False))
                     
-                    # Check if rows are identical
-                    if df.duplicated().any():
-                        print("FOUND EXACT DUPLICATES in the output!")
-                    
-                    # Show differences between rows
-                    print("\nDifferences between rows:")
-                    first_row = df.iloc[0]
-                    for i in range(1, len(df)):
-                        diff_cols = []
-                        for col in df.columns:
-                            if str(first_row[col]) != str(df.iloc[i][col]):
-                                diff_cols.append(col)
-                        
-                        if diff_cols:
-                            print(f"Row {i+1} differs from row 1 in columns: {', '.join(diff_cols)}")
-                            for col in diff_cols:
-                                print(f"  {col}: '{first_row[col]}' vs '{df.iloc[i][col]}'")
-                        else:
-                            print(f"Row {i+1} is IDENTICAL to row 1")
-                
-                print("\nProcessed tweet data:")
-                print(df)
+                    # If multiple rows were generated, let's see how they differ
+                    if len(df) > 1:
+                        print("\nWARNING: More than one row was generated from a single test tweet!")
+                else:
+                    print("No rows found in filtered_posts after processing.")
             except Exception as e:
-                print(f"Error reading results: {e}")
+                print(f"Error reading {filtered_posts_file}: {e}")
         else:
-            print("No results file was created. Check for errors in the processing.")
+            print("No filtered_posts.csv was created. Check for errors in the pipeline.")
     
     finally:
-        # Restore the original function
+        # Restore the original scrape function
         entry.scrape_posts = original_scrape_posts
         
-        # Restore backup files if they exist
+        # Restore backup CSV files
         for original_path, backup_path in backup_files.items():
             print(f"Restoring {original_path} from {backup_path}")
             try:
@@ -128,15 +133,13 @@ def process_test_tweet(text):
                 print(f"Error restoring {original_path}: {e}")
 
 def main():
-    print("Test Tweet Processor")
-    print("===================")
-    
-    test_text = input("Enter test tweet text (or press Enter for default test): ")
-    if not test_text:
+    print("=== Test Tweet Processor ===")
+    test_text = input("Enter test tweet text (or press Enter for default): ")
+    if not test_text.strip():
         test_text = "Test tweet about a flood in Canada. Canada is experiencing severe flooding."
         print(f"Using default test: '{test_text}'")
     
     process_test_tweet(test_text)
 
 if __name__ == "__main__":
-    main() 
+    main()

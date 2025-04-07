@@ -4,23 +4,34 @@ import plotly.express as px
 import os
 import ast  # For safely evaluating string representations of lists
 import plotly.graph_objects as go
-from gazetteer import load_gazetteer, build_location_dict, lookup_city_state_country, US_STATE_NAMES
+from gazetteer import US_STATE_NAMES
+import requests
+import pickle
+import math
 
 # Create the Dash app
 app = Dash(__name__)
 
 # Load gazetteer data for city coordinates
 APP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-GAZETTEER_PATH = os.path.join(APP_DIR, "data", "US.txt")
 
-try:
-    gazetteer_df = load_gazetteer(GAZETTEER_PATH)
-    location_dict = build_location_dict(gazetteer_df)
-    print(f"Loaded gazetteer with {len(gazetteer_df)} locations")
-except Exception as e:
-    print(f"Error loading gazetteer: {e}")
-    gazetteer_df = None
-    location_dict = None
+resp_gaz = requests.get("http://127.0.0.1:5000/gazetteer_pickle")
+if resp_gaz.status_code == 200:
+    gazetteer_df = pickle.loads(resp_gaz.content)
+    print("Gazetteer loaded with", len(gazetteer_df), "rows.")
+else:
+    print("Error fetching gazetteer pickle:", resp_gaz.text)
+
+# 2) Fetch and unpickle the location dictionary
+resp_loc = requests.get("http://127.0.0.1:5000/location_dict_pickle")
+if resp_loc.status_code == 200:
+    location_dict = pickle.loads(resp_loc.content)
+    print("Location dictionary loaded with", len(location_dict), "keys.")
+else:
+    print("Error fetching location dictionary pickle:", resp_loc.text)
+
+if gazetteer_df is None or location_dict is None:
+    raise ValueError("Gazetteer data not loaded properly. Please check the file path and format.")
 
 # Load initial data if available
 try:
@@ -99,39 +110,103 @@ state_coordinates = {k: (float(lat), float(lon)) for k, (lat, lon) in state_coor
 # Add common state abbreviations for matching
 state_to_full_name = {abbr: name for abbr, name in US_STATE_NAMES.items()}
 
-app.layout = html.Div([
-    html.H1("Disaster Monitoring Dashboard", style={'textAlign': 'center'}),
-    
-    html.Div([
-        html.Div([
-            html.H2("Crisis Map"),
-            dcc.Graph(id='crisis-map', style={'height': '70vh'}),
-        ], style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),
-        
-        html.Div([
-            html.H2("Disaster Distribution by State"),
-            dcc.Graph(id='state-chart'),
-            html.H2("Disaster Statistics"),
-            html.Div(id='stats-table'),
-        ], style={'width': '40%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingLeft': '20px'}),
-    ]),
-    
-    html.Div([
-        html.H2("Recent Disaster Posts"),
-        dcc.Dropdown(
-            id='state-dropdown',
-            placeholder="Select a state",
+app.layout = html.Div(
+    style={
+        "fontFamily": "Arial, sans-serif",
+        "margin": "0 auto",
+        "padding": "20px",
+        "maxWidth": "1200px",  # constrains the overall width
+        "backgroundColor": "#f9f9f9",
+    },
+    children=[
+        html.H1(
+            "Disaster Monitoring Dashboard",
+            style={
+                "textAlign": "center",
+                "marginBottom": "30px",
+                "color": "#333",
+            },
         ),
-        html.Div(id='posts-table'),
-    ]),
-    
-    # Add an interval component to trigger updates
-    dcc.Interval(
-        id='interval-component',
-        interval=5*1000,  # in milliseconds (5 seconds)
-        n_intervals=0
-    )
-])
+        # The main container for the top row
+        html.Div(
+            style={
+                "display": "flex",
+                "flexWrap": "wrap",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
+            children=[
+                # Left side: Crisis Map
+                html.Div(
+                    style={
+                        "flex": "1 1 60%",
+                        "marginRight": "20px",
+                        "padding": "15px",
+                        "border": "1px solid #ddd",
+                        "borderRadius": "5px",
+                        "backgroundColor": "#fff",
+                    },
+                    children=[
+                        html.H2(
+                            "Crisis Map",
+                            style={"marginTop": "0", "color": "#444"}
+                        ),
+                        dcc.Graph(id="crisis-map", style={"height": "70vh"}),
+                    ],
+                ),
+                # Right side: Disaster Distribution & Statistics
+                html.Div(
+                    style={
+                        "flex": "1 1 35%",
+                        "padding": "15px",
+                        "border": "1px solid #ddd",
+                        "borderRadius": "5px",
+                        "backgroundColor": "#fff",
+                    },
+                    children=[
+                        html.H2(
+                            "Disaster Distribution by State",
+                            style={"marginTop": "0", "color": "#444"}
+                        ),
+                        dcc.Graph(id="state-chart"),
+                        html.H2(
+                            "Disaster Statistics",
+                            style={"marginTop": "30px", "color": "#444"}
+                        ),
+                        html.Div(id="stats-table"),
+                    ],
+                ),
+            ],
+        ),
+        # Bottom row for the recent posts
+        html.Div(
+            style={
+                "padding": "15px",
+                "border": "1px solid #ddd",
+                "borderRadius": "5px",
+                "backgroundColor": "#fff",
+            },
+            children=[
+                html.H2("Recent Disaster Posts", style={"marginTop": "0", "color": "#444"}),
+                dcc.Dropdown(
+                    id="state-dropdown",
+                    placeholder="Select a state",
+                    style={
+                        "width": "300px",
+                        "marginBottom": "20px",
+                    },
+                ),
+                html.Div(id="posts-table"),
+            ],
+        ),
+        # Interval component (unchanged)
+        dcc.Interval(
+            id="interval-component",
+            interval=5 * 1000,  # in milliseconds (5 seconds)
+            n_intervals=0
+        ),
+    ],
+)
 
 def get_city_coordinates(city_name, state_name):
     """Get latitude and longitude for a city using the gazetteer data."""
@@ -194,6 +269,10 @@ def parse_cities_list(cities_str):
         pass
     
     return []
+
+def distance_in_degrees(lat1, lon1, lat2, lon2):
+    # Simple Euclidean in degrees – purely approximate
+    return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
 
 @app.callback(
     Output('state-dropdown', 'options'),
@@ -294,40 +373,62 @@ def update_crisis_map(n_intervals):
                 
             # Parse cities list
             cities = parse_cities_list(row['cities'])
-            
-            # If we have cities, plot each one
+            city_coords = []
             if cities:
                 for city in cities:
-                    # Try to get city coordinates from gazetteer
                     city_lat, city_lon = get_city_coordinates(city, state_name)
-                    
-                    # If coordinates found, add city marker
-                    if city_lat and city_lon:
-                        map_data.append({
-                            'state': state_name,
-                            'full_state': state_full,
-                            'lat': city_lat,
-                            'lon': city_lon,
-                            'count': row['count'],
-                            'disaster': row['disasters'],
-                            'city': city,
-                            'severity': row['severity'] if 'severity' in row else 1.0,
-                            'sentiment': row['avg_sentiment']
-                        })
-            
-            # Always add a state marker as fallback if no cities with coordinates were found
-            if not any(d['state'] == state_name for d in map_data) and state_lat and state_lon:
+                    if city_lat is not None and city_lon is not None:
+                        city_coords.append((city_lat, city_lon))
+
+            # If we have recognized city coords, compute centroid
+            if city_coords:
+                avg_lat = sum(lat for lat, _ in city_coords) / len(city_coords)
+                avg_lon = sum(lon for _, lon in city_coords) / len(city_coords)
+
+                # Now compute a bubble radius = max distance from centroid to each city
+                max_dist = 0.0
+                for (city_lat, city_lon) in city_coords:
+                    dist_deg = distance_in_degrees(city_lat, city_lon, avg_lat, avg_lon)
+                    if dist_deg > max_dist:
+                        max_dist = dist_deg
+
+                # Scale the bubble radius if you want. We'll do a simple scale
+                # e.g. if max_dist=0.1, maybe we want 'size'=5 or so
+                bubble_radius_degrees = max_dist * 50
+                # If you want to ensure a minimum bubble size, do something like:
+                if bubble_radius_degrees < 1:
+                    bubble_radius_degrees = 1
+
+                print(bubble_radius_degrees, "degrees for", cities, "in", state_name)
+                # Create row in map_data
                 map_data.append({
                     'state': state_name,
                     'full_state': state_full,
-                    'lat': state_lat,
-                    'lon': state_lon,
+                    'lat': avg_lat,
+                    'lon': avg_lon,
+                    'size': bubble_radius_degrees,  # We'll use this for px.scatter_geo(..., size='size')
                     'count': row['count'],
                     'disaster': row['disasters'],
-                    'city': 'State-level data',
-                    'severity': row['severity'] if 'severity' in row else 1.0,
+                    'city': ', '.join(cities), 
+                    'severity': row.get('severity', 1.0),
                     'sentiment': row['avg_sentiment']
                 })
+            else:
+                # If we got no recognized cities, fallback to state
+                if state_lat is not None and state_lon is not None:
+                    # You can also add a uniform 'size' if you want
+                    map_data.append({
+                        'state': state_name,
+                        'full_state': state_full,
+                        'lat': state_lat,
+                        'lon': state_lon,
+                        'size': 5,  # or 0.1 or something small
+                        'count': row['count'],
+                        'disaster': row['disasters'],
+                        'city': 'State-level data',
+                        'severity': row.get('severity', 1.0),
+                        'sentiment': row['avg_sentiment']
+                    })
         
         if not map_data:
             return px.scatter_geo(title="No valid location data available")
@@ -339,7 +440,7 @@ def update_crisis_map(n_intervals):
             map_df,
             lat='lat',
             lon='lon',
-            size='count',  # Size by count of reports
+            size='size',
             color='disaster',  # Color by disaster type
             hover_name='full_state',
             hover_data={

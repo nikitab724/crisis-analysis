@@ -85,5 +85,20 @@ def scrape():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/test_tweet', methods=['POST'])
+def test_tweet():
+    data = request.json
+    text = data.get('text', '')
+
+    # Create a test post in the same format as Firehose yields
+    test_post = {
+        'text': text,
+        'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'author': 'test_user.bsky.social',
+        'uri': f'at://did:plc:test/{int(time.time())}'
+    }
+
+    return jsonify({'posts': [test_post]})
+
 if __name__ == "__main__":
     app.run(port=5001)

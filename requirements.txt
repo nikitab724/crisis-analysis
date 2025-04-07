@@ -12,5 +12,4 @@ spacytextblob
 matplotlib
 locationtagger
 us
-ast
 atproto
