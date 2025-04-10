@@ -40,10 +40,6 @@
       "Seiche",
       "Lake Surge"
     ],
-    "Drought": [
-      "Drought",
-      "Severe Drought"
-    ],
     "Heatwave": [
       "Heatwave",
       "Extreme Heatwave"
@@ -65,100 +61,14 @@
       "Epidemic",
       "Disease Outbreak"
     ],
-    "Insect Plague": [
-      "Insect Plague",
-      "Locust Swarm"
-    ],
-    "Animal Stampede": [
-      "Animal Stampede"
-    ],
-    "Asteroid Impact": [
-      "Asteroid Impact",
-      "Meteor Strike"
-    ],
     "Solar Flare": [
       "Solar Flare",
       "Geomagnetic Storm",
       "Gamma-Ray Burst"
     ],
-    "Nuclear Disaster": [
-      "Nuclear Disaster",
-      "Radiation Leak",
-      "Nuclear Meltdown"
-    ],
-    "Chemical Spill": [
-      "Chemical Spill",
-      "Toxic Spill",
-      "Hazardous Waste Leak"
-    ],
-    "Industrial Explosion": [
-      "Industrial Explosion",
-      "Factory Explosion",
-      "Plant Explosion"
-    ],
-    "Dam Failure": [
-      "Dam Failure",
-      "Dam Collapse"
-    ],
-    "Blackout": [
-      "Blackout",
-      "Power Grid Failure"
-    ],
-    "Terrorist Attack": [
-      "Terrorist Attack",
-      "Bombing Attack"
-    ],
-    "War": [
-      "War",
-      "Military Conflict"
-    ],
-    "Civil Unrest": [
-      "Civil Unrest",
-      "Riots"
-    ],
-    "Mass Shooting": [
-      "Mass Shooting",
-      "Active Shooter Incident"
-    ],
-    "Cyberattack": [
-      "Cyberattack",
-      "Cybersecurity Breach"
-    ],
-    "Deforestation": [
-      "Deforestation",
-      "Forest Degradation"
-    ],
-    "Desertification": [
-      "Desertification",
-      "Soil Erosion",
-      "Environmental Degradation"
-    ],
-    "Oil Spill": [
-      "Oil Spill",
-      "Massive Oil Spill"
-    ],
-    "Radioactive Contamination": [
-      "Radioactive Contamination",
-      "Radiation Exposure"
-    ],
     "Transportation Accident": [
       "Transportation Accident",
       "Major Crash"
-    ],
-    "Structural Collapse": [
-      "Structural Collapse",
-      "Building Collapse"
-    ],
-    "Mine Disaster": [
-      "Mine Disaster",
-      "Underground Collapse"
-    ],
-    "Gas Leak Explosion": [
-      "Gas Leak Explosion",
-      "Pipeline Explosion"
-    ],
-    "Chemical Explosion": [
-      "Chemical Explosion"
     ]
   }
 }

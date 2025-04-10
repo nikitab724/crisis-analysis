@@ -1,56 +1,42 @@
 #!/usr/bin/env python3
 
-import requests
-import pandas as pd
 import os
 import time
 import inspect
+import pandas as pd
 
 # Import from your existing pipeline code
+# (Adjust as needed if 'entry.py' is not in the same directory)
 from entry import filter_posts, extract_entities, reset_csv_files, calculate_crisis_counts
 from entry import main as entry_main
 
-def send_test_tweet(text):
+def create_mock_post(text):
     """
-    Send a test 'tweet' (post) to the Flask server's /test_tweet endpoint.
-    Must have /test_tweet defined on port 5001. That route should return:
-        {
-          "posts": [
-            {
-              "text": "...",
-              "created_at": "...",
-              "author": "...",
-              "uri": "..."
-            }
-          ]
-        }
-    If you do NOT have /test_tweet, you can replace this function with a mock
-    that returns a local post structure directly (i.e. no requests call).
+    Create a single mock post dictionary that resembles 
+    the format a real 'scrape' would produce.
+
+    This avoids sending a request to any server's /test_tweet route.
     """
-    try:
-        response = requests.post(
-            'http://127.0.0.1:5001/test_tweet',
-            json={'text': text},
-            timeout=10
-        )
-        response.raise_for_status()
-        result = response.json()
-        # 'posts' should be a list with exactly one dict
-        return result.get('posts', [])
-    except Exception as e:
-        print(f"Error sending test tweet: {e}")
-        return []
+    # You can change these fields as needed
+    mock_post = {
+        'author': 'test_user.bsky.social',
+        'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'post_id': '',
+        'text': text,
+        'uri': f'at://did:plc:test/{time.time()}'
+    }
+    # Return a list with this single dict, 
+    # matching the shape that get_scraped_posts(...) normally returns
+    return [mock_post]
 
 def process_test_tweet(text):
     """
-    Process a single test tweet through the entire 'entry.py' pipeline:
+    Process a single test tweet through the 'entry.py' pipeline:
       1. Backs up existing CSVs (filtered_posts.csv, crisis_counts.csv).
-      2. Sends 'text' to /test_tweet => obtains a single post.
-      3. Monkey-patches entry.get_scraped_posts (or scrape_posts) so that
-         entry_main() only processes that single test post.
-      4. Calls entry_main(), then restores the original function and the CSV backups.
+      2. Creates a local mock post from 'text'.
+      3. Monkey-patches entry.scrape_posts so 'entry_main()' processes ONLY that single post.
+      4. Calls entry_main(), then restores the original function and CSV backups.
     """
-    # Paths to output files
     base_dir = os.path.dirname(os.path.abspath(__file__))
     filtered_posts_file = os.path.join(base_dir, "filtered_posts.csv")
     crisis_counts_file = os.path.join(base_dir, "crisis_counts.csv")
@@ -68,32 +54,31 @@ def process_test_tweet(text):
             except Exception as e:
                 print(f"Error backing up {file_path}: {e}")
     
-    # 2) Send the test tweet to get a single post back
-    print(f"Sending test tweet: '{text}'")
-    posts = send_test_tweet(text)
+    # 2) Create a single mock post from the text
+    print(f"Creating a single test post from: '{text}'")
+    posts = create_mock_post(text)
     if not posts:
-        print("Error: No posts returned. Aborting.")
+        print("Error: No mock posts created. Aborting.")
         return
     
-    print(f"Test tweet sent successfully! Received {len(posts)} post(s).")
+    print(f"Test post created successfully! {len(posts)} post(s) in our list.")
 
     # 3) Monkey-patch the scraping function so 'entry_main()' processes only that single post
     import entry
-    original_scrape_posts = entry.scrape_posts  # or entry.get_scraped_posts, whichever your 'entry.py' calls
+    original_scrape_posts = entry.get_scraped_posts  # or entry.get_scraped_posts, whichever your 'entry.py' calls
     
     def mock_scrape_posts(limit=None):
         """
-        Returns only the single test post from /test_tweet
-        (ignoring real scraping).
+        Returns the single test post only (ignoring real scraping).
         """
-        print("Using mock scraper that returns the single test tweet only...")
+        print("Using mock scraper that returns the single test post only...")
         return posts
     
-    entry.scrape_posts = mock_scrape_posts
+    entry.get_scraped_posts = mock_scrape_posts
 
     try:
         # 4) Call entry_main() to run the pipeline
-        print("Processing test tweet through entry_main() pipeline...")
+        print("Processing test post through entry_main() pipeline...")
         sig = inspect.signature(entry_main)
         if 'post_limit' in sig.parameters:
             entry_main(post_limit=1)
@@ -109,9 +94,8 @@ def process_test_tweet(text):
                     print("Sample rows:")
                     print(df.head(5).to_string(index=False))
                     
-                    # If multiple rows were generated, let's see how they differ
                     if len(df) > 1:
-                        print("\nWARNING: More than one row was generated from a single test tweet!")
+                        print("\nWARNING: More than one row was generated from a single test post!")
                 else:
                     print("No rows found in filtered_posts after processing.")
             except Exception as e:

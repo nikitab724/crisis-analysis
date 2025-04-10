@@ -469,7 +469,8 @@ def update_crisis_map(n_intervals):
                 showsubunits=True,
                 showcountries=True,
                 resolution=50
-            )
+            ),
+            uirevision='constant'
         )
         
         return fig

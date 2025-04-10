@@ -7,55 +7,18 @@ import numpy as np
 import time
 
 def extract_entities(text):
-    max_retries = 3
-    backoff_factor = 1
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.post('http://127.0.0.1:5000/extract_entities', 
-                                    json={'text': text}, 
-                                    timeout=10)
-            response.raise_for_status()
-            
-            # Parse the response
-            entity_data = response.json()
-            
-            # Validate the response format
-            if not isinstance(entity_data, dict):
-                print(f"WARNING: Invalid response format (not a dict): {type(entity_data)}")
-                if attempt < max_retries - 1:
-                    time.sleep(backoff_factor * (2 ** attempt))  # Exponential backoff
-                    continue
-                return default_entity_data()
-            
-            # Ensure the response has the required fields
-            if 'disasters' not in entity_data or 'locations' not in entity_data:
-                print(f"WARNING: Missing required fields in response: {list(entity_data.keys())}")
-                if attempt < max_retries - 1:
-                    time.sleep(backoff_factor * (2 ** attempt))
-                    continue
-                return default_entity_data()
-                
-            return entity_data
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Request error in extract_entities (attempt {attempt+1}/{max_retries}): {e}")
-            if attempt < max_retries - 1:
-                time.sleep(backoff_factor * (2 ** attempt))
-            else:
-                return default_entity_data()
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error in extract_entities (attempt {attempt+1}/{max_retries}): {e}")
-            if attempt < max_retries - 1:
-                time.sleep(backoff_factor * (2 ** attempt))
-            else:
-                return default_entity_data()
-        except Exception as e:
-            print(f"Error in extract_entities (attempt {attempt+1}/{max_retries}): {e}")
-            if attempt < max_retries - 1:
-                time.sleep(backoff_factor * (2 ** attempt))
-            else:
-                return default_entity_data()
+    """
+    A direct call to the model_server's /extract_entities endpoint.
+    Raises an exception if there's any HTTP/network error or if
+    the server responds with 4xx/5xx status.
+    """
+    response = requests.post(
+        'http://127.0.0.1:5000/extract_entities',
+        json={'text': text},
+        timeout=10
+    )
+    response.raise_for_status()  # Will raise a requests.HTTPError if status not 200
+    return response.json()
 
 def default_entity_data():
     """Return default entity data when extraction fails"""
@@ -67,7 +30,8 @@ def default_entity_data():
         'city': None,
         'state': None,
         'region': None,
-        'country': None
+        'country': None,
+        'all_locations': None
     }
 
 def get_scraped_posts(limit=50):
@@ -87,22 +51,16 @@ def filter_posts(df: pd.DataFrame):
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
     df = df.copy()
     
-    # Clean up text by stripping newlines and extra spaces
-    df['text'] = df['text'].astype(str).apply(lambda x: ' '.join(x.split()))
-    
     # Remove duplicate posts based on text content
     df = df.drop_duplicates(subset=['text'])
-    
-    # Clean text for entity extraction
-    df['preprocessed_text'] = df['text'].apply(clean_text)
 
-    # Drop rows where preprocessed_text is empty (has zero length)
-    df = df[df['preprocessed_text'].str.len() > 0]
+    # Drop rows where text is empty (has zero length)
+    df = df[df['text'].str.len() > 0]
     
     # Define required columns for consistency
     required_columns = [
-        'author', 'created_at', 'post_id', 'text', 'uri', 'preprocessed_text',
-        'disasters', 'locations', 'sentiment', 'polarity', 
+        'author', 'created_at', 'post_id', 'text', 'uri',
+        'disasters', 'sentiment', 'polarity', 
         'city', 'state', 'region', 'country', 'location'
     ]
     
@@ -112,25 +70,45 @@ def filter_posts(df: pd.DataFrame):
     for idx, row in df.iterrows():
         try:
             # Extract entities with error handling
-            entity_result = extract_entities(row['preprocessed_text'])
-            
-            # Skip if we didn't get valid data
+            entity_result = extract_entities(row['text'])
+
             if not entity_result or not isinstance(entity_result, dict):
+                # If there's no valid entity data, skip
                 continue
-                
-            # Get disasters and locations with defaults
+
             disasters = entity_result.get('disasters', [])
             locations = entity_result.get('locations', [])
             sentiment = entity_result.get('sentiment', 'Neutral')
             polarity = entity_result.get('polarity', 0.0)
-            
-            # Skip if no disasters or locations
+
+            # Then check if you want to skip if empty
             if not disasters or not locations:
                 continue
-                
+            
+            #print("disasters: ", disasters)
+            
+            #top level row
+            top_row = {
+                        'author': row.get('author', ''),
+                        'created_at': row.get('created_at', ''),
+                        'post_id': row.get('post_id', ''),
+                        'text': row.get('text', ''),
+                        'uri': row.get('uri', ''),
+                        'disasters': disasters,
+                        'sentiment': sentiment,
+                        'polarity': polarity,
+                        'city': entity_result.get('city', ''),
+                        'state': entity_result.get('state', ''),
+                        'region': entity_result.get('region', ''),
+                        'country': entity_result.get('country', 'US'),
+                        'location': entity_result.get('city', '')
+                    }
+            processed_rows.append(top_row)
+           # print("top row added: ", processed_rows)
             # Get standardized location info
             all_locations = entity_result.get('all_locations', [])
             
+          #  print(entity_result)
             # If we have location details, create rows for each location
             if all_locations and isinstance(all_locations, list) and len(all_locations) > 0:
                 for loc_info in all_locations:
@@ -144,9 +122,7 @@ def filter_posts(df: pd.DataFrame):
                         'post_id': row.get('post_id', ''),
                         'text': row.get('text', ''),
                         'uri': row.get('uri', ''),
-                        'preprocessed_text': row.get('preprocessed_text', ''),
                         'disasters': disasters,
-                        'locations': [loc_info.get('location', '')],  # Use only this location instead of all locations
                         'sentiment': sentiment,
                         'polarity': polarity,
                         'city': loc_info.get('city', ''),
@@ -157,59 +133,13 @@ def filter_posts(df: pd.DataFrame):
                     }
                     
                     processed_rows.append(new_row)
-            else:
-                # Fallback to the top-level location data
-                city = entity_result.get('city', '')
-                state = entity_result.get('state', '')
-                region = entity_result.get('region', '')
-                country = entity_result.get('country', 'US')
-                
-                # Skip if no state information
-                if not state:
-                    continue
-                    
-                # Create a new row with required fields
-                new_row = {
-                    'author': row.get('author', ''),
-                    'created_at': row.get('created_at', ''),
-                    'post_id': row.get('post_id', ''),
-                    'text': row.get('text', ''),
-                    'uri': row.get('uri', ''),
-                    'preprocessed_text': row.get('preprocessed_text', ''),
-                    'disasters': disasters,
-                    'locations': locations,
-                    'sentiment': sentiment,
-                    'polarity': polarity,
-                    'city': city,
-                    'state': state,
-                    'region': region,
-                    'country': country,
-                    'location': locations[0] if locations else ''
-                }
-                
-                processed_rows.append(new_row)
-                
+            
+            #print(processed_rows)
         except Exception as e:
             print(f"Error processing row {idx}: {e}")
             continue
-    
-    # If no valid rows, return empty DataFrame with proper columns
-    if not processed_rows:
-        return pd.DataFrame(columns=required_columns)
-        
+
     result_df = pd.DataFrame(processed_rows)
-    
-    # Ensure all required columns exist
-    for col in required_columns:
-        if col not in result_df.columns:
-            if col in ['disasters', 'locations', 'cities']:
-                result_df[col] = [[]] * len(result_df)
-            elif col in ['polarity']:
-                result_df[col] = 0.0
-            elif col in ['sentiment']:
-                result_df[col] = 'Neutral'
-            else:
-                result_df[col] = ''
                 
     return result_df
 

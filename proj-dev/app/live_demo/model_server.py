@@ -6,6 +6,7 @@ import logging
 import psutil
 import pickle
 
+
 import spacy
 from flask import Flask, request, jsonify
 
@@ -31,7 +32,7 @@ gazetteer_df = None
 location_dict = None
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-print(APP_DIR)
+#print(APP_DIR)
 ###########################
 # Initialization Function #
 ###########################
@@ -186,6 +187,8 @@ def extract_entities():
             "polarity": 0.0
         }
 
+    #print("locations in ent sent before standardization (model server): ", ent_sent['locations'])
+
     # Attempt location standardization if gazetteer is loaded
     if gazetteer_df is not None and location_dict is not None:
         try:
@@ -217,6 +220,7 @@ def extract_entities():
             "all_locations": []
         })
 
+    #print("locations in ent sent after standardization (model server): ", ent_sent['city'], ent_sent['all_locations'])
     elapsed = time.time() - start_time
     logger.info(f"extract_entities completed in {elapsed:.2f}s")
 
