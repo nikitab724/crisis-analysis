@@ -104,11 +104,11 @@ def filter_posts(df: pd.DataFrame):
                         'location': entity_result.get('city', '')
                     }
             processed_rows.append(top_row)
-           # print("top row added: ", processed_rows)
+            #print("top row added: ", processed_rows)
             # Get standardized location info
             all_locations = entity_result.get('all_locations', [])
             
-          #  print(entity_result)
+            #print(entity_result)
             # If we have location details, create rows for each location
             if all_locations and isinstance(all_locations, list) and len(all_locations) > 0:
                 for loc_info in all_locations:

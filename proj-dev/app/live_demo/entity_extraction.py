@@ -16,46 +16,47 @@ import matplotlib.pyplot as plt
 
 # data preprocessing
 
-pattern = re.compile(r'''
-    (?P<hashtag>\#)(?P<hashword>[A-Za-z0-9_]+)    # e.g. #RockIsland => keep 'RockIsland'
-  | (?P<mention>@[A-Za-z0-9_]+)                   # remove entire @-mention
-  | (?P<url>\w+://\S+)                            # remove entire url
-  | (?P<non_alnum>[^0-9A-Za-z \t])                # remove any other non-alphanumeric
-''', re.VERBOSE)
-
-def replace_func(match: re.Match) -> str:
-    """
-    If we matched a hashtag (#...), keep only the word part.
-    For mention, URL, or non-alphanumeric, replace with a space.
-    """
-    # If we matched a hashtag
-    if match.group('hashtag'):
-        # Keep the 'hashword' group (the text after '#')
-        return match.group('hashword') + ","
-    
-    # If we matched a mention, URL, or non-alphanumeric, replace entire match with space
-    return ' '
+pattern = re.compile(
+    r"(?P<hashtag>\#[A-Za-z0-9_]+)"           # e.g. #RockIsland
+    r"|(?P<mention>@[A-Za-z0-9_]+)"           # remove entire @-mention
+    r"|(?P<url>\w+://\S+)"                    # remove entire url
+    r"|(?P<remove>[^\w\s,])"                  # remove any other char that's not word char, whitespace, or comma
+)
 
 def split_camel_case(text: str) -> str:
     """
     Insert a space before an uppercase char that follows a lowercase char.
     e.g. 'RockIsland' -> 'Rock Island'
-    If you also want to handle multiple capitals, refine the pattern accordingly.
     """
-    # We only add a space between a lowercase letter and an uppercase letter
-    # Example: "NorthSouth" -> "North South"
-    # If you want "NASAMission" -> "NASA Mission", you'd need a bigger pattern.
     return re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
+
+def replace_func(match: re.Match) -> str:
+    """
+    - If hashtag is matched, split its camel case part and add a comma afterward.
+    - If mention or url is matched, replace with space.
+    - If remove is matched (any disallowed char), replace with a space.
+    """
+    if match.group('hashtag'):
+        # Remove the '#' and split the remainder
+        hashtag_text = match.group('hashtag')[1:]  # skip '#'
+        splitted = split_camel_case(hashtag_text)
+        return splitted + ","  # keep a trailing comma
+    
+    if match.group('mention') or match.group('url') or match.group('remove'):
+        return " "
+    
+    # fallback
+    return match.group(0)
 
 def clean_text(text: str) -> str:
     """
-    Replace unwanted parts of 'text' using the pattern above.
-    Then split and rejoin to normalize spaces.
+    Cleans the text by:
+    - Removing or transforming selected tokens (@mentions, URLs, certain punctuation)
+    - Normalizing extra spaces.
+    - Preserving commas and splitting camel case only in hashtags.
     """
-    # Use the replacement function
     cleaned = pattern.sub(replace_func, text)
-    cleaned = split_camel_case(cleaned)
-    # Normalize extra spaces
+    # Normalize spaces
     return ' '.join(cleaned.split())
 
 nlp = spacy.load("../disaster_ner")
