@@ -1,9 +1,9 @@
 country,state,disasters,count,avg_sentiment,cities,severity
-US,Colorado,['Wildfire'],2,-0.04,"['Denver', 'Boulder']",1.1328430311977618
-US,California,['Earthquake'],2,0.08,"['Los Angeles County', 'Universal City']",1.1328430311977618
-US,New York,['Pandemic'],2,0.0,"['Buffalo', 'New York']",1.1328430311977618
-US,Florida,['Flood'],2,-0.05,"['Key West', 'Miami']",1.1328430311977618
-US,Texas,['Hurricane'],2,0.03,['Houston'],1.1328430311977618
+US,Colorado,Wildfire,2,-0.04,"['Denver', 'Boulder']",1.1328430311977618
+US,California,Earthquake,2,0.08,"['Los Angeles County', 'Universal City']",1.1328430311977618
+US,New York,Pandemic,2,0.0,"['Buffalo', 'New York']",1.1328430311977618
+US,Florida,Flood,2,-0.05,"['Key West', 'Miami']",1.1328430311977618
+US,Texas,Hurricane,2,0.03,['Houston'],1.1328430311977618
 US,California,Wildfire,1,0.11,[],-0.8091735937126872
 US,Alabama,Flood,1,-0.19,['Little Rock'],-0.8091735937126872
 US,Florida,Cold Snap,1,0.03,[],-0.8091735937126872
