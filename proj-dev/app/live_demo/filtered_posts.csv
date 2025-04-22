@@ -1,84 +1,21 @@
-author,created_at,post_id,text,uri,preprocessed_text,disasters,locations,sentiment,polarity,city,state,region,country,location
-test_user.bsky.social,2025-04-10T00:26:51Z,,Hurricane in Toledo Austin San Antonio Houston and Dallas watch out,at://did:plc:test/1744244811.5903854,,['Hurricane'],['austin'],Neutral,0.0,Austin,Texas,,US,austin
-test_user.bsky.social,2025-04-10T00:26:51Z,,Hurricane in Toledo Austin San Antonio Houston and Dallas watch out,at://did:plc:test/1744244811.5903854,,['Hurricane'],['toledo'],Neutral,0.0,Toledo,Ohio,,US,toledo
-test_user.bsky.social,2025-04-10T00:26:51Z,,Hurricane in Toledo Austin San Antonio Houston and Dallas watch out,at://did:plc:test/1744244811.5903854,,['Hurricane'],['san antonio'],Neutral,0.0,San Antonio,Texas,,US,san antonio
-test_user.bsky.social,2025-04-10T00:26:51Z,,Hurricane in Toledo Austin San Antonio Houston and Dallas watch out,at://did:plc:test/1744244811.5903854,,['Hurricane'],['houston'],Neutral,0.0,Houston,Texas,,US,houston
-pah.weather.im,2025-04-10T01:35:03.968156+00:00,,PAH continues Flood Warning for Big Muddy River near Plumfield [IL] until further notice Link,at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgeg77lsz2g,,['Flood'],[],Neutral,0.0333333333333333,,,,,
-lit.nws-bot.us,2025-04-10T01:35:33+00:00,,"LZK continues Flood Warning for Ouachita River at Thatcher L and D [AR] until further notice
-at Thu, 10 Apr 2025 01:28:37 +0000 via IEMbot
-Additional Details Here.",at://did:plc:clc74zniey6qszifid4rmb42/app.bsky.feed.post/3lmgeh3hobw2d,,['Flood'],[],Neutral,0.0,,,,,
-mem.nws-bot.us,2025-04-10T01:37:43+00:00,,"MEG extends time of Flood Warning for Buttahatchie River near Aberdeen [MS] till Apr 10, 3:15 PM CDT
-at Thu, 10 Apr 2025 01:25:17 +0000 via IEMbot
-Additional Details Here.",at://did:plc:z3dfl5gcjui2myt4fi5ttkr4/app.bsky.feed.post/3lmgekxthzk2w,,['Flood'],[],Positive,0.1,,,,,
-mem.nws-bot.us,2025-04-10T01:37:44+00:00,,"MEG extends time of Flood Warning for Tombigbee River at Bigbee [MS] till Apr 10, 7:00 PM CDT
-at Thu, 10 Apr 2025 01:23:08 +0000 via IEMbot
-Additional Details Here.",at://did:plc:z3dfl5gcjui2myt4fi5ttkr4/app.bsky.feed.post/3lmgekyck7x2p,,['Flood'],[],Neutral,0.0,,,,,
-mahalomalama.bsky.social,2025-04-10T01:39:21.569Z,,"Part 2:  I worked in the insurance industry in Hawaii for 40 years and tried to help HOA’s and unit owners understand why they need to carry full replacement values, etc… often fell on deaf ears.  I know what happened during Hurricane Iwa and Iniki but ppl think it can never happen to them.",at://did:plc:hp2ybmphzc4ziqoyzol5ipn7/app.bsky.feed.post/3lmgenutns22d,,['Hurricane'],[],Positive,0.35,,Hawaii,,US,
-pghsciencenerd.bsky.social,2025-04-10T01:41:25.596Z,,"NEW KENSINGTON HOLE
-
-'It's vulgar.' Neighbors want New Kensington sinkhole fixed
- triblive.com/local/valley... 
-(Via TribLive)",at://did:plc:7ye7twwnqpa5if73yzfvzl6p/app.bsky.feed.post/3lmgerl4ov22j,,['Landslide'],[],Negative,-0.0318181818181818,New Kensington,Pennsylvania,,US,New Kensington
-lastquake.bsky.social,2025-04-10T01:41:32+00:00,,#Earthquake (#sismo) confirmed by seismic data.⚠Preliminary info: M3.4 || 36 km NE of #Iquique (#Chile) || 2 min ago (local time 21:39:20). Follow the thread for the updates👇,at://did:plc:6styobqnjkrow5ganamyf4qu/app.bsky.feed.post/3lmgeruhakp25,,['Earthquake'],[],Positive,0.2,,,,,
-mob.weather.im,2025-04-10T01:41:45.065543+00:00,,"MOB extends time of Flood Warning for Escambia River near Century [FL] till Apr 12, 7:00 PM CDT Link",at://did:plc:lsveaw5knmwbarbem2lz6hxp/app.bsky.feed.post/3lmges5qggx2e,,['Flood'],[],Positive,0.1,,,,,
-iwx.nws-bot.us,2025-04-10T01:42:05+00:00,,"IWX continues Flood Warning for North Branch Elkhart River at Cosperville [IN] until further notice
-at Thu, 10 Apr 2025 01:39:07 +0000 via IEMbot
-Additional Details Here.",at://did:plc:a2lf4g3sprgjt2yi7zzhpbko/app.bsky.feed.post/3lmgesrcult26,,['Flood'],[],Neutral,0.0,Cosperville,Indiana,,US,Cosperville
-isobevelyne.bsky.social,2025-04-10T01:43:11.431Z,,Protect Chained Dogs from Burning Alive in South Korean Wildfires Sister State: Gangwon Province & Colorado #BanDogTetheringKorea #EndDogChainingKorea #AnimalWelfareKorea ✍️https://chng.it/YRjSVVp6D8✊https://koreandogs.org/a-plea-for-compassion-Gangwon-Colorado/👉🏽Join FB www.facebook.com/BanTether/,at://did:plc:3edir3m5mjpi65j4armxj7fd/app.bsky.feed.post/3lmgeuq2jes2j,,['Wildfire'],[],Positive,0.1,,Colorado,,US,
-isobevelyne.bsky.social,2025-04-10T01:43:11.431Z,,Protect Chained Dogs from Burning Alive in South Korean Wildfires Sister State: Gangwon Province & Colorado #BanDogTetheringKorea #EndDogChainingKorea #AnimalWelfareKorea ✍️https://chng.it/YRjSVVp6D8✊https://koreandogs.org/a-plea-for-compassion-Gangwon-Colorado/👉🏽Join FB www.facebook.com/BanTether/,at://did:plc:3edir3m5mjpi65j4armxj7fd/app.bsky.feed.post/3lmgeuq2jes2j,,['Wildfire'],[],Positive,0.1,Korea,Kentucky,,US,korea
-stpolishook.bsky.social,2025-04-10T01:43:50.872Z,,SO MANY PEOPLE have strong opinions about a place they know next to nothing about 😔 (both Israel AND Palestine). This is one thing i despise about social media. Misinformation can spread like wildfire & most never know they have imbibed lies,at://did:plc:smerugwdjabfa2r22hdnwfjz/app.bsky.feed.post/3lmgevvo5y225,,['Wildfire'],[],Positive,0.2933333333333333,Palestine,Texas,,US,Palestine
-stpolishook.bsky.social,2025-04-10T01:43:50.872Z,,SO MANY PEOPLE have strong opinions about a place they know next to nothing about 😔 (both Israel AND Palestine). This is one thing i despise about social media. Misinformation can spread like wildfire & most never know they have imbibed lies,at://did:plc:smerugwdjabfa2r22hdnwfjz/app.bsky.feed.post/3lmgevvo5y225,,['Wildfire'],[],Positive,0.2933333333333333,Israel,Texas,,US,israel
-denvergazette.com,2025-04-10T01:44:00.916Z,,"Hurricane Helene hit Augusta National. What it left is noticeable, not necessarily bad | Golf Insider buff.ly/YjRH2d6",at://did:plc:rfrjnivppbupbbnmrobqz62d/app.bsky.feed.post/3lmgew7g6n62z,,['Hurricane'],[],Positive,0.1749999999999999,,,,,
-meg.weather.im,2025-04-10T01:45:23.593844+00:00,,"MEG continues Flood Warning for Tallahatchie River near Lambert [MS] till Apr 12, 7:00 AM CDT Link",at://did:plc:ped72lnvalcb5ftnv5puqrvr/app.bsky.feed.post/3lmgeyo4xjx27,,['Flood'],[],Positive,0.1,,,,,
-tracereading.bsky.social,2025-04-10T01:45:24.292Z,,"I have an AU idea that's predicated on the notion that a massive earthquake dropped the outer wards of Tokyo about 20 meters below sea level through a combination of geography and the infrastructure underneath the city, leading to the submerged area becoming a semi-lawless shantytown of sorts.",at://did:plc:fgw7xrzkqm2gaocjnjxyieon/app.bsky.feed.post/3lmgeyor5gc2t,,['Earthquake'],[],Positive,0.225,,,,,
-earthquake.skybot.party,2025-04-10T01:46:02.000Z,,"New earthquake reported: M 3.5 - 18 km E of Little Lake, CA - 2025-04-10T01:45:31.254Z",at://did:plc:bqixybid5xnsksqeabec36t5/app.bsky.feed.post/3lmgeztwflj2y,,['Earthquake'],[],Negative,-0.0255681818181818,Willits,California,,US,Willits
-msy.nws-bot.us,2025-04-10T01:46:48+00:00,,"🚨 Flood Warning issued April 9 at 8:40PM CDT until April 11 at 3:00PM CDT by NWS New Orleans LA 🚨
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf37gntl2z,,['Flood'],[],Positive,0.1363636363636363,,Louisiana,,US,
-msy.nws-bot.us,2025-04-10T01:46:48+00:00,,"🚨 Flood Warning issued April 9 at 8:40PM CDT until April 11 at 3:00PM CDT by NWS New Orleans LA 🚨
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf37gntl2z,,['Flood'],[],Positive,0.1363636363636363,New Orleans,Louisiana,,US,new orleans
-tlh.nws-bot.us,2025-04-10T01:47:10+00:00,,"TAE extends time of Flood Warning for Apalachicola River near Blountstown [FL] till Apr 11, 2:00 PM EDT
-at Thu, 10 Apr 2025 01:43:36 +0000 via IEMbot
-Additional Details Here.",at://did:plc:a2khmvnry3sglvhehlxtkywk/app.bsky.feed.post/3lmgf3tnudw2k,,['Flood'],[],Positive,0.1,,Florida,,US,
-tlh.nws-bot.us,2025-04-10T01:47:10+00:00,,"TAE extends time of Flood Warning for Apalachicola River near Blountstown [FL] till Apr 11, 2:00 PM EDT
-at Thu, 10 Apr 2025 01:43:36 +0000 via IEMbot
-Additional Details Here.",at://did:plc:a2khmvnry3sglvhehlxtkywk/app.bsky.feed.post/3lmgf3tnudw2k,,['Flood'],[],Positive,0.1,Blountstown,Florida,,US,blountstown
-pah.weather.im,2025-04-10T01:48:33.316048+00:00,,PAH continues Flood Warning for Wabash River at New Harmony [IN] until further notice Link,at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgf6d2gqt2d,,['Flood'],[],Neutral,0.0681818181818181,New Harmony,Indiana,,US,New Harmony
-msy.nws-bot.us,2025-04-10T01:48:53+00:00,,"LIX continues Flood Warning for Pearl River near Pearl River [LA] until further notice
-at Thu, 10 Apr 2025 01:39:34 +0000 via IEMbot
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf6wlz6g2q,,['Flood'],[],Neutral,0.05,Pearl River County,Mississippi,,US,Pearl River County
-msy.nws-bot.us,2025-04-10T01:48:54+00:00,,"LIX extends time of Flood Warning for Pearl River near Bogalusa [LA] till Apr 18, 10:00 AM CDT
-at Thu, 10 Apr 2025 01:39:34 +0000 via IEMbot
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf6wvzij2u,,['Flood'],[],Positive,0.1,,Louisiana,,US,
-msy.nws-bot.us,2025-04-10T01:48:54+00:00,,"LIX extends time of Flood Warning for Pearl River near Bogalusa [LA] till Apr 18, 10:00 AM CDT
-at Thu, 10 Apr 2025 01:39:34 +0000 via IEMbot
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf6wvzij2u,,['Flood'],[],Positive,0.1,Bogalusa,Louisiana,,US,bogalusa
-msy.nws-bot.us,2025-04-10T01:48:54+00:00,,"LIX extends time of Flood Warning for Pearl River near Bogalusa [LA] till Apr 18, 10:00 AM CDT
-at Thu, 10 Apr 2025 01:39:34 +0000 via IEMbot
-Additional Details Here.",at://did:plc:dl6wisj34jsmkffbcgcahnfp/app.bsky.feed.post/3lmgf6wvzij2u,,['Flood'],[],Positive,0.1,Pearl River County,Mississippi,,US,pearl river
-earthquake.skybot.party,2025-04-10T01:49:02.000Z,,"New earthquake reported: M 3.5 - 18 km E of Little Lake, CA - 2025-04-10T01:48:07.300Z",at://did:plc:bqixybid5xnsksqeabec36t5/app.bsky.feed.post/3lmgf77loqj2y,,['Earthquake'],[],Negative,-0.0255681818181818,Willits,California,,US,Willits
-mob.nws-bot.us,2025-04-10T01:50:39+00:00,,"MOB extends time of Flood Warning for Perdido River near Barrineau Park [AL] till Apr 10, 9:00 AM CDT
-at Thu, 10 Apr 2025 01:39:22 +0000 via IEMbot
-Additional Details Here.",at://did:plc:jm7cj2x6ybu2vjtu6uq236du/app.bsky.feed.post/3lmgfc3n42h2i,,['Flood'],[],Positive,0.1,Barrineau Park,Florida,,US,Barrineau Park
-mob.nws-bot.us,2025-04-10T01:50:40+00:00,,"MOB extends time of Flood Warning for Alabama River near Millers Ferry Dam [AL] till Apr 14, 1:13 AM CDT
-at Thu, 10 Apr 2025 01:37:59 +0000 via IEMbot
-Additional Details Here.",at://did:plc:jm7cj2x6ybu2vjtu6uq236du/app.bsky.feed.post/3lmgfc46fjd2v,,['Flood'],[],Positive,0.1,,Alabama,Alabama River,US,
-lots42.bsky.social,2025-04-10T01:51:26.683Z,,"When I was stocking up on hurricane supplies in Florida, I bought some juice in a bottle. Like Gatorade. I put that aside for the humans to drink. What water supplies we did have was saved, if we needed it, for the animals.",at://did:plc:cr3zzs2y2oqcf6cjaabj6qtp/app.bsky.feed.post/3lmgfdiegv22v,,['Hurricane'],[],Neutral,0.0,,Florida,,US,
-phillycpamr.bsky.social,2025-04-10T01:51:35.933Z,,So yes… the US avoided the very much defined term “recession” that most economists were predicting coming out of the pandemic,at://did:plc:p6rtoqzrlb7gvmjsfzzps2mc/app.bsky.feed.post/3lmgfdr6o522p,,['Pandemic'],[],Positive,0.38,,,,,
-ews.volcanoyt.com,2025-04-10T01:51:53.728Z,,"🌍 Earthquake Alert 🌍
-📍 Location: TARAPACA, CHILE
-📏 Magnitude (ml): 3.0
-🔽 Depth: 51.60 km
-⏰ Time: 2025-04-10 01:39:21 UTC
-🔗 Source: EMSC
-Stay safe!",at://did:plc:hmgbggxs7iy4vcn7hgyjyjsa/app.bsky.feed.post/3lmgfecjshk2d,,['Earthquake'],[],Positive,0.5,,,,,
-earthquake.skybot.party,2025-04-10T01:52:03.000Z,,"New earthquake reported: M 3.5 - 18 km E of Little Lake, CA - 2025-04-10T01:50:20.024Z",at://did:plc:bqixybid5xnsksqeabec36t5/app.bsky.feed.post/3lmgfelbwyr2d,,['Earthquake'],[],Negative,-0.0255681818181818,Willits,California,,US,Willits
-lix.weather.im,2025-04-10T01:52:50.903797+00:00,,"LIX extends time of Flood Warning valid at Apr 11, 4:36 AM CDT for Mississippi River at Red River Landing [LA] till May 6, 1:00 AM CDT Link",at://did:plc:hpjugyf67piibpxxabk5pcz6/app.bsky.feed.post/3lmgffypspp26,,['Flood'],[],Neutral,0.0,Red River Landing,Louisiana,,US,Red River Landing
-lix.weather.im,2025-04-10T01:52:50.903797+00:00,,"LIX extends time of Flood Warning valid at Apr 11, 4:36 AM CDT for Mississippi River at Red River Landing [LA] till May 6, 1:00 AM CDT Link",at://did:plc:hpjugyf67piibpxxabk5pcz6/app.bsky.feed.post/3lmgffypspp26,,['Flood'],[],Neutral,0.0,,Mississippi,Mississippi River,US,mississippi river
-goodquestiononline.bsky.social,2025-04-10T01:55:08.745Z,,WF4 #tornado ravaged #WichitaFalls 4/10/1979. Tragedy spurred the community to a new vision for the future through the Goals for Wichita Falls program. 20 years later a resident said: “We’d always been known for living in Tornado Alley. All of a sudden we were proud of what our town could do.”,at://did:plc:wnoowsa6lrfiwojfbsmckb2i/app.bsky.feed.post/3lmgfk45f6s2a,,['Hurricane'],[],Positive,0.1872727272727272,Wichita Falls,Texas,,US,Wichita Falls
-meg.weather.im,2025-04-10T01:55:48.088845+00:00,,"MEG continues Flood Warning valid at Apr 11, 1:00 PM CDT for Mississippi River at Memphis [TN] till Apr 21, 7:00 PM CDT Link",at://did:plc:ped72lnvalcb5ftnv5puqrvr/app.bsky.feed.post/3lmgflbpcjp2l,,['Flood'],[],Neutral,0.0,,Tennessee,,US,
-meg.weather.im,2025-04-10T01:55:48.088845+00:00,,"MEG continues Flood Warning valid at Apr 11, 1:00 PM CDT for Mississippi River at Memphis [TN] till Apr 21, 7:00 PM CDT Link",at://did:plc:ped72lnvalcb5ftnv5puqrvr/app.bsky.feed.post/3lmgflbpcjp2l,,['Flood'],[],Neutral,0.0,Memphis,Tennessee,,US,memphis
-meg.weather.im,2025-04-10T01:55:48.088845+00:00,,"MEG continues Flood Warning valid at Apr 11, 1:00 PM CDT for Mississippi River at Memphis [TN] till Apr 21, 7:00 PM CDT Link",at://did:plc:ped72lnvalcb5ftnv5puqrvr/app.bsky.feed.post/3lmgflbpcjp2l,,['Flood'],[],Neutral,0.0,,Mississippi,Mississippi River,US,mississippi river
-pah.weather.im,2025-04-10T01:57:11.956800+00:00,,"PAH extends time of Flood Warning for Caldwell, Christian, Crittenden, Hopkins, Livingston, Lyon, McLean, Muhlenberg, Trigg, Webster [KY] till Apr 10, 10:00 AM CDT Link",at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgfnrojbb2z,,['Flood'],[],Neutral,0.0,,Kentucky,,US,
-pah.weather.im,2025-04-10T01:57:11.956800+00:00,,"PAH extends time of Flood Warning for Caldwell, Christian, Crittenden, Hopkins, Livingston, Lyon, McLean, Muhlenberg, Trigg, Webster [KY] till Apr 10, 10:00 AM CDT Link",at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgfnrojbb2z,,['Flood'],[],Neutral,0.0,Caldwell County,North Carolina,,US,caldwell
-pah.weather.im,2025-04-10T01:57:11.956800+00:00,,"PAH extends time of Flood Warning for Caldwell, Christian, Crittenden, Hopkins, Livingston, Lyon, McLean, Muhlenberg, Trigg, Webster [KY] till Apr 10, 10:00 AM CDT Link",at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgfnrojbb2z,,['Flood'],[],Neutral,0.0,Muhlenberg County,Kentucky,,US,muhlenberg
-pah.weather.im,2025-04-10T01:57:11.956800+00:00,,"PAH extends time of Flood Warning for Caldwell, Christian, Crittenden, Hopkins, Livingston, Lyon, McLean, Muhlenberg, Trigg, Webster [KY] till Apr 10, 10:00 AM CDT Link",at://did:plc:ctvgb5vect7k5yvo2ztsykhm/app.bsky.feed.post/3lmgfnrojbb2z,,['Flood'],[],Neutral,0.0,Livingston County,Michigan,,US,livingston
+author,created_at,post_id,text,uri,disasters,sentiment,polarity,city,state,region,country,latitude,longitude,location,preprocessed_text,locations
+earthquakewatch.bsky.social,2025-04-21T23:18:30.741680Z,,"Minor #earthquake felt near Universal City, CA. Stay safe everyone!",at://did:plc:demo/app.bsky.feed.post/644c8d83,['Earthquake'],Neutral,0.0,Universal City,California,,US,34.1389,-118.3534,Universal City,,[]
+quakeupdate.bsky.social,2025-04-21T21:48:30.741680Z,,Update: 4.1M quake rattles northern Los Angeles County. No damage reported.,at://did:plc:demo/app.bsky.feed.post/0afefbdd,['Earthquake'],Positive,0.15,Los Angeles County,California,,US,34.3083,-118.228,Los Angeles County,,[]
+stormtracker.tx,2025-04-21T23:03:30.741680Z,,Tropical storm forming in the Gulf could bring #hurricane conditions to the Texas coast by Friday.,at://did:plc:demo/app.bsky.feed.post/78a863ff,['Hurricane'],Negative,-0.05,,Texas,,US,29.0,-94.0,,,[]
+weatherhouston,2025-04-21T22:38:30.741680Z,,Houston residents urged to review evacuation routes ahead of possible category‑2 landfall.,at://did:plc:demo/app.bsky.feed.post/6948059c,['Hurricane'],Positive,0.12,Houston,Texas,,US,29.7604,-95.3698,Houston,,[]
+fl_flood_alerts,2025-04-21T23:28:30.741680Z,,Flash #flood warning for downtown Miami after 8 inches of rain in 3 hours.,at://did:plc:demo/app.bsky.feed.post/fd999a12,['Flood'],Negative,-0.1,Miami,Florida,,US,25.7617,-80.1918,Miami,,[]
+keysweather,2025-04-21T19:48:30.741680Z,,Key West streets underwater again; locals bringing out kayaks. #flood,at://did:plc:demo/app.bsky.feed.post/b6ef1e83,['Flood'],Neutral,0.0,Key West,Florida,,US,24.5551,-81.78,Key West,,[]
+coloradodaily,2025-04-21T23:38:30.741680Z,,New #wildfire breaks out near Boulder foothills; smoke visible across the city.,at://did:plc:demo/app.bsky.feed.post/50136af1,['Wildfire'],Negative,-0.08,Boulder,Colorado,,US,40.01499,-105.27055,Boulder,,[]
+denvernews,2025-04-21T20:48:30.741680Z,,Air quality alert issued for Denver metro as wildfire smoke drifts east.,at://did:plc:demo/app.bsky.feed.post/a24278c4,['Wildfire'],Neutral,0.0,Denver,Colorado,,US,39.7392,-104.9903,Denver,,[]
+nyc_health,2025-04-21T21:18:30.741680Z,,Rise in flu‑like illness across NYC prompts new #pandemic readiness drills.,at://did:plc:demo/app.bsky.feed.post/4d0306dc,['Pandemic'],Neutral,0.05,New York,New York,,US,40.7128,-74.006,New York,,[]
+buffalo_news,2025-04-21T18:48:30.741680Z,,Erie County hospitals report staffing strain amid new COVID‑19 variant wave.,at://did:plc:demo/app.bsky.feed.post/16ea0651,['Pandemic'],Negative,-0.04,Buffalo,New York,,US,42.8864,-78.8784,Buffalo,,[]
+abc7ny.bsky.social,2025-04-22T00:00:18Z,,Two lawsuits filed in Los Angeles allege major home insurance companies have colluded to limit coverage in California communities at high risk for wildfires. 7ny.tv/4cLEER1,at://did:plc:zf5ldyrehhn2jljmsjwqoybz/app.bsky.feed.post/3lneepspsux2s,['Wildfire'],Positive,0.11125,Los Angeles,Texas,,US,28.46582,-99.00003,Los Angeles,,[]
+abc7ny.bsky.social,2025-04-22T00:00:18Z,,Two lawsuits filed in Los Angeles allege major home insurance companies have colluded to limit coverage in California communities at high risk for wildfires. 7ny.tv/4cLEER1,at://did:plc:zf5ldyrehhn2jljmsjwqoybz/app.bsky.feed.post/3lneepspsux2s,['Wildfire'],Positive,0.11125,,California,,US,37.25022,-119.75126,California,,[]
+dallascomedyclub.bsky.social,2025-04-22T00:04:42+00:00,,New post: Polar Vortex Invades U S Penguins Seen House Hunting In Florida https://bohiney.com/polar-vortex-invades-u-s-penguins-seen-house-hunting-in-florida/,at://did:plc:t7ihb5q4uk4n2zda2igsss4f/app.bsky.feed.post/3lneexp6qgo22,['Cold Snap'],Neutral,0.0265151515151515,,Florida,,US,28.75054,-82.5001,,,[]
+radionz.nzcow.com,2025-04-22T00:22:17.324472+00:00,,📢 It is despite facing claims for the Easter storms and ongoing claims related to the Christchurch earthquake 15 years ago.,at://did:plc:rtp3l74ewza3fj3xawe7vwc5/app.bsky.feed.post/3lnefx4guwy2p,['Earthquake'],Neutral,0.0,Christchurch,Virginia,,US,37.60486,-76.5344,Christchurch,,[]
+lit.nws-bot.us,2025-04-22T01:00:23+00:00,,"🚨 Flood Warning issued April 21 at 7:48PM CDT by NWS Little Rock AR 🚨
+Additional Details Here.",at://did:plc:clc74zniey6qszifid4rmb42/app.bsky.feed.post/3lnei3auzm22x,['Flood'],Negative,-0.1875,Little Rock,Alabama,,US,31.11462,-87.38887,Little Rock,,[]
+eax.nws-bot.us,2025-04-22T01:01:07+00:00,,"🚨 Flood Warning issued April 21 at 7:50PM CDT until April 22 at 2:15AM CDT by NWS Kansas City/Pleasant Hill MO 🚨
+Additional Details Here.",at://did:plc:eja6m6wch4a5ss5xnlhz6x5b/app.bsky.feed.post/3lnei4kv63n2d,['Flood'],Positive,0.7333333333333334,Kansas City,Kansas,,US,39.11417,-94.62746,Kansas City,,[]
+eax.nws-bot.us,2025-04-22T01:01:07+00:00,,"🚨 Flood Warning issued April 21 at 7:50PM CDT until April 22 at 2:15AM CDT by NWS Kansas City/Pleasant Hill MO 🚨
+Additional Details Here.",at://did:plc:eja6m6wch4a5ss5xnlhz6x5b/app.bsky.feed.post/3lnei4kv63n2d,['Flood'],Positive,0.7333333333333334,Pleasant Hill,Mississippi,,US,31.72433,-90.73677,Pleasant Hill,,[]

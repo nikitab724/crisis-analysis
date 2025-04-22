@@ -18,9 +18,9 @@ To do this, run the command:
 
 _**UPDATE**_
 
-run **docker run -p 8888:8888 -p 8050:8050 -v ${pwd}/proj-dev:/proj-dev crisis-analysis**
+run **docker run -p 8051:8051 -v ${pwd}/proj-dev:/proj-dev crisis-analysis**
 
-or **docker run -p 8888:8888 -p 8050:8050 -v $(pwd)/proj-dev:/proj-dev crisis-analysis** on mac
+or **docker run -p 8051:8051 -v $(pwd)/proj-dev:/proj-dev crisis-analysis** on mac
 
 This will run the container off the image that you specified (crisis-analysis) and bind port 8888 on your computer to port 8888 (-p tag) in the container for the Jupyter server to communicate through
 
@@ -32,8 +32,22 @@ Now in the terminal you should see that your container is running and you should
 
 UPDATES:
 Exposed port 8050 to run the Dash app along with 8888 for the notebook
+UPDATED 4/21/2025:
+Exposed only port 8051 as that serves the main app, the rest are microservices that only communicate with each other
+- This also means that port 8050 isn't bound so you can't run the notebook
 
 Command to run the notebook is :
 **jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root**
+ONLY DO THIS IF YOU WANT TO MODIFY THE MODEL
+
+
+**When running the app, you need to start all the microservices first:**
+cd into proj-dev/app/live_demo and run the following scripts:
+model_server.py (does all entity extraction and location standardization through the supabase db)
+firehose_scraper_server.py (scrapes posts from bluesky)
+entry.py (puts it all together and handles data storage and grouping)
+dash_client.py (UI / frontend part) (instead of python run this command: gunicorn dash_client:server --bind 0.0.0.0:8051 --workers 4 --threads 2)
 
 Now, the docker container just runs "sleep infinity", so you can essentially control what you want it to do.
+
+Run gunicorn server instead of dash_client : gunicorn dash_client:server --bind 0.0.0.0:8051 --workers 4 --threads 2

@@ -11,27 +11,7 @@ import math
 
 # Create the Dash app
 app = Dash(__name__)
-
-# Load gazetteer data for city coordinates
-APP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-resp_gaz = requests.get("http://127.0.0.1:5000/gazetteer_pickle")
-if resp_gaz.status_code == 200:
-    gazetteer_df = pickle.loads(resp_gaz.content)
-    print("Gazetteer loaded with", len(gazetteer_df), "rows.")
-else:
-    print("Error fetching gazetteer pickle:", resp_gaz.text)
-
-# 2) Fetch and unpickle the location dictionary
-resp_loc = requests.get("http://127.0.0.1:5000/location_dict_pickle")
-if resp_loc.status_code == 200:
-    location_dict = pickle.loads(resp_loc.content)
-    print("Location dictionary loaded with", len(location_dict), "keys.")
-else:
-    print("Error fetching location dictionary pickle:", resp_loc.text)
-
-if gazetteer_df is None or location_dict is None:
-    raise ValueError("Gazetteer data not loaded properly. Please check the file path and format.")
+server = app.server
 
 # Load initial data if available
 try:
@@ -208,49 +188,28 @@ app.layout = html.Div(
     ],
 )
 
-def get_city_coordinates(city_name, state_name):
-    """Get latitude and longitude for a city using the gazetteer data."""
-    if gazetteer_df is None or location_dict is None:
+def get_city_coordinates(city_name: str, state_name: str) -> tuple[float, float]:
+    if not state_name or not city_name:
         return None, None
-        
-    # Normalize city name
-    if not city_name:
+
+    # always read the latest file
+    try:
+        df = pd.read_csv("filtered_posts.csv", dtype={"city": "string", "state": "string"})
+    except FileNotFoundError:
         return None, None
-        
-    city_name = city_name.lower().strip()
-    
-    # Look up in location_dict
-    if city_name not in location_dict:
+
+    city_norm  = city_name.strip().lower()
+    state_norm = state_name.strip().lower()
+
+    mask = (
+        df["city"].astype("string").str.lower().str.strip().eq(city_norm)
+        & df["state"].astype("string").str.lower().str.strip().eq(state_norm)
+    )
+    if not mask.any():
         return None, None
-        
-    # Get matching rows
-    row_indices = location_dict[city_name]
-    if not row_indices:
-        return None, None
-        
-    matches = gazetteer_df.loc[row_indices]
-    
-    # Filter by state if provided
-    if state_name:
-        state_abbr = None
-        for abbr, name in US_STATE_NAMES.items():
-            if name == state_name:
-                state_abbr = abbr
-                break
-                
-        if state_abbr:
-            state_matches = matches[matches['stateCode'] == state_abbr]
-            if not state_matches.empty:
-                matches = state_matches
-    
-    # If no matches, return None
-    if matches.empty:
-        return None, None
-    
-    # Get the best match (highest population)
-    best_match = matches.sort_values('population', ascending=False).iloc[0]
-    
-    return best_match['latitude'], best_match['longitude']
+
+    row = df.loc[mask].iloc[0]
+    return row["latitude"], row["longitude"]
 
 def parse_cities_list(cities_str):
     """Safely parse a string representation of a list of cities."""
@@ -544,16 +503,12 @@ def update_table(selected_state, n_intervals):
         return html.Div("Select a state to view related posts.")
     
     try:
-        # Read filtered_posts.csv with more robust parsing
+        # 1) Load or parse the CSV into a DataFrame
         try:
-            posts_df = pd.read_csv('filtered_posts.csv', 
-                                 quotechar='"',
-                                 escapechar='\\')
+            posts_df = pd.read_csv('filtered_posts.csv', quotechar='"', escapechar='\\')
         except Exception as e:
             print(f"Error with standard CSV reader for posts, trying alternative: {e}")
-            # Try alternative reading approach with Python's csv module
             import csv
-            
             with open('filtered_posts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
@@ -562,38 +517,55 @@ def update_table(selected_state, n_intervals):
                     # Ensure row has enough columns to match headers
                     while len(row) < len(headers):
                         row.append('')  # Pad with empty strings if needed
-                    data.append(row[:len(headers)])  # Take only columns that match headers
-            
-            # Convert to DataFrame
+                    data.append(row[:len(headers)])  # Only columns that match headers
             posts_df = pd.DataFrame(data, columns=headers)
         
+        # 2) Filter by selected state
         filtered_posts = posts_df[posts_df['state'] == selected_state]
-        
         if filtered_posts.empty:
             return html.Div("No posts found for this state.")
-        
+
+        # Columns to display in the Dash table
         columns_to_display = ['text', 'disasters', 'city', 'state', 'sentiment', 'polarity']
-        
-        # Function to safely convert any value to string
-        def safe_str(val):
-            if isinstance(val, (list, dict)):
-                return str(val)
-            elif isinstance(val, str) and (val.startswith('[') or val.startswith('{')):
+
+        # 3) Define a helper function to format each cell
+        import ast
+
+        def format_cell_value(val, col_name):
+            """Return a nicely formatted string from the cell value."""
+            
+                       # If it's a string that looks like a list, parse it
+            if isinstance(val, str) and (val.startswith('[') and val.endswith(']')):
                 try:
-                    # Try to evaluate if it's a string representation of a list/dict
-                    return str(eval(val))
+                    parsed = ast.literal_eval(val)  # e.g. ['flood', 'hurricane']
+                    if isinstance(parsed, list):
+                        val = parsed
                 except:
-                    return val
-            else:
-                return str(val)
-        
+                    pass  # fallback to using val as-is if parsing fails
+
+            # For all other columns, just title-case the string if it's not numeric
+            if isinstance(val, list):
+                # If it's a list for some reason, join it with commas
+                return ", ".join(str(item).title() for item in val)
+            
+            if isinstance(val, str):
+                return val.title()  # Convert to Title Case for a nicer look
+            
+            # If it's numeric or something else, just convert to string
+            return str(val)
+
+        # 4) Build the Dash table
         return html.Table([
-            html.Thead(html.Tr([html.Th(col) for col in columns_to_display])),
+            html.Thead(html.Tr([html.Th(col.title()) for col in columns_to_display])),
             html.Tbody([
-                html.Tr([html.Td(safe_str(filtered_posts.iloc[i][col])) for col in columns_to_display])
+                html.Tr([
+                    html.Td(format_cell_value(filtered_posts.iloc[i][col], col))
+                    for col in columns_to_display
+                ])
                 for i in range(len(filtered_posts))
             ])
         ])
+
     except Exception as e:
         print(f"Error updating posts table: {e}")
         return html.Div(f"Error loading posts: {e}")
@@ -663,4 +635,4 @@ def update_stats(n_intervals):
         return html.Div(f"Error loading statistics: {e}")
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8051)
+    app.run(host='0.0.0.0', debug=False, port=8051)

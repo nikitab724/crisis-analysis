@@ -31,6 +31,8 @@ def default_entity_data():
         'state': None,
         'region': None,
         'country': None,
+        'latitude': None,
+        'longitude': None,
         'all_locations': None
     }
 
@@ -61,7 +63,7 @@ def filter_posts(df: pd.DataFrame):
     required_columns = [
         'author', 'created_at', 'post_id', 'text', 'uri',
         'disasters', 'sentiment', 'polarity', 
-        'city', 'state', 'region', 'country', 'location'
+        'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location'
     ]
     
     # Process each row individually to avoid entity_data errors
@@ -87,6 +89,9 @@ def filter_posts(df: pd.DataFrame):
             
             #print("disasters: ", disasters)
             
+
+            print("entry disasters: ", disasters)
+            print("entry locations: ", locations)
             #top level row
             top_row = {
                         'author': row.get('author', ''),
@@ -101,6 +106,8 @@ def filter_posts(df: pd.DataFrame):
                         'state': entity_result.get('state', ''),
                         'region': entity_result.get('region', ''),
                         'country': entity_result.get('country', 'US'),
+                        'latitude': entity_result.get('latitude', None),
+                        'longitude': entity_result.get('longitude', None),
                         'location': entity_result.get('city', '')
                     }
             processed_rows.append(top_row)
@@ -129,6 +136,8 @@ def filter_posts(df: pd.DataFrame):
                         'state': loc_info.get('state', ''),
                         'region': loc_info.get('region', ''),
                         'country': loc_info.get('country', 'US'),
+                        'latitude': loc_info.get('latitude', None),
+                        'longitude': loc_info.get('longitude', None),
                         'location': loc_info.get('location', '')
                     }
                     
@@ -234,7 +243,7 @@ def reset_csv_files():
         'filtered_posts.csv': [
             'author', 'created_at', 'post_id', 'text', 'uri', 'preprocessed_text',
             'disasters', 'locations', 'sentiment', 'polarity', 
-            'city', 'state', 'region', 'country', 'location'
+            'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location'
         ],
         'crisis_counts.csv': [
             'country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'

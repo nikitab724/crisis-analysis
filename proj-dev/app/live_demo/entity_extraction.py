@@ -72,7 +72,7 @@ def test_model(text):
 
 headers = ["Negative", "Neutral", "Positive"]
 def extract_ent_sent(text):
-    #print(text)
+    #print("entity extraction text: ", text)
     doc = nlp(clean_text(text))
     disasters = set()  # Use set to deduplicate identical disasters
     locations = set()  # Use set to deduplicate identical locations
@@ -84,7 +84,7 @@ def extract_ent_sent(text):
             disaster_id = ent.ent_id_ if ent.ent_id_ else ent.text
             disasters.add(disaster_id)  # Use add() for set
         elif ent.label_ in ["GPE", "LOC", "FAC"]:
-            location = ent.text.strip("# ").lower()
+            location = ent.text.strip("# ")
             if location.endswith("'s"):
                 location = location[:-2]
             elif location.endswith("'s"):

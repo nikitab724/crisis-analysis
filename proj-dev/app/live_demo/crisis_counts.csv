@@ -1,19 +1,13 @@
 country,state,disasters,count,avg_sentiment,cities,severity
-US,Louisiana,Flood,5,0.06,"['Bogalusa', 'New Orleans', 'Red River Landing']",2.337581167421939
-US,Mississippi,Flood,4,0.02,['Pearl River County'],1.5583874449479593
-US,Texas,Hurricane,4,0.1,"['Austin', 'Houston', 'San Antonio', 'Wichita Falls']",1.5583874449479593
-US,California,Earthquake,3,-0.03,['Willits'],0.7791937224739797
-US,Florida,Flood,3,0.1,"['Blountstown', 'Barrineau Park']",0.7791937224739797
-US,Texas,Wildfire,2,0.29,"['Palestine', 'Israel']",0.0
-US,Indiana,Flood,2,0.04,"['Cosperville', 'New Harmony']",0.0
-US,Tennessee,Flood,2,0.0,['Memphis'],0.0
-US,Kentucky,Flood,2,0.0,['Muhlenberg County'],0.0
-US,Alabama,Flood,1,0.1,[],-0.7791937224739797
-US,Kentucky,Wildfire,1,0.1,['Korea'],-0.7791937224739797
-US,Colorado,Wildfire,1,0.1,[],-0.7791937224739797
-US,Florida,Hurricane,1,0.0,[],-0.7791937224739797
-US,Hawaii,Hurricane,1,0.35,[],-0.7791937224739797
-US,Ohio,Hurricane,1,0.0,['Toledo'],-0.7791937224739797
-US,North Carolina,Flood,1,0.0,['Caldwell County'],-0.7791937224739797
-US,Michigan,Flood,1,0.0,['Livingston County'],-0.7791937224739797
-US,Pennsylvania,Landslide,1,-0.03,['New Kensington'],-0.7791937224739797
+US,Colorado,['Wildfire'],2,-0.04,"['Denver', 'Boulder']",1.1328430311977618
+US,California,['Earthquake'],2,0.08,"['Los Angeles County', 'Universal City']",1.1328430311977618
+US,New York,['Pandemic'],2,0.0,"['Buffalo', 'New York']",1.1328430311977618
+US,Florida,['Flood'],2,-0.05,"['Key West', 'Miami']",1.1328430311977618
+US,Texas,['Hurricane'],2,0.03,['Houston'],1.1328430311977618
+US,California,Wildfire,1,0.11,[],-0.8091735937126872
+US,Alabama,Flood,1,-0.19,['Little Rock'],-0.8091735937126872
+US,Florida,Cold Snap,1,0.03,[],-0.8091735937126872
+US,Mississippi,Flood,1,0.73,['Pleasant Hill'],-0.8091735937126872
+US,Kansas,Flood,1,0.73,['Kansas City'],-0.8091735937126872
+US,Texas,Wildfire,1,0.11,['Los Angeles'],-0.8091735937126872
+US,Virginia,Earthquake,1,0.0,['Christchurch'],-0.8091735937126872

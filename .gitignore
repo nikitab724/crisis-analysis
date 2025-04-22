@@ -1,3 +1,6 @@
 proj-dev/CrisisOrNotModel/results/
 proj-dev/app/disaster_ner/
 proj-dev/data/US.txt
+.env
+__pycache__/
+*.pyc

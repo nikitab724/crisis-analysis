@@ -4,20 +4,243 @@ import gc
 import time
 import logging
 import psutil
-import pickle
+import requests
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+from typing import Optional, Dict, Any, List
+from functools import lru_cache
+from flask import Flask, request, jsonify
 
 
 import spacy
 from flask import Flask, request, jsonify
 
-from gazetteer import load_gazetteer, build_location_dict, lookup_city_state_country, standardize_row
 from entity_extraction import extract_ent_sent, clean_text
+
+### Location standardization setup
+load_dotenv()
+
+url: str = os.environ.get('SUPABASE_URL')
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
+
+app = Flask(__name__)
+
+US_STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia"
+}
+
+state_coordinates = {
+    'Alabama': ('32.7794', '-86.8287'),
+    'Alaska': ('64.0685', '-152.2782'),
+    'Arizona': ('34.2744', '-111.6602'),
+    'Arkansas': ('34.8938', '-92.4426'),
+    'California': ('37.1841', '-119.4696'),
+    'Colorado': ('38.9972', '-105.5478'),
+    'Connecticut': ('41.6219', '-72.7273'),
+    'Delaware': ('38.9896', '-75.5050'),
+    'Florida': ('28.6305', '-82.4497'),
+    'Georgia': ('32.6415', '-83.4426'),
+    'Hawaii': ('20.2927', '-156.3737'),
+    'Idaho': ('44.3509', '-114.6130'),
+    'Illinois': ('40.0417', '-89.1965'),
+    'Indiana': ('39.8942', '-86.2816'),
+    'Iowa': ('42.0751', '-93.4960'),
+    'Kansas': ('38.4937', '-98.3804'),
+    'Kentucky': ('37.5347', '-85.3021'),
+    'Louisiana': ('31.0689', '-91.9968'),
+    'Maine': ('45.3695', '-69.2428'),
+    'Maryland': ('39.0550', '-76.7909'),
+    'Massachusetts': ('42.2596', '-71.8083'),
+    'Michigan': ('44.3467', '-85.4102'),
+    'Minnesota': ('46.2807', '-94.3053'),
+    'Mississippi': ('32.7364', '-89.6678'),
+    'Missouri': ('38.3566', '-92.4580'),
+    'Montana': ('47.0527', '-109.6333'),
+    'Nebraska': ('41.5378', '-99.7951'),
+    'Nevada': ('39.3289', '-116.6312'),
+    'New Hampshire': ('43.6805', '-71.5811'),
+    'New Jersey': ('40.1907', '-74.6728'),
+    'New Mexico': ('34.4071', '-106.1126'),
+    'New York': ('42.9538', '-75.5268'),
+    'North Carolina': ('35.5557', '-79.3877'),
+    'North Dakota': ('47.4501', '-100.4659'),
+    'Ohio': ('40.2862', '-82.7937'),
+    'Oklahoma': ('35.5889', '-97.4943'),
+    'Oregon': ('43.9336', '-120.5583'),
+    'Pennsylvania': ('40.8781', '-77.7996'),
+    'Rhode Island': ('41.6762', '-71.5562'),
+    'South Carolina': ('33.9169', '-80.8964'),
+    'South Dakota': ('44.4443', '-100.2263'),
+    'Tennessee': ('35.8580', '-86.3505'),
+    'Texas': ('31.4757', '-99.3312'),
+    'Utah': ('39.3055', '-111.6703'),
+    'Vermont': ('44.0687', '-72.6658'),
+    'Virginia': ('37.5215', '-78.8537'),
+    'Washington': ('47.3826', '-120.4472'),
+    'West Virginia': ('38.6409', '-80.6227'),
+    'Wisconsin': ('44.6243', '-89.9941'),
+    'Wyoming': ('42.9957', '-107.5512'),
+    'District of Columbia': ('38.9101', '-77.0147')
+}
+
+@lru_cache(maxsize=2048)
+def lookup_city_state_country(loc_text: str):
+    norm = loc_text.strip()
+    norm_up = norm.upper()
+    norm_title = norm.title()
+    norm_lower = norm.lower()
+
+    # ---------- 1) State code / state name ----------
+    if norm_up in US_STATE_NAMES or norm_title in US_STATE_NAMES.values():
+        # exact ADM1 lookup
+        resp = (
+            supabase.table("gazetteer")
+            .select("name, featureCode, stateCode, countryCode, latitude, longitude")
+            .eq("featureCode", "ADM1")
+            .or_(f"stateCode.eq.{norm_up},name.eq.{norm_title}")
+            .limit(1)
+            .execute()
+        )
+    else:
+        resp = (
+            supabase.table("gazetteer")
+            .select("name, featureCode, stateCode, countryCode, latitude, longitude")
+            .eq("name", norm_title)                     # 2) exact city name
+            .or_("featureCode.ilike.PPL%")
+            .limit(1)
+            .execute()
+        )
+
+        # ---------- 3) alternate_list token match ----------
+        if not resp.data and len(norm) > 2:
+            # alternate_list is a comma‑separated list, so anchor with commas
+            resp = (
+                supabase.table("gazetteer")
+                .select("name, featureCode, stateCode, countryCode, latitude, longitude")
+                .ilike("alternate_list", f"%,{norm_lower},%")
+                .ilike("featureCode", "PPL%")
+                .order("population", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+        # ---------- 4) fuzzy fallback (optional) ----------
+        if not resp.data and len(norm) > 3:
+            resp = (
+                supabase.table("gazetteer")
+                .select("name, featureCode, stateCode, countryCode, latitude, longitude")
+                .ilike("alternate_list", f"%{norm_lower}%")
+                .ilike("featureCode", "PPL%")
+                .order("population", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+    print(resp.data if resp.data else "No data found")
+
+    city = state = region = place = state_code = country_code = latitude = longitude = None
+
+    if resp.data:
+        record = resp.data[0]
+        feature = (record.get('featureCode') or "").upper()
+        place = record.get('name')
+        state_code = record.get('stateCode')
+        country_code = record.get('countryCode')
+        latitude = record.get('latitude')
+        longitude = record.get('longitude')
+
+
+        if feature == "ADM1":
+            if state_code in US_STATE_NAMES:
+                state = US_STATE_NAMES.get(state_code)
+            else:
+                state = state_code
+        elif feature.startswith("PPL") or feature.startswith("ADM"):
+            city  = place
+            state = US_STATE_NAMES.get(state_code) if state_code in US_STATE_NAMES else None
+        else:
+            city = place
+
+
+    all_states = {s.lower() for s in US_STATE_NAMES.values()} | {k.lower() for k in US_STATE_NAMES}
+    if not state:
+        city = None
+        if norm.lower() in all_states: #i have no idea what the fuck this is here for but it is and it works
+            region = None
+        else:
+            region = norm.title()
+    if region:
+        for state_us in US_STATE_NAMES.values():
+            if state_us.lower() in region.lower():
+                state = state_us
+                latitude, longitude = state_coordinates.get(state_us, (None, None))
+                break
+
+    return {
+        "city": city,
+        "state": state,
+        "region": region,
+        "country": country_code,
+        "latitude": latitude,
+        "longitude": longitude
+    }
+
+
+def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    row["locations"] should be a list of raw location strings.
+    Returns a dict with 'city','state','region','country','all_locations'.
+    """
+    locs = row.get("locations") or []
+    results: List[Dict[str, Any]] = []
+
+    for loc in locs:
+        match = lookup_city_state_country(loc)
+        if match and match.get("state"):
+            results.append({
+                "location": loc,
+                **match
+            })
+
+    if not results:
+        return {
+            "city": None,
+            "state": None,
+            "region": None,
+            "country": None,
+            "latitude": None,
+            "longitude": None
+        }
+    
+    first, *rest = results
+    return {
+        "city": first.get("city"),
+        "state": first.get("state"),
+        "region": first.get("region"),
+        "country": first.get("country"),
+        "latitude": first.get("latitude"),
+        "longitude": first.get("longitude"),
+        "all_locations": rest,
+    }
+
 
 ######################
 # Config and Globals #
 ######################
-
-app = Flask(__name__)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,8 +251,6 @@ logger = logging.getLogger(__name__)
 
 # Global references to loaded data
 nlp = None
-gazetteer_df = None
-location_dict = None
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #print(APP_DIR)
@@ -41,13 +262,9 @@ def initialize_globals():
     """
     Load the spaCy model and gazetteer data once, if not already loaded.
     """
-    global nlp, gazetteer_df, location_dict
-    
-    if nlp and gazetteer_df is not None and location_dict is not None:
-        logger.info("Globals already initialized, skipping reload.")
-        return
-    
-    logger.info("Initializing model server globals...")
+    global nlp
+
+    logger.info("Initializing model server...")
     process = psutil.Process(os.getpid())
     logger.info(f"Memory usage before loading data: {process.memory_info().rss / 1024 / 1024:.2f} MB")
 
@@ -66,33 +283,7 @@ def initialize_globals():
             nlp = None  # If we can’t load anything, set to None
 
     # Force garbage collection after loading
-    gc.collect()
-    
-    # 2) Load gazetteer
-    try:
-        gazetteer_path = os.path.join(APP_DIR, "data", "US.txt")
-        if not os.path.exists(gazetteer_path):
-            raise FileNotFoundError(f"Gazetteer file not found at {gazetteer_path}")
-        logger.info(f"Loading gazetteer from: {gazetteer_path}")
-        
-        # Actually load + build dictionary
-        loaded_gazetteer = load_gazetteer(gazetteer_path)
-        built_dict = build_location_dict(loaded_gazetteer)
-        
-        # Assign to globals
-        gazetteer_df = loaded_gazetteer
-        location_dict = built_dict
-
-        logger.info(f"Loaded gazetteer: {len(gazetteer_df)} rows, location_dict keys: {len(location_dict)}")
-    except Exception as ex:
-        logger.error(f"Error loading gazetteer: {ex}")
-        gazetteer_df = None
-        location_dict = None
-
-    # Force GC again
-    gc.collect()
-    
-    logger.info(f"Memory usage after loading data: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+    gc.collect() 
 
 ######################
 # Utility Functions  #
@@ -111,34 +302,6 @@ def convert_sets_to_lists(obj):
 ###########################
 # Flask Endpoint Handlers #
 ###########################
-@app.route("/gazetteer_pickle", methods=["GET"])
-def get_gazetteer_pickle():
-    """Return the gazetteer DataFrame in pickle-serialized form."""
-    initialize_globals()
-    
-    global gazetteer_df
-    if gazetteer_df is None:
-        return "Gazetteer is not available", 500
-
-    # Convert the DataFrame to a pickled bytes object
-    pickled_data = pickle.dumps(gazetteer_df)
-    return pickled_data, 200, {
-        "Content-Type": "application/octet-stream"
-    }
-
-@app.route("/location_dict_pickle", methods=["GET"])
-def get_location_dict_pickle():
-    """Return the location dictionary in pickle-serialized form."""
-    initialize_globals()
-    
-    global location_dict
-    if location_dict is None:
-        return "Location dictionary is not available", 500
-
-    pickled_data = pickle.dumps(location_dict)
-    return pickled_data, 200, {
-        "Content-Type": "application/octet-stream"
-    }
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -147,11 +310,9 @@ def health_check():
     """
     status = {
         'spaCy': 'loaded' if nlp else 'missing',
-        'gazetteer': 'loaded' if gazetteer_df is not None else 'missing',
-        'location_dict': 'loaded' if location_dict is not None else 'missing'
     }
     # If everything is loaded, we consider it 'healthy'
-    overall_state = 'healthy' if (nlp and gazetteer_df is not None and location_dict is not None) else 'degraded'
+    overall_state = 'healthy' if (nlp is not None) else 'degraded'
     return jsonify({'status': overall_state, 'details': status})
 
 @app.route('/extract_entities', methods=['POST'])
@@ -162,21 +323,17 @@ def extract_entities():
     start_time = time.time()
 
     data = request.json or {}
-    text = data.get('text', '').strip()
+    text = data.get('text', '')
     if not text:
         return jsonify({'error': 'No text provided'}), 400
 
     logger.info(f"extract_entities called, text length={len(text)}")
     
     # Ensure everything is loaded
-    initialize_globals()
-
-    # Clean text
-    cleaned = clean_text(text)
-
+    #initialize_globals()
     # Extract using spaCy-based logic or fallback
     if nlp:
-        ent_sent = extract_ent_sent(cleaned)
+        ent_sent = extract_ent_sent(text)
         ent_sent = convert_sets_to_lists(ent_sent)
     else:
         # If no spaCy loaded, return minimal structure
@@ -190,13 +347,17 @@ def extract_entities():
     #print("locations in ent sent before standardization (model server): ", ent_sent['locations'])
 
     # Attempt location standardization if gazetteer is loaded
-    if gazetteer_df is not None and location_dict is not None:
+    if ent_sent['disasters'] and ent_sent['locations']:
+        print(ent_sent['disasters'], ent_sent['locations'])
         try:
-            loc_series = standardize_row({'locations': ent_sent['locations']}, gazetteer_df, location_dict)
+            loc_series = standardize_row({'locations': ent_sent['locations']})
             # Update ent_sent with the standardization keys
+            print(loc_series)
             for key, val in loc_series.items():
                 ent_sent[key] = val
             
+
+            print("ent sent after standardization:", ent_sent)
             # De-duplicate the 'locations' list if present
             if 'locations' in ent_sent and isinstance(ent_sent['locations'], list):
                 ent_sent['locations'] = list(set(ent_sent['locations']))
@@ -208,17 +369,10 @@ def extract_entities():
                 "state": None,
                 "region": None,
                 "country": None,
+                "latitude": None,
+                "longitude": None,
                 "all_locations": []
             })
-    else:
-        # If gazetteer or location_dict is missing, skip
-        ent_sent.update({
-            "city": None,
-            "state": None,
-            "region": None,
-            "country": None,
-            "all_locations": []
-        })
 
     #print("locations in ent sent after standardization (model server): ", ent_sent['city'], ent_sent['all_locations'])
     elapsed = time.time() - start_time

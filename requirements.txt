@@ -13,3 +13,7 @@ matplotlib
 locationtagger
 us
 atproto
+waitress
+lxml[html_clean]
+supabase
+gunicorn
