@@ -135,6 +135,7 @@ Set `SUPABASE_URL` and `SUPABASE_KEY` for a database containing the existing `ga
 
 | Column | Expected content |
 | --- | --- |
+| `geonameid` | Unique GeoNames ID; stable tie-breaker for equal-population city matches |
 | `name` | Place or state name |
 | `featureCode` | GeoNames code, such as `PPL` or `ADM1` |
 | `stateCode` | U.S. state abbreviation, such as `TX` |
@@ -143,7 +144,7 @@ Set `SUPABASE_URL` and `SUPABASE_KEY` for a database containing the existing `ga
 | `alternate_list` | Searchable text of alternate names, comma-delimited for token matching |
 | `population` | Numeric population for fallback ordering |
 
-The credentials must allow the server to read that table. A populated database, database migration, and original GeoNames `US.txt` download are **not included**. The legacy `proj-dev/data/load_csv.py` is an experiment, not a complete database provisioning command. Do not commit credentials.
+The credentials must allow the server to read that table. For an expired project with a downloaded backup, [restore the gazetteer with the recovery guide](docs/GAZETTEER_RESTORE.md). The backup, populated database, and original GeoNames `US.txt` download are **not included** in Git. The legacy `proj-dev/data/load_csv.py` remains an experiment. Do not commit credentials.
 
 In separate terminals with the environment activated, run:
 

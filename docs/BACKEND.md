@@ -12,6 +12,8 @@ Render's Free instance has 512 MB RAM. The optional `render-live.yaml` defines a
 
 ## Use the existing Supabase project
 
+If the old project has exceeded its pause recovery window, [restore the downloaded gazetteer backup into a new project](GAZETTEER_RESTORE.md) first. That guide also covers a local Supabase rehearsal without hosting charges.
+
 Copy the **Project URL** and an API key that permits server-side `SELECT` access to the populated `gazetteer` table. Enter them directly in Render's secret environment fields, or in the ignored local `.env` file:
 
 | Variable | Value |
@@ -21,7 +23,7 @@ Copy the **Project URL** and an API key that permits server-side `SELECT` access
 
 Supabase's current server-only secret keys start with `sb_secret_`; an existing legacy `service_role` key also works. These keys have elevated access and must stay in server settings, never browser code, Git, or chat. If the existing project already provides a lower-privilege key with suitable read permissions, that is sufficient. See [Supabase API key guidance](https://supabase.com/docs/guides/getting-started/api-keys).
 
-The table must expose these exact columns: `name`, `featureCode`, `stateCode`, `countryCode`, `latitude`, `longitude`, `alternate_list`, and `population`. The known demo expects an Austin city row (`PPL…`, `TX`, `US`) and a Texas state row (`ADM1`, `TX`, `US`). The launcher performs no migrations or database writes.
+The table must expose these exact columns: `geonameid`, `name`, `featureCode`, `stateCode`, `countryCode`, `latitude`, `longitude`, `alternate_list`, and `population`. The known demo expects an Austin city row (`PPL…`, `TX`, `US`) and a Texas state row (`ADM1`, `TX`, `US`). Exact city-name matches use highest population, with GeoNames ID as a stable tie-breaker; this is still a heuristic, not context-aware location disambiguation. The app launcher performs no migrations or database writes.
 
 ## Deploy the separate real service on Render
 

@@ -117,6 +117,8 @@ def lookup_city_state_country(loc_text: str):
             .select("name, featureCode, stateCode, countryCode, latitude, longitude")
             .eq("name", norm_title)                     # 2) exact city name
             .or_("featureCode.ilike.PPL%")
+            .order("population", desc=True, nullsfirst=False)
+            .order("geonameid")
             .limit(1)
             .execute()
         )
@@ -308,7 +310,7 @@ def readiness_check():
         return jsonify({'status': 'unavailable', 'component': 'model'}), 503
     try:
         response = supabase.table("gazetteer").select(
-            "name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list, population"
+            "geonameid, name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list, population"
         ).limit(1).execute()
         if not response.data:
             return jsonify({'status': 'unavailable', 'component': 'gazetteer', 'reason': 'empty or unreadable'}), 503
