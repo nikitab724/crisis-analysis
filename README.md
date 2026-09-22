@@ -98,7 +98,9 @@ For an alternate local port, run `PORT=8052 bash scripts/start_demo.sh`. The ful
 
 The real backend uses a Supabase `gazetteer` table. The original backup has been recovered into a new Free Supabase project, and the real NLP → hosted database → dashboard path was verified with 193,736 location records on September 22, 2026. [Follow the backend setup guide](docs/BACKEND.md) for the separate Render Blueprint (`render-live.yaml`), secret environment settings, and local startup. The model, processor, and dashboard run together on one host because the dashboard reads their local CSVs.
 
-The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. The real model used about 2.6 GiB by itself locally, so this Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
+The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. For a public interview link with no additional hosting charge, [share the working local dashboard through a temporary Cloudflare tunnel](docs/BACKEND.md#share-the-real-local-demo-for-free). The Mac must remain awake and online.
+
+The real model used about 2.6 GiB by itself locally, so the separate Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
 
 ## Rebuild and verify the original NLP pipeline
 

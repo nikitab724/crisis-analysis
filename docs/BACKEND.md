@@ -10,6 +10,21 @@ The real transformer used approximately **2.6 GiB for the model process alone** 
 
 Render's Free instance has 512 MB RAM. The optional `render-live.yaml` defines a separate **paid `2c-4g` instance**, currently listed at **$85/month** on [Render's pricing page](https://render.com/pricing), checked September 22, 2026. Review the current price in Render before creating it. The existing `render.yaml` remains Free. Running the real pipeline locally avoids this additional hosting charge.
 
+## Share the real local demo for free
+
+For an interview, the existing Mac can run the model, processor, and dashboard while the Free Supabase project supplies location lookups. A [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/) gives that dashboard a temporary public HTTPS address without an additional hosting subscription or a Cloudflare account.
+
+First start the real local pipeline on port 8052 using the instructions below. In a separate terminal, with `cloudflared` installed:
+
+```sh
+curl --fail http://127.0.0.1:8052/health
+caffeinate -i cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8052
+```
+
+Open the `https://...trycloudflare.com` URL printed by the tunnel. The `caffeinate` command prevents idle sleep while the tunnel runs on macOS; keep the Mac plugged in, its lid open, and its network connected. On Linux, omit `caffeinate -i`. Stop the tunnel with Ctrl+C in its terminal; this removes public access while leaving the separately launched local pipeline running.
+
+Only the dashboard port is forwarded. Model/database credentials remain in the backend. The startup input is still the labeled synthetic post processed by real NLP and Supabase. This is a temporary demo link, not always-on hosting: restarting the tunnel creates a new address, closing either process breaks the link, and Quick Tunnels have no uptime guarantee. The Render fixture remains an independent backup.
+
 ## Configure Supabase
 
 The replacement **crisis-analysis** project is running in **nikitab724's Org** on the quoted **$0/month Free plan**, in Ohio (`us-east-2`). The owner can manage it in the [Supabase dashboard](https://supabase.com/dashboard/project/zhsnegbrxgdthfdcblpn). Its API URL is `https://zhsnegbrxgdthfdcblpn.supabase.co`. The restored table contains 193,736 original location records; server access is read-only and browser roles have no table access.
