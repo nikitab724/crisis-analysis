@@ -118,7 +118,7 @@ def main():
                         {"id": "state-dropdown", "property": "value", "value": "Texas"}, *interval])
                     assert "Flood in Austin Texas." in json.dumps(table)
                     stats = callback(base, "stats-table.children", interval)
-                    assert "Total Reports" in json.dumps(stats)
+                    assert "Location records" in json.dumps(stats)
                     assert stats["props"]["children"][0]["props"]["children"][1]["props"]["children"] == 2
                     assert any(q.get("name") == ["eq.Austin"] for q in queries)
                     assert any(q.get("featureCode") == ["eq.ADM1"] for q in queries)

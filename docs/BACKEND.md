@@ -78,6 +78,16 @@ PORT=8052 MODEL_PORT=5002 python scripts/run_pipeline.py --mode demo
 
 Open **http://localhost:8052**. Port 5002 avoids macOS services that sometimes occupy 5000. If dependencies and the model are already built in your active environment, skip installation/build. Do not overwrite an existing configured `.env`; edit it instead. To collect Bluesky posts, use `--mode live`. Stop with Ctrl+C. The launcher is POSIX-only; on Windows use Docker or WSL.
 
+The recovery machine is now running **live mode**, with the collector on internal port **5004** and the same dashboard/tunnel on **8052**. To restart it with the prepared environment, stop the current pipeline, then run:
+
+```sh
+.venv-live-check/bin/python scripts/run_pipeline.py --mode live
+```
+
+Use `--mode demo` to return to the repeatable example instead. Restarting the pipeline resets this run's collected data. The separately running tunnel does not need to restart, so its address can stay the same.
+
+The activity row reports posts received, successfully analyzed posts, analysis errors, and the latest processor update. Counts exclude the synthetic startup post; the charts include its extracted records. A batch with no matching crisis posts still advances activity. `/activity` exposes the same counters without credentials or post contents. The collector requests up to 100 posts per batch, returns partial batches after 40 seconds, then reconnects on the next batch. Posts published between collection windows can be missed.
+
 ## Troubleshooting and limits
 
 | Symptom | Check |
@@ -91,6 +101,6 @@ Open **http://localhost:8052**. Port 5002 avoids macOS services that sometimes o
 | Process killed / out of memory | Inspect memory metrics; Free and 2 GB instances are too small for the local measurement |
 | Live mode shows only startup post | Check ingestion logs; random traffic need not contain a qualifying report |
 
-Every start uses a fresh temporary data directory and regenerates the known post. CSV history is **not durable** across restarts/deploys. Existing local data directories are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and the presence of both CSVs; it does not prove recent firehose activity or incident accuracy.
+Every start uses a fresh temporary data directory and regenerates the known post. CSV history is **not durable** across restarts/deploys. Existing local data directories are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and both CSVs. Live mode also requires a processor update within three minutes and no current collection error. This does not establish complete stream coverage, recent matching posts, or incident accuracy.
 
 Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for the hosted database verification and separate tests using controlled responses. The public Render fixture has not been switched to the real transformer service.

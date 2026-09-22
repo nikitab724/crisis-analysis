@@ -10,15 +10,14 @@ async def process_post(commit, op, resolver):
     """Process a single post from the Firehose."""
     try:
         car = CAR.from_bytes(commit.blocks)
-        for record in car.blocks.values():
-            if isinstance(record, dict) and record.get('$type') == 'app.bsky.feed.post':
-                post_data = {
-                    'text': record.get('text', ''),
-                    'created_at': record.get('createdAt', ''),
-                    'author': await resolve_author_handle(commit.repo, resolver),
-                    'uri': f'at://{commit.repo}/{op.path}',
-                }
-                return post_data
+        record = car.blocks.get(op.cid)
+        if isinstance(record, dict) and record.get('$type') == 'app.bsky.feed.post':
+            return {
+                'text': record.get('text', ''),
+                'created_at': record.get('createdAt', ''),
+                'author': await resolve_author_handle(commit.repo, resolver),
+                'uri': f'at://{commit.repo}/{op.path}',
+            }
     except Exception as e:
         print(f"Error processing post: {e}")
         return
@@ -26,7 +25,7 @@ async def process_post(commit, op, resolver):
 async def resolve_author_handle(repo, resolver):
     """Resolve the author handle from the DID."""
     try:
-        resolved_info = await resolver.did.resolve(repo)
+        resolved_info = await asyncio.wait_for(resolver.did.resolve(repo), timeout=2)
         return resolved_info.also_known_as[0].split('at://')[1] if resolved_info.also_known_as else repo
     except Exception as e:
         print(f"Could not resolve handle for {repo}: {e}")
@@ -69,7 +68,14 @@ class FirehoseAPI:
     async def fetch_posts(self, post_limit):
         self.client = AsyncFirehoseSubscribeReposClient()
         post_list = []
-        await listen_firehose(self.client, self.resolver, post_limit, post_list)
+        try:
+            await asyncio.wait_for(
+                listen_firehose(self.client, self.resolver, post_limit, post_list), timeout=40
+            )
+        except asyncio.TimeoutError:
+            pass  # Return the collected portion of a slow batch.
+        finally:
+            await self.client.stop()
         return post_list
 
 scraper = FirehoseAPI()
@@ -80,10 +86,12 @@ asyncio.set_event_loop(loop)
 def scrape():
     try:
         post_limit = int(request.args.get("limit", 50))  # Default to 50 posts
+        if not 1 <= post_limit <= 100:
+            return jsonify({"error": "limit must be between 1 and 100"}), 400
         startTime = time.time()
         posts = loop.run_until_complete(scraper.fetch_posts(post_limit))
         elapsedTime = time.time() - startTime
-        print(f'Scraped {post_limit} posts in {elapsedTime:.2f}s')
+        print(f'Scraped {len(posts)} posts in {elapsedTime:.2f}s', flush=True)
         return jsonify({"posts": posts})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

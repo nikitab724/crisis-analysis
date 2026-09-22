@@ -3,8 +3,11 @@ import pandas as pd
 import requests
 import plotly.express as px
 import os
-import ast  # For safely evaluating string representations of lists
-import plotly.graph_objects as go
+import ast
+from datetime import datetime, timezone
+from urllib.parse import quote
+
+from pipeline_status import read_status
 from gazetteer import US_STATE_NAMES
 import math
 from pathlib import Path
@@ -15,21 +18,38 @@ if (DATA_DIR / "fixture-demo.json").is_file():
     PIPELINE_MODE = "fixture"
 
 # Create the Dash app
-app = Dash(__name__)
+app = Dash(__name__, assets_folder=str(Path(__file__).parent / "assets"))
 server = app.server
+backend_http = requests.Session()
+# The private model endpoint does not use system proxy discovery. On macOS,
+# that discovery can initialize Objective-C unsafely in a forked web worker.
+backend_http.trust_env = False
+
+
+def activity_is_stale(status):
+    try:
+        updated = datetime.fromisoformat(status["updated_at"])
+        return (datetime.now(timezone.utc) - updated).total_seconds() > 180
+    except (KeyError, TypeError, ValueError):
+        return True
+
 
 @server.get('/health')
 def health_check():
     if PIPELINE_MODE in ("demo", "live"):
         try:
             model_url = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
-            response = requests.get(f"{model_url}/ready", timeout=5)
+            response = backend_http.get(f"{model_url}/ready", timeout=5)
             if response.status_code != 200 or response.json().get("status") != "healthy":
                 return {"status": "unavailable", "component": "backend"}, 503
         except (requests.RequestException, ValueError):
             return {"status": "unavailable", "component": "backend"}, 503
     if not all((DATA_DIR / name).is_file() for name in ("filtered_posts.csv", "crisis_counts.csv")):
         return {"status": "unavailable", "component": "data"}, 503
+    if PIPELINE_MODE == "live":
+        status = read_status(DATA_DIR)
+        if activity_is_stale(status) or status.get("phase") == "error":
+            return {"status": "unavailable", "component": "collector"}, 503
     return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
 
 # Load initial data if available
@@ -109,113 +129,116 @@ state_coordinates = {k: (float(lat), float(lon)) for k, (lat, lon) in state_coor
 # Add common state abbreviations for matching
 state_to_full_name = {abbr: name for abbr, name in US_STATE_NAMES.items()}
 
-app.layout = html.Div(
-    style={
-        "fontFamily": "Arial, sans-serif",
-        "margin": "0 auto",
-        "padding": "20px",
-        "maxWidth": "1200px",  # constrains the overall width
-        "backgroundColor": "#f9f9f9",
-    },
-    children=[
-        html.H1(
-            "Disaster Monitoring Dashboard",
-            style={
-                "textAlign": "center",
-                "marginBottom": "30px",
-                "color": "#333",
-            },
-        ),
-        html.P(
-            "Fixture demo: synthetic post and predefined model response; live NLP is not running.",
-            style={"textAlign": "center"},
-        ) if (DATA_DIR / "fixture-demo.json").exists() else None,
-        html.P(
-            "Real NLP and Supabase: synthetic startup post analyzed by the original model."
-            if PIPELINE_MODE == "demo" else
-            "Live Bluesky processing with real NLP and Supabase; includes a synthetic startup post.",
-            style={"textAlign": "center"},
-        ) if PIPELINE_MODE in ("demo", "live") else None,
-        # The main container for the top row
-        html.Div(
-            style={
-                "display": "flex",
-                "flexWrap": "wrap",
-                "justifyContent": "space-between",
-                "marginBottom": "30px",
-            },
-            children=[
-                # Left side: Crisis Map
-                html.Div(
-                    style={
-                        "flex": "1 1 60%",
-                        "marginRight": "20px",
-                        "padding": "15px",
-                        "border": "1px solid #ddd",
-                        "borderRadius": "5px",
-                        "backgroundColor": "#fff",
-                    },
-                    children=[
-                        html.H2(
-                            "Crisis Map",
-                            style={"marginTop": "0", "color": "#444"}
-                        ),
-                        dcc.Graph(id="crisis-map", style={"height": "70vh"}),
-                    ],
-                ),
-                # Right side: Disaster Distribution & Statistics
-                html.Div(
-                    style={
-                        "flex": "1 1 35%",
-                        "padding": "15px",
-                        "border": "1px solid #ddd",
-                        "borderRadius": "5px",
-                        "backgroundColor": "#fff",
-                    },
-                    children=[
-                        html.H2(
-                            "Disaster Distribution by State",
-                            style={"marginTop": "0", "color": "#444"}
-                        ),
-                        dcc.Graph(id="state-chart"),
-                        html.H2(
-                            "Disaster Statistics",
-                            style={"marginTop": "30px", "color": "#444"}
-                        ),
-                        html.Div(id="stats-table"),
-                    ],
-                ),
-            ],
-        ),
-        # Bottom row for the recent posts
-        html.Div(
-            style={
-                "padding": "15px",
-                "border": "1px solid #ddd",
-                "borderRadius": "5px",
-                "backgroundColor": "#fff",
-            },
-            children=[
-                html.H2("Recent Disaster Posts", style={"marginTop": "0", "color": "#444"}),
-                dcc.Dropdown(
-                    id="state-dropdown",
-                    placeholder="Select a state",
-                    style={
-                        "width": "300px",
-                        "marginBottom": "20px",
-                    },
-                ),
-                html.Div(id="posts-table"),
-            ],
-        ),
-        # Interval component (unchanged)
-        dcc.Interval(
-            id="interval-component",
-            interval=5 * 1000,  # in milliseconds (5 seconds)
-            n_intervals=0
-        ),
-    ],
-)
+MODE_LABELS = {"fixture": "Fixture demo", "demo": "Model demo", "live": "Live Bluesky"}
+MODE_NOTES = {
+    "fixture": "Synthetic post and predefined model response. Live NLP is not running.",
+    "demo": "Real NLP and Supabase. Showing a synthetic example for rehearsal.",
+    "live": "Real NLP and Supabase. New Bluesky posts are checked in batches; counts include the startup example.",
+}
+
+app.title = "Crisis Analysis"
+app.layout = html.Main(className="app-shell", children=[
+    html.Header(className="page-header", children=[
+        html.Div([
+            html.H1("Crisis Analysis"),
+            html.P("Potential crisis reports from public social posts.", className="subtitle"),
+        ]),
+        html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
+    ]),
+    html.Section(className="activity-section", children=[
+        html.Div(id="pipeline-activity", role="status", **{"aria-live": "polite"}),
+        html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports."), className="mode-note"),
+    ]),
+    html.Div(className="workspace", children=[
+        html.Section(className="map-section", children=[
+            html.Div(className="section-heading", children=[
+                html.H2("Report locations"),
+                html.Span("United States", className="secondary-label"),
+            ]),
+            dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
+                      config={"displayModeBar": False, "scrollZoom": False}),
+            html.P("Locations are inferred from post text. Reports are unverified.", className="section-note"),
+        ]),
+        html.Aside(className="summary-section", children=[
+            html.H2("Reports by state"),
+            dcc.Graph(id="state-chart", className="state-graph", responsive=True,
+                      config={"displayModeBar": False}),
+            html.H2("Overview", className="overview-title"),
+            html.Div(id="stats-table"),
+            html.P("Counts are location records: one post can appear more than once.", className="section-note"),
+        ]),
+    ]),
+    html.Section(className="posts-section", children=[
+        html.Div(className="posts-toolbar", children=[
+            html.Div([html.H2("Recent posts"),
+                      html.P("Latest 30 matching records. Synthetic posts are labeled Example.", className="section-note")]),
+            html.Div(className="state-filter", children=[
+                html.Label("Filter by state", htmlFor="state-dropdown"),
+                dcc.Dropdown(id="state-dropdown", placeholder="All states", clearable=True),
+            ]),
+        ]),
+        html.Div(id="posts-table", className="table-scroll", tabIndex=0,
+                 **{"aria-label": "Recent crisis posts"}),
+    ]),
+    html.Footer("College research prototype · Human review required · Refreshes every 5 seconds"),
+    dcc.Interval(id="interval-component", interval=5000, n_intervals=0),
+])
+
+
+@server.get("/activity")
+def activity():
+    return {"mode": PIPELINE_MODE or "dashboard", **read_status(DATA_DIR)}
+
+
+@app.callback(Output("pipeline-activity", "children"), Input("interval-component", "n_intervals"))
+def update_activity(n_intervals):
+    if PIPELINE_MODE != "live":
+        return html.Span("Example ready" if PIPELINE_MODE in ("fixture", "demo") else "Saved reports",
+                         className="activity-label")
+    status = read_status(DATA_DIR)
+    phase = status.get("phase", "starting")
+    labels = {"starting": "Starting collection", "collecting": "Collecting posts",
+              "processing": "Analyzing posts", "waiting": "Waiting for the next batch",
+              "error": "Collection needs attention"}
+    updated = status.get("updated_at")
+    try:
+        last_update = datetime.fromisoformat(updated)
+        if activity_is_stale(status):
+            phase = "stalled"
+        time_label = last_update.strftime("%H:%M:%S UTC")
+    except (TypeError, ValueError):
+        time_label = "Waiting for first update"
+    parts = [
+        html.Span(labels.get(phase, "Updates delayed"),
+                  className="activity-label warning" if phase in ("error", "stalled") else "activity-label"),
+        html.Span(f"{status.get('posts_received', 0):,} posts collected"),
+        html.Span(f"{status.get('posts_processed', 0):,} analyzed"),
+        html.Span(f"Updated {time_label}" if updated else time_label, className="activity-time"),
+    ]
+    if status.get("model_errors", 0):
+        parts.append(html.Span(f"{status['model_errors']:,} analysis errors", className="warning"))
+    if phase == "error" and status.get("last_error"):
+        parts.append(html.Span(status["last_error"], className="warning"))
+    return parts
+
+
+CHART_COLORS = {
+    "Flood": "#2563eb", "Wildfire": "#c45f25", "Hurricane": "#7352a2",
+    "Earthquake": "#927237", "Tsunami": "#087e8b", "Heatwave": "#b24949",
+    "Cold Snap": "#357c9f", "Landslide": "#5d7868", "Pandemic": "#925979",
+    "Volcanic Eruption": "#9f4935", "Solar Flare": "#a66b20",
+}
+
+
+def style_figure(fig):
+    fig.update_layout(template="plotly_white", title=None,
+                      font={"family": "Arial, sans-serif", "size": 12, "color": "#475569"},
+                      paper_bgcolor="white", plot_bgcolor="white",
+                      margin={"l": 18, "r": 18, "t": 12, "b": 40},
+                      legend={"title_text": "", "orientation": "h", "y": -0.06, "x": 0},
+                      uirevision="constant")
+    return fig
+
 
 def get_city_coordinates(city_name: str, state_name: str) -> tuple[float, float]:
     if not state_name or not city_name:
@@ -289,7 +312,7 @@ def update_dropdown_options(n_intervals):
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
 
-        return [{'label': state, 'value': state} for state in df['state'].unique() if state]
+        return [{'label': state, 'value': state} for state in sorted(df['state'].dropna().unique()) if state]
     except Exception as e:
         print(f"Error updating dropdown: {e}")
         return []
@@ -333,17 +356,6 @@ def update_crisis_map(n_intervals):
 
         # Prepare data for the map - include both state and city markers
         map_data = []
-
-        # US state boundaries for the map
-        usa_map = go.Figure(data=go.Scattergeo(
-            locationmode='USA-states',
-            lon = [],
-            lat = [],
-            text = [],
-            mode = 'markers',
-            marker_opacity=0,
-            showlegend=False
-        ))
 
         # Process each crisis record
         for _, row in df.iterrows():
@@ -425,7 +437,8 @@ def update_crisis_map(n_intervals):
             lat='lat',
             lon='lon',
             size='size',
-            color='disaster',  # Color by disaster type
+            color='disaster',
+            color_discrete_map=CHART_COLORS,
             hover_name='full_state',
             hover_data={
                 'lat': False,
@@ -444,7 +457,9 @@ def update_crisis_map(n_intervals):
             legend_title_text='Disaster Type',
             geo=dict(
                 showland=True,
-                landcolor='rgb(217, 217, 217)',
+                landcolor='#f1f5f9',
+                bgcolor='white',
+                subunitcolor='#cbd5e1',
                 coastlinewidth=0.5,
                 countrywidth=0.5,
                 subunitwidth=0.5,
@@ -457,12 +472,12 @@ def update_crisis_map(n_intervals):
             uirevision='constant'
         )
 
-        return fig
+        return style_figure(fig)
     except Exception as e:
         print(f"Error updating crisis map: {e}")
         import traceback
         traceback.print_exc()
-        return px.scatter_geo(title=f"Error loading map data: {str(e)}")
+        return px.scatter_geo(title="Map unavailable. Retrying on the next refresh.")
 
 @app.callback(
     Output('state-chart', 'figure'),
@@ -510,11 +525,14 @@ def update_state_chart(n_intervals):
             x='state',
             y='count',
             color='disasters',
+            color_discrete_map=CHART_COLORS,
             title="Disaster Reports by State",
-            labels={'count': 'Number of Reports', 'state': 'State', 'disasters': 'Disaster Type'}
+            labels={'count': 'Location records', 'state': 'State', 'disasters': 'Disaster type'}
         )
-
-        return fig
+        fig.update_layout(showlegend=False)
+        fig.update_xaxes(title=None)
+        fig.update_yaxes(rangemode="tozero", gridcolor="#eef2f7", tickformat="d")
+        return style_figure(fig)
     except Exception as e:
         print(f"Error updating state chart: {e}")
         return px.bar(title="Error loading data")
@@ -524,75 +542,50 @@ def update_state_chart(n_intervals):
     [Input('state-dropdown', 'value'), Input('interval-component', 'n_intervals')]
 )
 def update_table(selected_state, n_intervals):
-    if selected_state is None:
-        return html.Div("Select a state to view related posts.")
-
     try:
-        # 1) Load or parse the CSV into a DataFrame
-        try:
-            posts_df = pd.read_csv(DATA_DIR / 'filtered_posts.csv', quotechar='"', escapechar='\\')
-        except Exception as e:
-            print(f"Error with standard CSV reader for posts, trying alternative: {e}")
-            import csv
-            with open(DATA_DIR / 'filtered_posts.csv', 'r') as f:
-                reader = csv.reader(f, quotechar='"', escapechar='\\')
-                headers = next(reader)  # Get header row
-                data = []
-                for row in reader:
-                    # Ensure row has enough columns to match headers
-                    while len(row) < len(headers):
-                        row.append('')  # Pad with empty strings if needed
-                    data.append(row[:len(headers)])  # Only columns that match headers
-            posts_df = pd.DataFrame(data, columns=headers)
+        posts = pd.read_csv(DATA_DIR / "filtered_posts.csv")
+        if selected_state:
+            posts = posts[posts["state"] == selected_state]
+        if posts.empty:
+            return html.P("No matching posts for this state yet. Try another state or clear the filter.",
+                          className="empty-state")
+        posts = posts.assign(_posted=pd.to_datetime(posts["created_at"], format="mixed", errors="coerce", utc=True))
+        posts = posts.sort_values("_posted", ascending=False, kind="stable").head(30)
 
-        # 2) Filter by selected state
-        filtered_posts = posts_df[posts_df['state'] == selected_state]
-        if filtered_posts.empty:
-            return html.Div("No posts found for this state.")
+        def clean(value):
+            return "" if pd.isna(value) else str(value)
 
-        # Columns to display in the Dash table
-        columns_to_display = ['text', 'disasters', 'city', 'state', 'sentiment', 'polarity']
-
-        # 3) Define a helper function to format each cell
-
-        def format_cell_value(val, col_name):
-            """Return a nicely formatted string from the cell value."""
-
-            # Parse list-valued CSV cells for display.
-            if isinstance(val, str) and (val.startswith('[') and val.endswith(']')):
-                try:
-                    parsed = ast.literal_eval(val)  # e.g. ['flood', 'hurricane']
-                    if isinstance(parsed, list):
-                        val = parsed
-                except (ValueError, SyntaxError):
-                    pass  # fallback to using val as-is if parsing fails
-
-            # For all other columns, just title-case the string if it's not numeric
-            if isinstance(val, list):
-                # If it's a list for some reason, join it with commas
-                return ", ".join(str(item).title() for item in val)
-
-            if isinstance(val, str):
-                return val if col_name == "text" else val.title()
-
-            # If it's numeric or something else, just convert to string
-            return str(val)
-
-        # 4) Build the Dash table
+        rows = []
+        for _, row in posts.iterrows():
+            synthetic = clean(row.get("author")) == "synthetic-demo"
+            uri = clean(row.get("uri"))
+            source = "Example" if synthetic else "Bluesky"
+            if not synthetic and uri.startswith("at://"):
+                pieces = uri[5:].split("/")
+                if len(pieces) == 3 and pieces[1] == "app.bsky.feed.post":
+                    source = html.A("View post", href=f"https://bsky.app/profile/{quote(pieces[0], safe=':')}/post/{quote(pieces[2], safe='')}",
+                                    target="_blank", rel="noopener noreferrer")
+            labels = clean(row.get("disasters"))
+            try:
+                parsed = ast.literal_eval(labels)
+                if isinstance(parsed, list):
+                    labels = ", ".join(str(item) for item in parsed)
+            except (ValueError, SyntaxError):
+                pass
+            location = ", ".join(value for value in (clean(row.get("city")), clean(row.get("state"))) if value) or "Unresolved"
+            posted = "Example" if synthetic else (row["_posted"].strftime("%b %d, %H:%M UTC") if pd.notna(row["_posted"]) else "Unknown")
+            rows.append(html.Tr([
+                html.Td([html.P(clean(row.get("text")), className="post-text"),
+                         html.Span(posted, className="post-time")], className="post-cell"),
+                html.Td(location), html.Td(labels), html.Td(clean(row.get("sentiment"))),
+                html.Td(source, className="source-cell"),
+            ], className="example-row" if synthetic else ""))
         return html.Table([
-            html.Thead(html.Tr([html.Th(col.title()) for col in columns_to_display])),
-            html.Tbody([
-                html.Tr([
-                    html.Td(format_cell_value(filtered_posts.iloc[i][col], col))
-                    for col in columns_to_display
-                ])
-                for i in range(len(filtered_posts))
-            ])
-        ])
-
-    except Exception as e:
-        print(f"Error updating posts table: {e}")
-        return html.Div(f"Error loading posts: {e}")
+            html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment", "Source")])),
+            html.Tbody(rows),
+        ], className="posts-table")
+    except (OSError, ValueError, KeyError):
+        return html.P("Posts are temporarily unavailable. Retrying on the next refresh.", className="empty-state")
 
 @app.callback(
     Output('stats-table', 'children'),
@@ -648,15 +641,15 @@ def update_stats(n_intervals):
         total_reports = df['count'].sum()
 
         return html.Table([
-            html.Tr([html.Th("Total Reports"), html.Td(total_reports)]),
-            html.Tr([html.Th("Total Unique Disasters"), html.Td(total_disasters)]),
-            html.Tr([html.Th("Total States"), html.Td(total_states)]),
-            html.Tr([html.Th("Total Cities"), html.Td(total_cities)]),
-            html.Tr([html.Th("Average Sentiment"), html.Td(f"{avg_sentiment:.2f}")])
-        ])
+            html.Tr([html.Th("Location records", scope="row"), html.Td(total_reports)]),
+            html.Tr([html.Th("Disaster types", scope="row"), html.Td(total_disasters)]),
+            html.Tr([html.Th("States", scope="row"), html.Td(total_states)]),
+            html.Tr([html.Th("Cities", scope="row"), html.Td(total_cities)]),
+            html.Tr([html.Th("Average sentiment", scope="row"), html.Td(f"{avg_sentiment:.2f}")])
+        ], className="stats-table")
     except Exception as e:
         print(f"Error updating stats: {e}")
-        return html.Div(f"Error loading statistics: {e}")
+        return html.P("Statistics are temporarily unavailable. Retrying on the next refresh.", className="empty-state")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=False, port=8051)

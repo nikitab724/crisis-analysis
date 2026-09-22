@@ -100,6 +100,8 @@ The real backend uses a Supabase `gazetteer` table. The original backup has been
 
 The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. For a public interview link with no additional hosting charge, [share the working local dashboard through a temporary Cloudflare tunnel](docs/BACKEND.md#share-the-real-local-demo-for-free). The Mac must remain awake and online.
 
+For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent extracted location records, not verified incidents or unique posts.
+
 The real model used about 2.6 GiB by itself locally, so the separate Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
 
 ## Rebuild and verify the original NLP pipeline
@@ -239,7 +241,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 - **Counts represent extracted records:** a post with several locations can create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.
-- **Prototype storage and services:** CSV writes are not transactional; there is no user authentication, retry queue, or durable hosted history. The optional launcher supervises existing processes, but is not a production orchestration system. Live firehose collection depends on external availability and has limited concurrency handling.
+- **Prototype storage and services:** individual CSVs are replaced atomically, but the posts/counts pair is not a transaction. There is no user authentication, retry queue, or durable hosted history. The launcher supervises existing processes, but is not a production orchestration system. Live collection samples the Bluesky firehose in batches and can miss posts between connections; it does not provide complete stream coverage or historical backfill.
 - **Reproducibility limits:** primary versions are pinned, but not all transitive dependencies. A full cross-platform lockfile and CI are future work.
 - **Legacy experiments:** `proj-dev/app/main.py`, `live_demo/scraper_server.py`, `gazetteer_db.py`, and the notebook are not the supported demo startup path. The old scraper references an absent `blueskyapi_copy` module.
 

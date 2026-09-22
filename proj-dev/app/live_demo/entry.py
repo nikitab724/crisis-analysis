@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+from pipeline_status import read_status, save_csv, write_status
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
@@ -50,12 +51,14 @@ def get_scraped_posts(limit=50):
         return data.get("posts", [])
     except requests.exceptions.RequestException as e:
         print(f"Could not fetch posts: {e}")
+        if os.environ.get("CRISIS_PIPELINE_MODE") == "live":
+            raise
         return []
     except Exception as e:
         print(f"Invalid scraper response: {e}")
         return []
 
-def filter_posts(df: pd.DataFrame):
+def filter_posts(df: pd.DataFrame, on_progress=None):
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
     df = df.copy()
 
@@ -75,7 +78,8 @@ def filter_posts(df: pd.DataFrame):
     # Process each row individually to avoid entity_data errors
     processed_rows = []
 
-    for idx, row in df.iterrows():
+    errors = 0
+    for processed, (idx, row) in enumerate(df.iterrows(), start=1):
         try:
             # Extract entities with error handling
             entity_result = extract_entities(row['text'])
@@ -146,7 +150,11 @@ def filter_posts(df: pd.DataFrame):
 
         except Exception as e:
             print(f"Error processing row {idx}: {e}")
+            errors += 1
             continue
+        finally:
+            if on_progress:
+                on_progress(processed, errors)
 
     result_df = pd.DataFrame(processed_rows, columns=required_columns)
 
@@ -301,7 +309,7 @@ def reset_csv_files(output_dir=DATA_DIR):
                             df[col] = ''
 
                     # Save fixed file
-                    df.to_csv(file_path, index=False)
+                    save_csv(df, file_path)
                     print(f"Fixed column structure in {file_path}")
 
             except Exception as e:
@@ -313,10 +321,17 @@ def main(post_limit=50, output_dir=DATA_DIR):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     reset_csv_files(output_dir)
-    posts = get_scraped_posts(post_limit)
+    previous = read_status(output_dir)
+    write_status(output_dir, phase="collecting", last_error=None)
+    try:
+        posts = get_scraped_posts(post_limit)
+    except requests.RequestException:
+        write_status(output_dir, phase="error", last_error="Could not collect Bluesky posts. Retrying.")
+        return
 
     if not posts:
         print("No posts to process. Skipping this run.")
+        write_status(output_dir, phase="waiting", batch_received=0)
         return
 
     # Load collected posts
@@ -327,16 +342,30 @@ def main(post_limit=50, output_dir=DATA_DIR):
         return
 
     print(f'Scraped {len(df)} posts')
+    write_status(output_dir, phase="processing", batch_received=len(df), batch_processed=0,
+                 posts_received=previous.get("posts_received", 0) + len(df))
+
+    def progress(processed, errors):
+        write_status(output_dir, phase="processing", batch_processed=processed,
+                     posts_processed=previous.get("posts_processed", 0) + processed - errors,
+                     model_errors=previous.get("model_errors", 0) + errors)
+
+    def finish(matches=0):
+        write_status(output_dir, phase="waiting", batch_matches=matches,
+                     batches_completed=previous.get("batches_completed", 0) + 1,
+                     matched_records=previous.get("matched_records", 0) + matches)
 
     try:
-        filtered_df = filter_posts(df)
+        filtered_df = filter_posts(df, on_progress=progress)
         print(f'Processed and identified {len(filtered_df)} crisis posts')
     except Exception as e:
         print(f"Error filtering posts: {e}")
+        write_status(output_dir, phase="error", last_error="This batch could not be analyzed. Retrying.")
         return
 
     if filtered_df.empty:
         print("No crisis posts found. Skipping this run.")
+        finish()
         return
 
     # Save filtered posts
@@ -374,18 +403,20 @@ def main(post_limit=50, output_dir=DATA_DIR):
 
                 # Combine and save
                 combined_df = pd.concat([existing_df, filtered_df])
-                combined_df.to_csv(filtered_posts_output_file, index=False)
+                save_csv(combined_df, filtered_posts_output_file)
                 print(f"Successfully appended {len(filtered_df)} records to {filtered_posts_output_file}")
 
             except Exception as e:
                 print(f"Error reading existing filtered posts, creating new file: {e}")
-                filtered_df.to_csv(filtered_posts_output_file, index=False)
+                save_csv(filtered_df, filtered_posts_output_file)
         else:
             # Create new file
-            filtered_df.to_csv(filtered_posts_output_file, index=False)
+            save_csv(filtered_df, filtered_posts_output_file)
             print(f"Created new file {filtered_posts_output_file} with {len(filtered_df)} records")
     except Exception as e:
         print(f"Error saving filtered posts: {e}")
+        write_status(output_dir, phase="error", last_error="Could not save the latest posts. Retrying.")
+        return
 
     try:
         # Calculate crisis counts
@@ -393,12 +424,14 @@ def main(post_limit=50, output_dir=DATA_DIR):
         counts = calculate_crisis_counts(filtered_df, crisis_counts_output_file)
 
         if counts is not None and not counts.empty:
-            counts.to_csv(crisis_counts_output_file, index=False)
+            save_csv(counts, crisis_counts_output_file)
             print(f"Successfully updated crisis counts with {len(counts)} records")
         else:
             print("No crisis counts to save")
+        finish(len(filtered_df))
     except Exception as e:
         print(f"Error calculating or saving crisis counts: {e}")
+        write_status(output_dir, phase="error", last_error="Could not update report counts. Retrying.")
         import traceback
         traceback.print_exc()
 

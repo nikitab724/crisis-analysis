@@ -41,7 +41,9 @@ class DemoPipelineTests(unittest.TestCase):
                 self.assertEqual(dashboard.update_crisis_map(0).data[0].name, "Flood")
                 self.assertEqual(dashboard.update_state_chart(0).data[0].y[0], 1)
                 self.assertIn(demo.DEFAULT_TEXT, str(dashboard.update_table("Texas", 0)))
-                self.assertIn("Total Reports", str(dashboard.update_stats(0)))
+                self.assertIn("Location records", str(dashboard.update_stats(0)))
+                self.assertIn(demo.DEFAULT_TEXT, str(dashboard.update_table(None, 0)))
+                self.assertIn("Example", str(dashboard.update_table(None, 0)))
                 with dashboard.server.test_client() as client:
                     self.assertEqual(client.get("/").status_code, 200)
                     self.assertEqual(client.get("/_dash-layout").status_code, 200)
@@ -107,6 +109,22 @@ class DemoPipelineTests(unittest.TestCase):
     def test_fixture_rejects_arbitrary_text(self):
         with self.assertRaisesRegex(ValueError, "only supports"):
             demo.process_test_tweet("Unrelated text", fixture=True)
+
+    def test_recent_posts_sort_mixed_timestamp_formats_and_label_examples(self):
+        common = {"city": "Austin", "state": "Texas", "disasters": "['Flood']", "sentiment": "Neutral"}
+        with TemporaryDirectory() as directory:
+            pd.DataFrame([
+                {**common, "text": "Old example", "author": "synthetic-demo",
+                 "created_at": "2025-04-21T12:00:00Z", "uri": "at://did:plc:demo/app.bsky.feed.post/demo"},
+                {**common, "text": "Newest post", "author": "public.bsky.social",
+                 "created_at": "2026-09-22T21:00:00.123Z", "uri": "at://did:plc:sample/app.bsky.feed.post/latest"},
+            ]).to_csv(Path(directory) / "filtered_posts.csv", index=False)
+            with patch.object(dashboard, "DATA_DIR", Path(directory)):
+                table = str(dashboard.update_table(None, 0))
+            self.assertLess(table.index("Newest post"), table.index("Old example"))
+            self.assertIn("Sep 22, 21:00 UTC", table)
+            self.assertIn("https://bsky.app/profile/did:plc:sample/post/latest", table)
+            self.assertIn("Example", table)
 
 
 if __name__ == "__main__":
