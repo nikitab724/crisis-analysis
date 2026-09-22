@@ -111,7 +111,7 @@ class DemoPipelineTests(unittest.TestCase):
             demo.process_test_tweet("Unrelated text", fixture=True)
 
     def test_recent_posts_sort_mixed_timestamp_formats_and_label_examples(self):
-        common = {"city": "Austin", "state": "Texas", "disasters": "['Flood']", "sentiment": "Neutral"}
+        common = {"city": "Austin", "state": "Texas", "country": "US", "disasters": "['Flood']", "sentiment": "Neutral"}
         with TemporaryDirectory() as directory:
             pd.DataFrame([
                 {**common, "text": "Old example", "author": "synthetic-demo",
@@ -126,7 +126,7 @@ class DemoPipelineTests(unittest.TestCase):
             self.assertIn("https://bsky.app/profile/did:plc:sample/post/latest", table)
             self.assertIn("Example", table)
 
-    def test_ambiguous_location_stays_visible_but_out_of_map_and_counts(self):
+    def test_ambiguous_location_is_excluded_from_saved_reports_and_dashboard(self):
         responses = [
             {"disasters": ["Flood"], "locations": ["Portland"], "city": None, "state": None,
              "country": None, "polarity": 0, "location_status": "ambiguous",
@@ -139,7 +139,7 @@ class DemoPipelineTests(unittest.TestCase):
         with patch.object(entry, "extract_entities", side_effect=responses):
             filtered = entry.filter_posts(posts)
         counts = entry.calculate_crisis_counts(filtered)
-        self.assertEqual(len(filtered), 2)
+        self.assertEqual(len(filtered), 1)
         self.assertEqual(counts.iloc[0]["count"], 1)
         self.assertEqual(set(counts["state"]), {"Texas"})
         with TemporaryDirectory() as directory:
@@ -148,8 +148,8 @@ class DemoPipelineTests(unittest.TestCase):
             counts.to_csv(destination / "crisis_counts.csv", index=False)
             with patch.object(dashboard, "DATA_DIR", destination):
                 table = str(dashboard.update_table(None, 0))
-                self.assertIn("Needs context", table)
-                self.assertIn("Portland", table)
+                self.assertNotIn("Needs context", table)
+                self.assertNotIn("Portland", table)
                 self.assertIn("City + state in text", table)
                 self.assertNotIn("Portland", str(dashboard.update_crisis_map(0)))
                 self.assertEqual(dashboard.update_dropdown_options(0), [{"label": "Texas", "value": "Texas"}])

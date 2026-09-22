@@ -6,6 +6,8 @@ from pathlib import Path
 import pandas as pd
 import requests
 from pipeline_status import read_status, save_csv, write_status
+from us_scope import is_us_location, us_records
+from jev_relevance import get_relevance_client, RelevanceUnavailable
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
@@ -58,7 +60,7 @@ def get_scraped_posts(limit=50):
         print(f"Invalid scraper response: {e}")
         return []
 
-def filter_posts(df: pd.DataFrame, on_progress=None):
+def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
     df = df.copy()
 
@@ -73,11 +75,15 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
         'author', 'created_at', 'post_id', 'text', 'uri',
         'disasters', 'sentiment', 'polarity',
         'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location',
-        'location_status', 'location_detail', 'location_mentions', 'location_review'
+        'location_status', 'location_detail', 'location_mentions', 'location_review',
+        'relevance_status', 'relevance_model', 'relevance_probability'
     ]
 
     # Process each row individually to avoid entity_data errors
     processed_rows = []
+    relevance = get_relevance_client()
+    if relevance_stats is None:
+        relevance_stats = {}
 
     errors = 0
     for processed, (idx, row) in enumerate(df.iterrows(), start=1):
@@ -97,10 +103,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
             # Require both a disaster mention and a location.
             if not disasters or not locations:
                 continue
-
-
-
-            #top level row
+            location_rows = []
             top_row = {
                         'author': row.get('author', ''),
                         'created_at': row.get('created_at', ''),
@@ -113,7 +116,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'city': entity_result.get('city', ''),
                         'state': entity_result.get('state', ''),
                         'region': entity_result.get('region', ''),
-                        'country': entity_result.get('country', 'US'),
+                        'country': entity_result.get('country'),
                         'latitude': entity_result.get('latitude', None),
                         'longitude': entity_result.get('longitude', None),
                         'location': entity_result.get('location', entity_result.get('city', '')),
@@ -122,14 +125,15 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
                         'location_review': entity_result.get('location_review', ''),
                     }
-            processed_rows.append(top_row)
+            if is_us_location(top_row):
+                location_rows.append(top_row)
             # Get standardized location info
             all_locations = entity_result.get('all_locations', [])
 
             # If we have location details, create rows for each location
             if isinstance(all_locations, list) and all_locations:
                 for loc_info in all_locations:
-                    if not isinstance(loc_info, dict) or not loc_info.get('state'):
+                    if not isinstance(loc_info, dict) or not is_us_location(loc_info):
                         continue
 
                     # Create a new row with required fields
@@ -145,7 +149,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'city': loc_info.get('city', ''),
                         'state': loc_info.get('state', ''),
                         'region': loc_info.get('region', ''),
-                        'country': loc_info.get('country', 'US'),
+                        'country': loc_info.get('country'),
                         'latitude': loc_info.get('latitude', None),
                         'longitude': loc_info.get('longitude', None),
                         'location': loc_info.get('location', ''),
@@ -155,8 +159,18 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'location_review': entity_result.get('location_review', ''),
                     }
 
-                    processed_rows.append(new_row)
+                    location_rows.append(new_row)
 
+            if relevance and location_rows:
+                screened = relevance.screen(row['text'], row.get('created_at', ''), location_rows)
+                relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
+                relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
+                location_rows = screened
+            processed_rows.extend(location_rows)
+
+        except RelevanceUnavailable as exc:
+            relevance_stats['relevance_errors'] = relevance_stats.get('relevance_errors', 0) + 1
+            print(str(exc))
         except Exception as e:
             print(f"Error processing row {idx}: {e}")
             errors += 1
@@ -182,14 +196,13 @@ def parse_cities(value):
 
 
 def calculate_crisis_counts(df, existing_counts_file=None):
-    # Drop rows without state information
-    df = df.dropna(subset=["state"])
+    df = us_records(df)
 
     if df.empty:
         # If no new data, return existing counts or empty DataFrame
         if existing_counts_file and os.path.exists(existing_counts_file):
             try:
-                return pd.read_csv(existing_counts_file)
+                return us_records(pd.read_csv(existing_counts_file))
             except (OSError, ValueError):
                 return pd.DataFrame()
         else:
@@ -224,7 +237,7 @@ def calculate_crisis_counts(df, existing_counts_file=None):
     # Handle existing counts file if it exists
     if existing_counts_file and os.path.exists(existing_counts_file) and os.path.getsize(existing_counts_file) > 0:
         try:
-            existing_counts = pd.read_csv(existing_counts_file)
+            existing_counts = us_records(pd.read_csv(existing_counts_file))
 
             if not existing_counts.empty:
                 # Convert string representation of cities lists back to actual lists
@@ -331,7 +344,9 @@ def main(post_limit=50, output_dir=DATA_DIR):
     output_dir.mkdir(parents=True, exist_ok=True)
     reset_csv_files(output_dir)
     previous = read_status(output_dir)
-    write_status(output_dir, phase="collecting", last_error=None)
+    relevance_stats = {}
+    write_status(output_dir, phase="collecting", last_error=None,
+                 relevance_mode=os.environ.get("CRISIS_RELEVANCE_MODE", "off"))
     try:
         posts = get_scraped_posts(post_limit)
     except requests.RequestException:
@@ -357,7 +372,9 @@ def main(post_limit=50, output_dir=DATA_DIR):
     def progress(processed, errors):
         write_status(output_dir, phase="processing", batch_processed=processed,
                      posts_processed=previous.get("posts_processed", 0) + processed - errors,
-                     model_errors=previous.get("model_errors", 0) + errors)
+                     model_errors=previous.get("model_errors", 0) + errors,
+                     **{key: previous.get(key, 0) + relevance_stats.get(key, 0)
+                        for key in ('relevance_checked', 'relevance_excluded', 'relevance_errors')})
 
     def finish(matches=0):
         write_status(output_dir, phase="waiting", batch_matches=matches,
@@ -365,7 +382,7 @@ def main(post_limit=50, output_dir=DATA_DIR):
                      matched_records=previous.get("matched_records", 0) + matches)
 
     try:
-        filtered_df = filter_posts(df, on_progress=progress)
+        filtered_df = filter_posts(df, on_progress=progress, relevance_stats=relevance_stats)
         print(f'Processed and identified {len(filtered_df)} crisis posts')
     except Exception as e:
         print(f"Error filtering posts: {e}")
@@ -385,7 +402,7 @@ def main(post_limit=50, output_dir=DATA_DIR):
         if os.path.exists(filtered_posts_output_file) and os.path.getsize(filtered_posts_output_file) > 0:
             try:
                 # Try to read existing file
-                existing_df = pd.read_csv(filtered_posts_output_file)
+                existing_df = us_records(pd.read_csv(filtered_posts_output_file))
 
                 # Ensure column consistency
                 for col in filtered_df.columns:

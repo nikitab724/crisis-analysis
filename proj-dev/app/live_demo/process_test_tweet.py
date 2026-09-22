@@ -78,7 +78,7 @@ def process_test_tweet(text=DEFAULT_TEXT, *, fixture=False, output_dir=None):
         with patch.object(entry, "get_scraped_posts", return_value=create_mock_post(text)):
             if fixture:
                 print("FIXTURE DEMO: predefined model response; no live NLP or Supabase lookup.")
-                with fixture_model_server():
+                with fixture_model_server(), patch.object(entry, "get_relevance_client", return_value=None):
                     entry.main(post_limit=1, output_dir=temporary)
             else:
                 print("LIVE MODEL: synthetic post sent to the configured model service.")

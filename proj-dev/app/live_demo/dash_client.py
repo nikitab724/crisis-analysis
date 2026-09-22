@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 from pipeline_status import read_status
 from gazetteer import US_STATE_NAMES
+from us_scope import us_records
 import math
 from pathlib import Path
 
@@ -162,7 +163,7 @@ app.layout = html.Main(className="app-shell", children=[
     html.Header(className="page-header", children=[
         html.Div([
             html.H1("Crisis Analysis"),
-            html.P("Potential crisis reports from public social posts.", className="subtitle"),
+            html.P("Potential US crisis reports from public social posts.", className="subtitle"),
         ]),
         html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
     ]),
@@ -201,7 +202,7 @@ app.layout = html.Main(className="app-shell", children=[
     html.Section(className="posts-section", children=[
         html.Div(className="posts-toolbar", children=[
             html.Div([html.H2("Recent posts"),
-                      html.P("Latest 30 matching location records", className="section-note")]),
+                      html.P("Latest 30 US location records", className="section-note")]),
             html.Div(className="state-filter", children=[
                 html.Label("Filter by state", htmlFor="state-dropdown"),
                 dcc.Dropdown(id="state-dropdown", placeholder="All states", clearable=True),
@@ -215,7 +216,7 @@ app.layout = html.Main(className="app-shell", children=[
         html.Details([
             html.Summary("About the data"),
             html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
-            html.P("Counts represent resolved locations, not verified incidents. Ambiguous names stay off the map. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 5 seconds."),
+            html.P("Only locations resolved to the 50 US states or DC are shown. Foreign and unresolved locations are skipped. Counts are not verified incidents. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 5 seconds."),
             html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Repeated posts across batches can count again."),
         ]),
     ]),
@@ -255,6 +256,10 @@ def update_activity(n_intervals):
     ]
     if status.get("model_errors", 0):
         parts.append(html.Span(f"{status['model_errors']:,} analysis errors", className="warning"))
+    if status.get("relevance_mode") == "jev":
+        parts.append(html.Span(f"{status.get('relevance_excluded', 0):,} records filtered for relevance"))
+        if status.get("relevance_errors", 0):
+            parts.append(html.Span(f"{status['relevance_errors']:,} relevance checks unavailable", className="warning"))
     if phase == "error" and status.get("last_error"):
         parts.append(html.Span(status["last_error"], className="warning"))
     return parts
@@ -323,6 +328,7 @@ def update_dropdown_options(n_intervals):
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
 
+        df = us_records(df)
         return [{'label': state, 'value': state} for state in sorted(df['state'].dropna().unique()) if state]
     except Exception as e:
         print(f"Error updating dropdown: {e}")
@@ -339,12 +345,10 @@ def map_points_from_posts(posts):
     def clean(value):
         return "" if pd.isna(value) else str(value).strip()
 
-    for row in posts.to_dict("records"):
+    for row in us_records(posts).to_dict("records"):
         raw_state = clean(row.get("state"))
         state = state_to_full_name.get(raw_state.upper(), states_by_name.get(raw_state.casefold()))
-        if not state or clean(row.get("country")) not in ("", "US"):
-            continue
-        if clean(row.get("location_status")) in {"ambiguous", "unresolved", "error"}:
+        if not state:
             continue
         labels = row.get("disasters")
         if isinstance(labels, str):
@@ -447,6 +451,7 @@ def update_state_chart(n_intervals):
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
 
+        df = us_records(df)
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
 
@@ -482,11 +487,13 @@ def update_state_chart(n_intervals):
 )
 def update_table(selected_state, n_intervals):
     try:
-        posts = pd.read_csv(DATA_DIR / "filtered_posts.csv")
+        posts = us_records(pd.read_csv(DATA_DIR / "filtered_posts.csv"))
         if selected_state:
             posts = posts[posts["state"] == selected_state]
         if posts.empty:
-            return html.P("No matching posts for this state yet. Try another state or clear the filter.",
+            message = ("No matching posts for this state yet. Try another state or clear the filter."
+                       if selected_state else "No US crisis reports have resolved to a location yet.")
+            return html.P(message,
                           className="empty-state")
         posts = posts.assign(_posted=pd.to_datetime(posts["created_at"], format="mixed", errors="coerce", utc=True))
         posts = posts.sort_values("_posted", ascending=False, kind="stable").head(30)
@@ -527,7 +534,10 @@ def update_table(selected_state, n_intervals):
             rows.append(html.Tr([
                 html.Td([html.P(clean(row.get("text")), className="post-text"),
                          html.Div(metadata, className="post-meta")], className="post-cell"),
-                html.Td(location_content), html.Td(labels), html.Td(clean(row.get("sentiment"))),
+                html.Td(location_content),
+                html.Td([labels, html.Div("Relevance screened · Unverified", className="section-note")]
+                        if clean(row.get("relevance_status")) == "passed" else labels),
+                html.Td(clean(row.get("sentiment"))),
             ], className="example-row" if synthetic else ""))
         return html.Table([
             html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment")])),
@@ -565,6 +575,7 @@ def update_stats(n_intervals):
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
 
+        df = us_records(df)
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
         df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)

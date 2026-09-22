@@ -102,7 +102,7 @@ The real backend uses a Supabase `gazetteer` table. The original backup has been
 
 The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. For a public interview link with no additional hosting charge, [share the working local dashboard through a temporary Cloudflare tunnel](docs/BACKEND.md#share-the-real-local-demo-for-free). The Mac must remain awake and online.
 
-For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once; ambiguous names stay visible in the table but off the map. Each result explains its matching basis.
+For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once. Only records with an explicit US country match and one of the 50 states or DC are saved or displayed; foreign and unresolved locations are skipped. Mixed-country posts can contribute their resolved US locations. Each result explains its matching basis.
 
 The real model used about 2.6 GiB by itself locally, so the separate Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
 
@@ -128,6 +128,10 @@ python tests/check_disaster_model.py
 The script resolves paths relative to the repository, so it can run from another working directory. Rebuilding replaces that generated model folder. The model weights remain ignored by Git. The transformer download is roughly 457 MB, with additional runtime dependencies and memory needed during loading/inference.
 
 The integration check loads the saved pipeline through `live_demo/entity_extraction.py` and asserts that the example produces canonical disaster `Flood` and locations `Austin` and `Texas` (separate `GPE` entities, preserving the notebook's behavior). No Supabase account is required for this NLP-only check.
+
+## Optional relevance screening with Jev
+
+[Configure Jev through Vercel AI Gateway](docs/JEV.md) to screen candidate US reports for literal, current disaster mentions, including distinguishing an infectious-disease outbreak from a figurative “pandemic.” This optional step is off by default; it needs a server-side Gateway key, uses a provisional threshold, and does not verify that a claimed event is true. The original NLP and gazetteer remain in place.
 
 ## Run with the real model service
 
@@ -239,7 +243,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 ## Limitations and next steps
 
 - **Unverified social reports:** keyword/rule matches can include figurative language, historical reports, negation, and misinformation. Human review is required.
-- **U.S.-focused location handling:** exact names/aliases must resolve uniquely within the available context. Ambiguous names and unsupported foreign places remain unresolved and off the map. “Georgia” needs a resolved US city, a state abbreviation, or explicit US context. A unique US database match is still not proof of the intended real-world location; counties, indirect references, and missing context remain limitations. Match labels describe rules, not calibrated confidence.
+- **U.S.-focused location handling:** exact names/aliases must resolve uniquely within the available context. Ambiguous names and unsupported foreign places remain unresolved and are excluded from the dashboard and saved reports. “Georgia” needs a resolved US city, a state abbreviation, or explicit US context. A unique US database match is still not proof of the intended real-world location; counties, indirect references, and missing context remain limitations. Match labels describe rules, not calibrated confidence.
 - **Counts represent resolved locations:** a city and its supporting state count once per post; different cities or states can still create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.

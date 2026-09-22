@@ -94,7 +94,8 @@ def main():
             thread.start()
             env = dict(os.environ, SUPABASE_URL=f"http://127.0.0.1:{database.server_port}",
                        SUPABASE_KEY="sb_secret_local_test_only", PORT=str(free_port()),
-                       MODEL_PORT=str(free_port()), CRISIS_DATA_DIR=str(sentinel))
+                       MODEL_PORT=str(free_port()), CRISIS_DATA_DIR=str(sentinel),
+                       CRISIS_RELEVANCE_MODE="off", AI_GATEWAY_API_KEY="")
             base = f"http://127.0.0.1:{env['PORT']}"
             descendants = []
             with (temporary / "runtime.log").open("w+") as log:

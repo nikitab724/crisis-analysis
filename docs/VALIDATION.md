@@ -2,7 +2,24 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
-## Current map sizing and validation
+## Current US scope and Jev validation
+
+Only records with an explicit `US` country, a supported state (50 states or DC), and no failed/ambiguous location status are now retained. The same rule applies to saved posts, existing CSVs read by the dashboard, map circles, dropdowns, state totals, and statistics. Missing countries are never defaulted to US. Mixed-country posts keep their resolved US locations. This supersedes the older behavior below that displayed unresolved posts in the table.
+
+The optional Jev screen uses Vercel AI Gateway to judge each candidate disaster/location pair for literal, current event relevance. It removes jokes, metaphors, fiction, historical discussion, negation, and unrelated location mentions when their score is below the provisional threshold. It evaluates a claim's meaning, not whether the event really happened. The original transformer and gazetteer still extract and resolve places. See [configuration, privacy, cost caps, and failure behavior](JEV.md).
+
+Validation on September 22, 2026:
+
+- **70 regression tests passed** in the full environment; the fixture environment passed 43 and skipped 27 optional live checks. Coverage includes all dashboard surfaces, mixed-country records, missing country data, Gateway request/response validation, timeouts, request caps, cache behavior, per-disaster filtering, and a fixture that remains offline even when Jev is configured.
+- **8 real NLP + hosted gazetteer checks** passed through the new US filter, covering qualified US cities, foreign places, ambiguous Portland/Georgia, and mixed Japan/Austin text.
+- **12/12 synthetic Jev examples passed** via the real Gateway key at threshold 0.8. Median end-to-end call latency was **333.8 ms**, maximum **1012.4 ms**. This small authored set is a smoke test, not an accuracy benchmark or a comparison against spaCy.
+- **4 combined real pipeline examples passed**: the Austin flood survives; metaphorical pandemic, Pandemic board game, and Japan-only flood examples are excluded. No evaluation posts were injected into the live dashboard.
+- The real live pipeline was restarted with Jev enabled and a **200-call cap per processor run**. The previous run was archived locally outside Git and the existing tunnel URL preserved. The new run starts fresh counters and a labeled synthetic Austin example.
+- Public readiness, US-only copy, all six callbacks, Jev activity, relevance labels, and saved `US` records with passing scores were verified. At verification, 600 posts had been received; one live candidate had been screened out, with zero NLP or Jev errors. Targeted lint and whitespace checks passed. Visual browser rendering remains unverified because browser security-policy checking is unavailable.
+
+API credentials remain in the ignored server `.env`; fixture deployments do not need them. Historical checkpoints below describe their own earlier revisions.
+
+## Map sizing checkpoint
 
 The owner chose report counts as the meaning of circle size. The previous map averaged cities together, measured their spread in latitude/longitude degrees, multiplied that distance by 50, and passed it to an automatically scaled pixel marker. State-only records used a separate arbitrary size. Those values did not measure report volume or a geographic disaster radius.
 
@@ -14,7 +31,7 @@ All **54 regression tests passed** in the live environment. The fixture environm
 
 Only the dashboard worker was reloaded; the model, collector, current CSV directory, and tunnel remained in place. Public HTTPS checks passed all six callbacks, updated layout/size-key CSS, live readiness, and each returned map point's diameter against its actual hover count. Visual browser rendering remains unverified because the admin security-policy check is unavailable.
 
-## Current location behavior and validation
+## Location resolution checkpoint
 
 The latest refinement replaces population-based guesses with conservative unique matching. Earlier checkpoints below describe previous revisions, including the old two-record Austin/Texas result; the current result is **one resolved location**.
 
