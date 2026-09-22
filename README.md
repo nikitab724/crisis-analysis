@@ -237,7 +237,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 ## Limitations and next steps
 
 - **Unverified social reports:** keyword/rule matches can include figurative language, historical reports, negation, and misinformation. Human review is required.
-- **U.S.-focused location handling:** ambiguous names and multiple locations can resolve incorrectly; reports without state/country data may not appear in aggregates. In the verified example, the transformer identifies Austin and Texas separately.
+- **U.S.-focused location handling:** city/state context and exact aliases improve matching, and explicit foreign mentions stay unresolved. Unqualified names still use population ordering; missing context, counties, and the Georgia country/state ambiguity remain limitations. Unknown locations do not appear on the map. The original model still identifies Austin and Texas separately.
 - **Counts represent extracted records:** a post with several locations can create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.

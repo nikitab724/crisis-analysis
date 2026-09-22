@@ -9,6 +9,7 @@ scikit-learn
 spacytextblob==5.0.0
 matplotlib
 locationtagger
+pycountry==24.6.1
 us
 atproto
 waitress

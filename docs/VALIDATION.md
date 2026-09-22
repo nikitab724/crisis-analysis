@@ -57,15 +57,15 @@ The existing notebook-building cell was preserved as the reference. The script u
 
 - **Fixture demo:** works without the custom model, Supabase, or Bluesky after installing Python 3.12 and `requirements-demo.txt`. Initial dependency installation needs internet access.
 - **Real NLP on a fresh clone:** download `en_core_web_trf` and run the new model builder. Generated model weights are intentionally excluded from Git. The model was built locally during this cleanup.
-- **Real location enrichment:** the original cloud project is paused beyond its recovery window. Its downloaded backup has now been restored into a separate local Supabase project, and actual API lookups plus the NLP/dashboard path passed. A new hosted project, cloud credentials, and hosted connectivity remain outstanding; see the recovery section below.
-- **Continuous Bluesky ingestion:** a bounded read-only smoke check collected five real public posts with the expected pipeline fields. Sustained ingestion through the real database is unverified. The legacy firehose record-to-operation matching deserves a separate review before production use; requests now run serially to avoid concurrent use of its shared event loop.
+- **Real location enrichment:** the original cloud project is paused beyond its recovery window. Its backup was restored into local and new Free hosted Supabase projects; real API lookups and the NLP/dashboard path passed. A fresh clone still needs private credentials; see the recovery sections below.
+- **Continuous Bluesky ingestion:** live collection through the hosted gazetteer passed a bounded rehearsal, including corrected record-to-operation mapping. Collection samples batches and can miss posts; this is not a long-term reliability or accuracy benchmark. See the live-collection section below.
 - **Application Docker image:** not built/run during validation. The Dockerfile and documented paths/ports were inspected. Isolated PostgreSQL and local Supabase containers were subsequently used successfully for database recovery testing.
 - **Visual browser inspection:** blocked because the browser tool could not verify its admin-enforced security policy. No screenshot or visual end-to-end validation is claimed. The geographic basemap may depend on externally served Plotly assets.
 - **Legacy scripts:** `proj-dev/app/main.py` references modules no longer next to it; `live_demo/scraper_server.py` imports absent `blueskyapi_copy`. These are documented as unsupported experiments and excluded from the demo instructions.
 
 ## Deliberately deferred
 
-Cross-batch deduplication, counting unique posts rather than location rows, weighted sentiment aggregation, changes to disaster taxonomy, location disambiguation, firehose record mapping, transactional storage, authentication, production orchestration, and a full dependency lockfile. These would expand behavior or architecture beyond the requested interview cleanup.
+Cross-batch deduplication, counting unique posts rather than location rows, weighted sentiment aggregation, changes to disaster taxonomy, comprehensive location disambiguation, transactional storage, authentication, production orchestration, and a full dependency lockfile. These would expand behavior or architecture beyond the requested interview cleanup.
 
 ## Render deployment preparation
 
@@ -130,3 +130,19 @@ All 20 regression tests passed in the live environment; the minimal fixture envi
 The final public HTTPS verification passed live readiness, `/activity`, the updated layout and CSS, all six callbacks including activity, Bluesky source links, and saved live records. At that checkpoint, 5,800 posts had been received, 5,526 successfully analyzed after filtering duplicates/empty text, and 23 matching records saved, with zero model request errors. This is a bounded rehearsal observation, not a throughput or accuracy benchmark.
 
 Visual inspection remains unavailable: the browser tool's admin-enforced security-policy check could not be verified. No alternate browser was used to bypass it. HTTP callback checks do not establish screenshot quality, responsive rendering, or keyboard behavior in a real browser.
+
+## Location matching and a quieter dashboard
+
+Live results exposed Perryville, Alaska being assigned to Missouri, country mentions such as Japan being assigned to US towns, substring aliases producing unrelated places, and repeated lowercase hashtags adding location rows. The resolver now uses adjacent city/state pairs (including uppercase state abbreviations), a single extracted state when appropriate, case-insensitive exact city names, and whole aliases parsed from the restored column. State constraints are included in the lookup cache key. A recognized foreign-country or Canadian-province context suppresses unqualified US guesses; explicitly qualified US namesakes such as Mexico, Missouri still resolve. Repeated canonical locations within a post are collapsed. This changes location postprocessing only: transformer weights, entities, disaster patterns, sentiment, HTTP services, and CSV storage remain unchanged.
+
+The dashboard has a white canvas, lighter dividers, fewer repeated notes, and a four-column post table with source links beside the time. Essential live/fixture and example disclosures remain visible; implementation details are under **About the data**.
+
+- All **35 regression tests** passed in the live environment, including 15 location tests. The fixture-only environment passed 17 and skipped 18 optional live checks.
+- The real-model runtime check passed startup, dashboard callbacks, database outage/recovery, child-process failure cleanup, and preservation of existing files.
+- **12 real model API + hosted gazetteer examples** passed: Austin/Texas, Perryville/Alaska with repeated hashtags, Portland/Maine, Portland/Oregon, Paris/Texas, Mexico/Missouri, McAllen/Texas, New Mexico, West Virginia, and unresolved Japan, Mexico-coast, and Hamilton/Ontario/Canada examples.
+- Run the same read-only extraction checks with `python tests/check_location_pipeline.py --url http://127.0.0.1:5002` after starting the real service. These checks send synthetic texts to the private model API and do not publish them to the dashboard or write to the database.
+- The live pipeline was restarted with the new resolver; the previous CSVs and activity were archived locally outside Git. The existing tunnel stayed running, retaining its public address. New collection starts from the labeled Austin example.
+- Public HTTPS readiness, updated layout/CSS, four-column table, and all six Dash callbacks passed. At that checkpoint the restarted collector had received 500 posts and analyzed 482, with zero model request errors.
+- Targeted lint, whitespace, dependency consistency (111 packages), and the UI mechanical scan passed. Visual browser verification remains blocked by the same unavailable security-policy check.
+
+Limits: unqualified city names still use population ordering, and the country/state ambiguity of Georgia is not solved. Foreign locations remain unresolved, not internationally geocoded. Alias search checks at most 25 population-ranked candidates and can miss less prominent aliases. Counties, indirect references, and absent country/state context remain unreliable. The original disaster rules also missed “Flooding” in one test sentence; the location-only comparison uses “Flood” to exercise the resolver without changing those rules. These examples establish regression behavior, not measured extraction accuracy.

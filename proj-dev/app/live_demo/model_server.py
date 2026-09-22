@@ -1,3 +1,4 @@
+import ast
 import os
 import sys
 import gc
@@ -11,6 +12,8 @@ from functools import lru_cache
 from flask import Flask, request, jsonify
 
 from entity_extraction import extract_ent_sent, load_nlp
+from gazetteer import US_STATE_NAMES
+from location_context import location_candidates, state_code
 
 ### Location standardization setup
 load_dotenv()
@@ -23,177 +26,59 @@ supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
 
-US_STATE_NAMES = {
-    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
-    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
-    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
-    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
-    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
-    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
-    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
-    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
-    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
-    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
-    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
-    "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia"
-}
+GAZETTEER_FIELDS = "name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list"
 
-state_coordinates = {
-    'Alabama': ('32.7794', '-86.8287'),
-    'Alaska': ('64.0685', '-152.2782'),
-    'Arizona': ('34.2744', '-111.6602'),
-    'Arkansas': ('34.8938', '-92.4426'),
-    'California': ('37.1841', '-119.4696'),
-    'Colorado': ('38.9972', '-105.5478'),
-    'Connecticut': ('41.6219', '-72.7273'),
-    'Delaware': ('38.9896', '-75.5050'),
-    'Florida': ('28.6305', '-82.4497'),
-    'Georgia': ('32.6415', '-83.4426'),
-    'Hawaii': ('20.2927', '-156.3737'),
-    'Idaho': ('44.3509', '-114.6130'),
-    'Illinois': ('40.0417', '-89.1965'),
-    'Indiana': ('39.8942', '-86.2816'),
-    'Iowa': ('42.0751', '-93.4960'),
-    'Kansas': ('38.4937', '-98.3804'),
-    'Kentucky': ('37.5347', '-85.3021'),
-    'Louisiana': ('31.0689', '-91.9968'),
-    'Maine': ('45.3695', '-69.2428'),
-    'Maryland': ('39.0550', '-76.7909'),
-    'Massachusetts': ('42.2596', '-71.8083'),
-    'Michigan': ('44.3467', '-85.4102'),
-    'Minnesota': ('46.2807', '-94.3053'),
-    'Mississippi': ('32.7364', '-89.6678'),
-    'Missouri': ('38.3566', '-92.4580'),
-    'Montana': ('47.0527', '-109.6333'),
-    'Nebraska': ('41.5378', '-99.7951'),
-    'Nevada': ('39.3289', '-116.6312'),
-    'New Hampshire': ('43.6805', '-71.5811'),
-    'New Jersey': ('40.1907', '-74.6728'),
-    'New Mexico': ('34.4071', '-106.1126'),
-    'New York': ('42.9538', '-75.5268'),
-    'North Carolina': ('35.5557', '-79.3877'),
-    'North Dakota': ('47.4501', '-100.4659'),
-    'Ohio': ('40.2862', '-82.7937'),
-    'Oklahoma': ('35.5889', '-97.4943'),
-    'Oregon': ('43.9336', '-120.5583'),
-    'Pennsylvania': ('40.8781', '-77.7996'),
-    'Rhode Island': ('41.6762', '-71.5562'),
-    'South Carolina': ('33.9169', '-80.8964'),
-    'South Dakota': ('44.4443', '-100.2263'),
-    'Tennessee': ('35.8580', '-86.3505'),
-    'Texas': ('31.4757', '-99.3312'),
-    'Utah': ('39.3055', '-111.6703'),
-    'Vermont': ('44.0687', '-72.6658'),
-    'Virginia': ('37.5215', '-78.8537'),
-    'Washington': ('47.3826', '-120.4472'),
-    'West Virginia': ('38.6409', '-80.6227'),
-    'Wisconsin': ('44.6243', '-89.9941'),
-    'Wyoming': ('42.9957', '-107.5512'),
-    'District of Columbia': ('38.9101', '-77.0147')
-}
+
+def exact_aliases(value):
+    """The restored column stores Python list literals; older imports used CSV tokens."""
+    if not value:
+        return set()
+    try:
+        aliases = ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        aliases = value.split(",") if "," in value and not value.lstrip().startswith("[") else []
+    if not isinstance(aliases, list):
+        return set()
+    return {alias.strip().casefold() for alias in aliases if isinstance(alias, str)}
+
 
 @lru_cache(maxsize=2048)
-def lookup_city_state_country(loc_text: str):
+def lookup_city_state_country(loc_text: str, state_hint=None):
+    """Resolve exact names/aliases, constrained by an explicit state when available."""
     norm = loc_text.strip()
-    norm_up = norm.upper()
-    norm_title = norm.title()
-    norm_lower = norm.lower()
+    code = state_code(norm)
+    empty = dict(city=None, state=None, region=norm, country=None, latitude=None, longitude=None)
+    # Treat user text as a literal place name, never an ILIKE wildcard pattern.
+    if not norm or any(char in norm for char in "%_*\\"):
+        return empty
 
-    # ---------- 1) State code / state name ----------
-    if norm_up in US_STATE_NAMES or norm_title in US_STATE_NAMES.values():
-        # exact ADM1 lookup
-        resp = (
-            supabase.table("gazetteer")
-            .select("name, featureCode, stateCode, countryCode, latitude, longitude")
-            .eq("featureCode", "ADM1")
-            .or_(f"stateCode.eq.{norm_up},name.eq.{norm_title}")
-            .limit(1)
-            .execute()
-        )
+    def query():
+        return supabase.table("gazetteer").select(GAZETTEER_FIELDS).eq("countryCode", "US")
+
+    def cities():
+        result = query().ilike("featureCode", "PPL%")
+        if state_hint:
+            result = result.eq("stateCode", state_hint)
+        return result.order("population", desc=True, nullsfirst=False).order("geonameid")
+
+    if code:
+        records = query().eq("featureCode", "ADM1").eq("stateCode", code).limit(1).execute().data
     else:
-        resp = (
-            supabase.table("gazetteer")
-            .select("name, featureCode, stateCode, countryCode, latitude, longitude")
-            .eq("name", norm_title)                     # 2) exact city name
-            .or_("featureCode.ilike.PPL%")
-            .order("population", desc=True, nullsfirst=False)
-            .order("geonameid")
-            .limit(1)
-            .execute()
-        )
-
-        # ---------- 3) alternate_list token match ----------
-        if not resp.data and len(norm) > 2:
-            # alternate_list is a comma‑separated list, so anchor with commas
-            resp = (
-                supabase.table("gazetteer")
-                .select("name, featureCode, stateCode, countryCode, latitude, longitude")
-                .ilike("alternate_list", f"%,{norm_lower},%")
-                .ilike("featureCode", "PPL%")
-                .order("population", desc=True)
-                .limit(1)
-                .execute()
-            )
-
-        # ---------- 4) fuzzy fallback (optional) ----------
-        if not resp.data and len(norm) > 3:
-            resp = (
-                supabase.table("gazetteer")
-                .select("name, featureCode, stateCode, countryCode, latitude, longitude")
-                .ilike("alternate_list", f"%{norm_lower}%")
-                .ilike("featureCode", "PPL%")
-                .order("population", desc=True)
-                .limit(1)
-                .execute()
-            )
-
-
-    city = state = region = place = state_code = country_code = latitude = longitude = None
-
-    if resp.data:
-        record = resp.data[0]
-        feature = (record.get('featureCode') or "").upper()
-        place = record.get('name')
-        state_code = record.get('stateCode')
-        country_code = record.get('countryCode')
-        latitude = record.get('latitude')
-        longitude = record.get('longitude')
-
-
-        if feature == "ADM1":
-            if state_code in US_STATE_NAMES:
-                state = US_STATE_NAMES.get(state_code)
-            else:
-                state = state_code
-        elif feature.startswith("PPL") or feature.startswith("ADM"):
-            city  = place
-            state = US_STATE_NAMES.get(state_code) if state_code in US_STATE_NAMES else None
-        else:
-            city = place
-
-
-    all_states = {s.lower() for s in US_STATE_NAMES.values()} | {k.lower() for k in US_STATE_NAMES}
-    if not state:
-        city = None
-        if norm.lower() in all_states:  # State names should not be classified as free-form regions.
-            region = None
-        else:
-            region = norm.title()
-    if region:
-        for state_us in US_STATE_NAMES.values():
-            if state_us.lower() in region.lower():
-                state = state_us
-                latitude, longitude = state_coordinates.get(state_us, (None, None))
-                break
-
+        # ILIKE without wildcards preserves mixed-case names such as McAllen.
+        records = cities().ilike("name", norm).limit(1).execute().data
+        if not records and len(norm) > 2:
+            candidates = cities().ilike("alternate_list", f"%{norm}%").limit(25).execute().data
+            records = [record for record in candidates if norm.casefold() in exact_aliases(record.get("alternate_list"))]
+    if not records:
+        return empty
+    record = records[0]
+    state = US_STATE_NAMES.get(record.get("stateCode"))
+    if not state or record.get("countryCode") != "US":
+        return empty
     return {
-        "city": city,
-        "state": state,
-        "region": region,
-        "country": country_code,
-        "latitude": latitude,
-        "longitude": longitude
+        "city": None if record.get("featureCode") == "ADM1" else record.get("name"),
+        "state": state, "region": None, "country": "US",
+        "latitude": record.get("latitude"), "longitude": record.get("longitude"),
     }
 
 
@@ -205,13 +90,13 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
     locs = row.get("locations") or []
     results: List[Dict[str, Any]] = []
 
-    for loc in locs:
-        match = lookup_city_state_country(loc)
-        if match and match.get("state"):
-            results.append({
-                "location": loc,
-                **match
-            })
+    seen = set()
+    for loc, place, hint in location_candidates(locs, row.get("text", "")):
+        match = lookup_city_state_country(state_code(place) or place.casefold(), hint)
+        identity = tuple(match.get(key) for key in ("city", "state", "latitude", "longitude"))
+        if match.get("state") and identity not in seen:
+            seen.add(identity)
+            results.append({"location": loc, **match})
 
     if not results:
         return {
@@ -220,7 +105,8 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
             "region": None,
             "country": None,
             "latitude": None,
-            "longitude": None
+            "longitude": None,
+            "all_locations": []
         }
 
     first, *rest = results
@@ -340,7 +226,7 @@ def extract_entities():
     # Attempt location standardization if gazetteer is loaded
     if ent_sent['disasters'] and ent_sent['locations']:
         try:
-            loc_series = standardize_row({'locations': ent_sent['locations']})
+            loc_series = standardize_row({'locations': ent_sent['locations'], 'text': text})
             # Update ent_sent with the standardization keys
             for key, val in loc_series.items():
                 ent_sent[key] = val

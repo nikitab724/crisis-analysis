@@ -135,6 +135,11 @@ MODE_NOTES = {
     "demo": "Real NLP and Supabase. Showing a synthetic example for rehearsal.",
     "live": "Real NLP and Supabase. New Bluesky posts are checked in batches; counts include the startup example.",
 }
+MODE_SUMMARIES = {
+    "fixture": "Synthetic example · Live NLP is not running",
+    "demo": "Synthetic example · Processed by the real model",
+    "live": "Live posts and one labeled startup example · Unverified reports",
+}
 
 app.title = "Crisis Analysis"
 app.layout = html.Main(className="app-shell", children=[
@@ -147,7 +152,7 @@ app.layout = html.Main(className="app-shell", children=[
     ]),
     html.Section(className="activity-section", children=[
         html.Div(id="pipeline-activity", role="status", **{"aria-live": "polite"}),
-        html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports."), className="mode-note"),
+        html.P(MODE_SUMMARIES.get(PIPELINE_MODE, "Showing the latest saved reports."), className="mode-note"),
     ]),
     html.Div(className="workspace", children=[
         html.Section(className="map-section", children=[
@@ -157,7 +162,7 @@ app.layout = html.Main(className="app-shell", children=[
             ]),
             dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
                       config={"displayModeBar": False, "scrollZoom": False}),
-            html.P("Locations are inferred from post text. Reports are unverified.", className="section-note"),
+            html.P("Locations inferred from post text.", className="section-note"),
         ]),
         html.Aside(className="summary-section", children=[
             html.H2("Reports by state"),
@@ -165,13 +170,13 @@ app.layout = html.Main(className="app-shell", children=[
                       config={"displayModeBar": False}),
             html.H2("Overview", className="overview-title"),
             html.Div(id="stats-table"),
-            html.P("Counts are location records: one post can appear more than once.", className="section-note"),
+            html.P("One post may contain several locations.", className="section-note"),
         ]),
     ]),
     html.Section(className="posts-section", children=[
         html.Div(className="posts-toolbar", children=[
             html.Div([html.H2("Recent posts"),
-                      html.P("Latest 30 matching records. Synthetic posts are labeled Example.", className="section-note")]),
+                      html.P("Latest 30 matching location records", className="section-note")]),
             html.Div(className="state-filter", children=[
                 html.Label("Filter by state", htmlFor="state-dropdown"),
                 dcc.Dropdown(id="state-dropdown", placeholder="All states", clearable=True),
@@ -180,7 +185,14 @@ app.layout = html.Main(className="app-shell", children=[
         html.Div(id="posts-table", className="table-scroll", tabIndex=0,
                  **{"aria-label": "Recent crisis posts"}),
     ]),
-    html.Footer("College research prototype · Human review required · Refreshes every 5 seconds"),
+    html.Footer([
+        html.Span("Research prototype · Human review required"),
+        html.Details([
+            html.Summary("About the data"),
+            html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
+            html.P("Counts represent extracted locations, not verified incidents. The dashboard refreshes every 5 seconds."),
+        ]),
+    ]),
     dcc.Interval(id="interval-component", interval=5000, n_intervals=0),
 ])
 
@@ -573,15 +585,15 @@ def update_table(selected_state, n_intervals):
             except (ValueError, SyntaxError):
                 pass
             location = ", ".join(value for value in (clean(row.get("city")), clean(row.get("state"))) if value) or "Unresolved"
-            posted = "Example" if synthetic else (row["_posted"].strftime("%b %d, %H:%M UTC") if pd.notna(row["_posted"]) else "Unknown")
+            posted = row["_posted"].strftime("%b %d, %H:%M UTC") if pd.notna(row["_posted"]) else "Unknown date"
+            metadata = [html.Span("Example")] if synthetic else [html.Span(posted), source]
             rows.append(html.Tr([
                 html.Td([html.P(clean(row.get("text")), className="post-text"),
-                         html.Span(posted, className="post-time")], className="post-cell"),
+                         html.Div(metadata, className="post-meta")], className="post-cell"),
                 html.Td(location), html.Td(labels), html.Td(clean(row.get("sentiment"))),
-                html.Td(source, className="source-cell"),
             ], className="example-row" if synthetic else ""))
         return html.Table([
-            html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment", "Source")])),
+            html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment")])),
             html.Tbody(rows),
         ], className="posts-table")
     except (OSError, ValueError, KeyError):

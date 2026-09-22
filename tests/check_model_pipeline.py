@@ -19,7 +19,7 @@ import entry  # noqa: E402
 from process_test_tweet import process_test_tweet  # noqa: E402
 
 query = Mock()
-for method in ("select", "eq", "or_", "order", "limit"):
+for method in ("select", "eq", "ilike", "order", "limit"):
     getattr(query, method).return_value = query
 query.execute.side_effect = [
     SimpleNamespace(data=[{"name": "Austin", "featureCode": "PPL", "stateCode": "TX",
