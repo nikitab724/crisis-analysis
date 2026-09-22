@@ -65,6 +65,33 @@ Open **http://localhost:8051**. Expect one Flood report in Texas, an Austin mark
 
 The browser's geographic basemap may require internet access to Plotly's geographic assets. Rehearse on the presentation network beforehand; the table and bar chart do not depend on the map download.
 
+## Deploy the interview demo to Render
+
+[Deploy the fixture demo to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fnikitab724%2Fcrisis-analysis%2Ftree%2Fpolish%2Finterview-demo)
+
+Sign in to Render, follow the link, and create the Blueprint from the `polish/interview-demo` branch. Review that the service uses the **Free** instance plan, then deploy it. The repository's `render.yaml` provides the settings:
+
+| Setting | Value |
+| --- | --- |
+| Runtime | Python 3.12, via `.python-version` |
+| Build command | `pip install -r requirements-hosted-demo.txt` |
+| Start command | `bash scripts/start_demo.sh` |
+| Health check | `/_dash-layout` |
+| Instance plan | Free |
+
+The launcher regenerates the synthetic demo data at each start and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard explicitly labels its data as a fixture. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
+
+Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the fixture label, Texas map/chart, and post table. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
+
+To rehearse the same server startup locally (stop any other app using port 8051 first):
+
+```sh
+python -m pip install -r requirements-hosted-demo.txt
+bash scripts/start_demo.sh
+```
+
+For an alternate local port, run `PORT=8052 bash scripts/start_demo.sh`. The full live NLP/database deployment remains separate from this fixture deployment.
+
 ## Rebuild and verify the original NLP pipeline
 
 Install the full environment and download the same base model used in the notebook:

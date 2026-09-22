@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: crisis-analysis-interview-demo
+    runtime: python
+    plan: free
+    branch: polish/interview-demo
+    buildCommand: pip install -r requirements-hosted-demo.txt
+    startCommand: bash scripts/start_demo.sh
+    healthCheckPath: /_dash-layout
+    autoDeployTrigger: "off"

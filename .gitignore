@@ -17,6 +17,7 @@ __pycache__/
 .ruff_cache/
 .demo/
 .demo-live/
+.demo-hosted/
 .pytest_cache/
 .coverage
 htmlcov/
