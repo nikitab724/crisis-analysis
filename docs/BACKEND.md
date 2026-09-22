@@ -1,0 +1,75 @@
+# Connect the real backend
+
+The dashboard reads local CSVs; Supabase supplies location lookups, not report storage. Run the existing model service, processor, and dashboard on **one host** so they share those CSVs. `scripts/run_pipeline.py` starts and supervises them without changing the NLP pipeline or service boundaries.
+
+The currently published free service is still the labeled fixture demo. Adding Supabase variables to that service alone does not activate the real model.
+
+## Hosting and cost
+
+The real transformer used approximately **2.6 GiB for the model process alone** during local loading/inference. Start with at least **4 GB RAM** for the combined service. This is a macOS measurement, not a guarantee of Linux memory use or sustained live-feed capacity; inspect Render metrics after deployment.
+
+Render's Free instance has 512 MB RAM. The optional `render-live.yaml` defines a separate **paid `2c-4g` instance**, currently listed at **$85/month** on [Render's pricing page](https://render.com/pricing), checked September 22, 2026. Review the current price in Render before creating it. The existing `render.yaml` remains Free. Running the real pipeline locally avoids this additional hosting charge.
+
+## Use the existing Supabase project
+
+Copy the **Project URL** and an API key that permits server-side `SELECT` access to the populated `gazetteer` table. Enter them directly in Render's secret environment fields, or in the ignored local `.env` file:
+
+| Variable | Value |
+| --- | --- |
+| `SUPABASE_URL` | Project URL, such as `https://your-project.supabase.co` (not a PostgreSQL connection string) |
+| `SUPABASE_KEY` | API key with read access to `gazetteer` |
+
+Supabase's current server-only secret keys start with `sb_secret_`; an existing legacy `service_role` key also works. These keys have elevated access and must stay in server settings, never browser code, Git, or chat. If the existing project already provides a lower-privilege key with suitable read permissions, that is sufficient. See [Supabase API key guidance](https://supabase.com/docs/guides/getting-started/api-keys).
+
+The table must expose these exact columns: `name`, `featureCode`, `stateCode`, `countryCode`, `latitude`, `longitude`, `alternate_list`, and `population`. The known demo expects an Austin city row (`PPL…`, `TX`, `US`) and a Texas state row (`ADM1`, `TX`, `US`). The launcher performs no migrations or database writes.
+
+## Deploy the separate real service on Render
+
+Only proceed after accepting the paid instance cost.
+
+1. In Render, choose **New → Blueprint** and select `nikitab724/crisis-analysis`.
+2. Select branch **`polish/interview-demo`** and set **Blueprint Path** to **`render-live.yaml`**. The default `render.yaml` starts the free fixture demo instead.
+3. Confirm the service is `crisis-analysis-live`, with the **4 GB `2c-4g`** instance. Review its displayed price.
+4. Enter `SUPABASE_URL` and `SUPABASE_KEY` when prompted. Leave `CRISIS_PIPELINE_MODE=demo` for the initial rehearsal.
+5. Create the Blueprint. The build installs CPU dependencies, downloads `en_core_web_trf` 3.8.0, reproduces the notebook's disaster pipeline, and checks its entity output. The first build includes a large model download.
+6. Wait for the service to become live, then open its assigned URL. Its `/health` endpoint must return `{"status":"healthy","mode":"demo"}`.
+
+Startup loads the real model, verifies a readable gazetteer, and processes **“Flood in Austin Texas.”** through the real model API and Supabase. The dashboard starts only after usable CSV output exists. Look for the **“Real NLP and Supabase”** label, Flood/Texas results, and the original post in the table. When both Austin and Texas resolve, the existing aggregation reports **two location records from one synthetic post**.
+
+This `demo` mode uses a known synthetic input but **does not replay the saved model response**. It is the repeatable real-backend interview path.
+
+For continuous collection after rehearsal works, change `CRISIS_PIPELINE_MODE` to `live` in this Blueprint and deploy the update. That also starts the original Bluesky firehose service and batch processor. The startup post remains present and labeled. Live traffic may contain no qualifying crisis posts and depends on external availability.
+
+Render supplies the public `PORT`. Model/scraper ports default to `5000`/`5001`, bind only to `127.0.0.1`, and are not public. Only one model process and one CSV writer run. Automatic deployments are disabled; deploy later code updates manually. Blueprint synchronization can still apply configuration changes, including instance plans—review changes before syncing.
+
+## Run locally without a paid instance
+
+Use Python 3.12 on macOS or Linux with at least 4 GB available RAM (more headroom is preferable). From the repository root:
+
+```sh
+python3.12 -m venv .venv-live
+source .venv-live/bin/activate
+bash scripts/build_live.sh
+cp .env.example .env
+# Fill in SUPABASE_URL and SUPABASE_KEY in .env, then:
+PORT=8052 MODEL_PORT=5002 python scripts/run_pipeline.py --mode demo
+```
+
+Open **http://localhost:8052**. Port 5002 avoids macOS services that sometimes occupy 5000. If dependencies and the model are already built in your active environment, skip installation/build. Do not overwrite an existing configured `.env`; edit it instead. To collect Bluesky posts, use `--mode live`. Stop with Ctrl+C. The launcher is POSIX-only; on Windows use Docker or WSL.
+
+## Troubleshooting and limits
+
+| Symptom | Check |
+| --- | --- |
+| Blueprint not found / fixture banner | Branch `polish/interview-demo`; real backend Blueprint path `render-live.yaml` |
+| Missing Supabase variables | Set both values in service Environment settings and restart |
+| `Gazetteer readiness failed` | Project URL, API key, SELECT permissions, exact column names, and Supabase project availability |
+| `empty or unreadable` | Table has no rows, or row-level security hides rows from this key |
+| No complete startup crisis output | Austin/Texas gazetteer coverage and model-service logs |
+| Missing custom model | Build must finish `build_disaster_model.py` successfully |
+| Process killed / out of memory | Inspect memory metrics; Free and 2 GB instances are too small for the local measurement |
+| Live mode shows only startup post | Check ingestion logs; random traffic need not contain a qualifying report |
+
+Every start uses a fresh temporary data directory and regenerates the known post. CSV history is **not durable** across restarts/deploys. Existing local data directories are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and the presence of both CSVs; it does not prove recent firehose activity or incident accuracy.
+
+Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for actual checks. Local tests with controlled database responses do not verify your real Supabase credentials, policies, or data.

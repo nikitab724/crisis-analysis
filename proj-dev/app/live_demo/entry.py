@@ -8,6 +8,7 @@ import requests
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
+SCRAPER_SERVER_URL = os.environ.get("SCRAPER_SERVER_URL", "http://127.0.0.1:5001").rstrip("/")
 
 def extract_entities(text):
     """
@@ -40,7 +41,7 @@ def default_entity_data():
     }
 
 def get_scraped_posts(limit=50):
-    url = "http://127.0.0.1:5001/scrape"
+    url = f"{SCRAPER_SERVER_URL}/scrape"
     params = {"limit": limit}
     try:
         response = requests.get(url, params=params, timeout=60)

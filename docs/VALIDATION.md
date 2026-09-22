@@ -57,15 +57,15 @@ The existing notebook-building cell was preserved as the reference. The script u
 
 - **Fixture demo:** works without the custom model, Supabase, or Bluesky after installing Python 3.12 and `requirements-demo.txt`. Initial dependency installation needs internet access.
 - **Real NLP on a fresh clone:** download `en_core_web_trf` and run the new model builder. Generated model weights are intentionally excluded from Git. The model was built locally during this cleanup.
-- **Real location enrichment:** requires valid Supabase credentials and a populated, readable `gazetteer` table. Neither was available, so real database connectivity and data coverage remain unverified. Required columns are documented in the README.
-- **Continuous Bluesky ingestion:** requires external network access. Import compatibility was checked; live collection was not exercised. The legacy firehose record-to-operation matching and concurrent request behavior deserve a separate review before production use.
+- **Real location enrichment:** the user confirmed the original `gazetteer` table exists. Credentials were not supplied, so that project's actual connectivity, permissions, and data coverage remain unverified. Required columns are documented in the README; credentials belong in Render's server environment settings.
+- **Continuous Bluesky ingestion:** a bounded read-only smoke check collected five real public posts with the expected pipeline fields. Sustained ingestion through the real database is unverified. The legacy firehose record-to-operation matching deserves a separate review before production use; requests now run serially to avoid concurrent use of its shared event loop.
 - **Docker execution:** not run because the Docker daemon was stopped. Dockerfile and documented paths/ports were inspected for consistency; no successful image build is claimed.
 - **Visual browser inspection:** blocked because the browser tool could not verify its admin-enforced security policy. No screenshot or visual end-to-end validation is claimed. The geographic basemap may depend on externally served Plotly assets.
 - **Legacy scripts:** `proj-dev/app/main.py` references modules no longer next to it; `live_demo/scraper_server.py` imports absent `blueskyapi_copy`. These are documented as unsupported experiments and excluded from the demo instructions.
 
 ## Deliberately deferred
 
-Cross-batch deduplication, counting unique posts rather than location rows, weighted sentiment aggregation, changes to disaster taxonomy, location disambiguation, firehose record mapping, transactional storage, authentication, service orchestration, and a full dependency lockfile. These would expand behavior or architecture beyond the requested interview cleanup.
+Cross-batch deduplication, counting unique posts rather than location rows, weighted sentiment aggregation, changes to disaster taxonomy, location disambiguation, firehose record mapping, transactional storage, authentication, production orchestration, and a full dependency lockfile. These would expand behavior or architecture beyond the requested interview cleanup.
 
 ## Render deployment preparation
 
@@ -76,3 +76,15 @@ The exact startup script was exercised from a temporary clean checkout with no N
 The user completed Render provisioning. Public deployment: **https://crisis-analysis-interview-demo.onrender.com**. On September 22, 2026, HTTPS checks returned HTTP 200 for the public page, Dash layout, and all five dashboard callbacks. Verified the explicit fixture label, Texas dropdown, Flood map/chart data with count 1, original synthetic post, and statistics showing one report, one disaster type, one state, one city, and average sentiment 0.00. These checks exercised the deployed service, not a local substitute.
 
 Visual browser inspection remains unverified because the browser tool could not verify its admin-enforced security policy. The public callback checks validate returned data, not browser rendering or geographic asset availability. The Render Free instance can sleep when idle; warm it up before presenting. Automatic deployments are disabled, so documentation-only pushes do not restart the running service.
+
+## Real backend connection preparation
+
+Added `requirements-live.txt`, `scripts/build_live.sh`, `scripts/run_pipeline.py`, the separate optional paid `render-live.yaml`, and [backend setup instructions](BACKEND.md). The existing Free Blueprint is unchanged. The launcher keeps the original services on one host, checks Supabase/table readiness, runs the known post through real NLP, and starts the dashboard only after usable Austin/Texas/Flood data exists. Optional live mode also starts the original collector and processor.
+
+The transformer process alone measured approximately 2,633 MiB RSS locally after inference. This exceeds the Free 512 MB and 2 GB instances; the optional Blueprint selects 4 GB. This measurement does not guarantee Linux resource use or sustained feed throughput. The Linux CPU-only PyTorch 2.14.0 wheel was confirmed available in the official PyTorch index; the Linux build has not been executed here.
+
+`tests/check_backend_runtime.py` passed using the actual saved NLP model, actual Waitress model service, actual Supabase Python client communicating with a controlled local HTTP gazetteer, actual CSV processing, and a Gunicorn dashboard. All five Dash callbacks returned the expected Texas/Flood/post/statistics data. A simulated database outage returned HTTP 503 from public readiness; recovery restored HTTP 200. Terminating the model process caused the supervisor to exit nonzero and shut down the dashboard. Existing local data was preserved. This test does not connect to the user's Supabase project.
+
+The original seven regression tests still pass in the minimal demo environment. Shell syntax, Blueprint YAML parsing, dependency consistency in the working model environment, and targeted lint checks passed. Real paid Render provisioning, actual Supabase credentials/policies/data, and sustained live processing remain outstanding. No paid service was created during preparation.
+
+A separate clean Python 3.12 environment installed only the declared live runtime dependencies, PyTorch 2.14.0, and `en_core_web_trf` 3.8.0. The original model builder, complete backend runtime check, and seven regression tests all passed there, with no notebook packages required. Dependency consistency passed for all 110 installed packages. A separate check confirmed that a fixture marker takes precedence over a conflicting environment mode, so fixture data cannot be labeled as real NLP. Native Linux/Render execution is still unverified.

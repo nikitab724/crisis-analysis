@@ -1,0 +1,21 @@
+# Optional PAID deployment. The existing free Blueprint uses render.yaml.
+# Review the instance price in Render before creating this separate service.
+services:
+  - type: web
+    name: crisis-analysis-live
+    runtime: python
+    plan: 2c-4g
+    branch: polish/interview-demo
+    buildCommand: bash scripts/build_live.sh
+    startCommand: python scripts/run_pipeline.py
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: CRISIS_PIPELINE_MODE
+        value: demo
+      - key: PYTHONUNBUFFERED
+        value: "1"

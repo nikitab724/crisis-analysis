@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import asyncio
+import os
 from atproto import AsyncFirehoseSubscribeReposClient, AsyncIdResolver, AsyncDidInMemoryCache, parse_subscribe_repos_message, CAR
 import time
 
@@ -87,6 +88,10 @@ def scrape():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'healthy'})
+
 @app.route('/test_tweet', methods=['POST'])
 def test_tweet():
     data = request.json
@@ -103,4 +108,4 @@ def test_tweet():
     return jsonify({'posts': [test_post]})
 
 if __name__ == "__main__":
-    app.run(port=5001)
+    app.run(host="127.0.0.1", port=int(os.environ.get("SCRAPER_PORT", "5001")), threaded=False)

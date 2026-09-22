@@ -301,6 +301,22 @@ def health_check():
     overall_state = 'healthy' if (nlp is not None) else 'degraded'
     return jsonify({'status': overall_state, 'details': status})
 
+@app.route('/ready', methods=['GET'])
+def readiness_check():
+    """Require both the custom model and a readable, nonempty gazetteer."""
+    if nlp is None:
+        return jsonify({'status': 'unavailable', 'component': 'model'}), 503
+    try:
+        response = supabase.table("gazetteer").select(
+            "name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list, population"
+        ).limit(1).execute()
+        if not response.data:
+            return jsonify({'status': 'unavailable', 'component': 'gazetteer', 'reason': 'empty or unreadable'}), 503
+    except Exception:
+        logger.error("Gazetteer readiness failed; check credentials, SELECT permissions, and required columns.")
+        return jsonify({'status': 'unavailable', 'component': 'gazetteer'}), 503
+    return jsonify({'status': 'healthy', 'details': {'spaCy': 'loaded', 'gazetteer': 'readable'}})
+
 @app.route('/extract_entities', methods=['POST'])
 def extract_entities():
     """
@@ -357,13 +373,15 @@ if __name__ == '__main__':
     # Only do the global initialization if we directly run this file
     initialize_globals()
 
-    logger.info("Starting model server on port 5000 with Waitress")
+    model_port = int(os.environ.get("MODEL_PORT", "5000"))
+    model_threads = int(os.environ.get("MODEL_THREADS", "4"))
+    logger.info("Starting model server on port %s with Waitress", model_port)
     try:
         from waitress import serve
-        serve(app, host="127.0.0.1", port=5000, threads=4)
+        serve(app, host="127.0.0.1", port=model_port, threads=model_threads)
     except ImportError:
         logger.warning("Waitress not installed, falling back to Flask dev server.")
-        app.run(port=5000, threaded=True)
+        app.run(host="127.0.0.1", port=model_port, threaded=True)
     except Exception as e:
         logger.critical(f"Server failed to start: {e}")
         sys.exit(1)

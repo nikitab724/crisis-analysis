@@ -1,0 +1,10 @@
+# Runtime dependencies for the existing services; notebook tools are optional.
+-r requirements-hosted-demo.txt
+spacy==3.8.4
+spacytextblob==5.0.0
+spacy-lookups-data==1.0.5
+atproto==0.0.72
+waitress==3.0.2
+supabase==2.31.0
+python-dotenv==1.2.3
+psutil==7.2.2

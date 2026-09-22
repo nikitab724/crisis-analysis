@@ -94,6 +94,12 @@ bash scripts/start_demo.sh
 
 For an alternate local port, run `PORT=8052 bash scripts/start_demo.sh`. The full live NLP/database deployment remains separate from this fixture deployment.
 
+## Connect the real backend
+
+The real backend can use your existing Supabase `gazetteer` table. [Follow the backend setup guide](docs/BACKEND.md) for the separate Render Blueprint (`render-live.yaml`), secret environment settings, and local startup. The model, processor, and dashboard run together on one host because the dashboard reads their local CSVs.
+
+The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. The real model used about 2.6 GiB by itself locally, so this Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
+
 ## Rebuild and verify the original NLP pipeline
 
 Install the full environment and download the same base model used in the notebook:
@@ -152,7 +158,7 @@ python proj-dev/app/live_demo/process_test_tweet.py --output-dir .demo-live
 CRISIS_DATA_DIR="$PWD/.demo-live" python proj-dev/app/live_demo/dash_client.py
 ```
 
-The injector exits nonzero if it cannot produce both a crisis record and aggregate counts. This mode requires the model API and Supabase, but does not require Bluesky or the scraper. `GET http://127.0.0.1:5000/health` reports whether the NLP pipeline is loaded; it does **not** verify database connectivity. A missing model makes extraction return HTTP 503 instead of pretending a basic English model can detect custom disaster labels.
+The injector exits nonzero if it cannot produce both a crisis record and aggregate counts. This mode requires the model API and Supabase, but does not require Bluesky or the scraper. `GET http://127.0.0.1:5000/health` reports whether the NLP pipeline is loaded; `/ready` additionally verifies readable gazetteer rows and required columns. A missing model makes extraction return HTTP 503 instead of pretending a basic English model can detect custom disaster labels.
 
 For continuous live collection, run these four processes in separate terminals:
 
@@ -216,6 +222,9 @@ python tests/check_disaster_model.py
 
 # Real model/API/CSV integration, with controlled database responses
 python tests/check_model_pipeline.py
+
+# Full startup, real Supabase SDK over controlled HTTP, dashboard, and failure cleanup
+python tests/check_backend_runtime.py
 ```
 
 The regression suite covers HTTP fixture injection, deterministic CSV output, dashboard callbacks, scraper restoration after failure, stale-output rejection, safe CSV list parsing, and empty/error handling. See [docs/VALIDATION.md](docs/VALIDATION.md) for the checks actually run during cleanup and remaining blockers.
@@ -227,7 +236,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 - **Counts represent extracted records:** a post with several locations can create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.
-- **Prototype storage and services:** CSV writes are not transactional; there is no authentication, retry queue, service orchestration, or production deployment configuration. Live firehose collection depends on external availability and has limited concurrency handling.
+- **Prototype storage and services:** CSV writes are not transactional; there is no user authentication, retry queue, or durable hosted history. The optional launcher supervises existing processes, but is not a production orchestration system. Live firehose collection depends on external availability and has limited concurrency handling.
 - **Reproducibility limits:** primary versions are pinned, but not all transitive dependencies. A full cross-platform lockfile and CI are future work.
 - **Legacy experiments:** `proj-dev/app/main.py`, `live_demo/scraper_server.py`, `gazetteer_db.py`, and the notebook are not the supported demo startup path. The old scraper references an absent `blueskyapi_copy` module.
 

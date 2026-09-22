@@ -1,5 +1,6 @@
 from dash import Dash, dcc, html, Input, Output
 import pandas as pd
+import requests
 import plotly.express as px
 import os
 import ast  # For safely evaluating string representations of lists
@@ -9,10 +10,27 @@ import math
 from pathlib import Path
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
+PIPELINE_MODE = os.environ.get("CRISIS_PIPELINE_MODE", "")
+if (DATA_DIR / "fixture-demo.json").is_file():
+    PIPELINE_MODE = "fixture"
 
 # Create the Dash app
 app = Dash(__name__)
 server = app.server
+
+@server.get('/health')
+def health_check():
+    if PIPELINE_MODE in ("demo", "live"):
+        try:
+            model_url = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
+            response = requests.get(f"{model_url}/ready", timeout=5)
+            if response.status_code != 200 or response.json().get("status") != "healthy":
+                return {"status": "unavailable", "component": "backend"}, 503
+        except (requests.RequestException, ValueError):
+            return {"status": "unavailable", "component": "backend"}, 503
+    if not all((DATA_DIR / name).is_file() for name in ("filtered_posts.csv", "crisis_counts.csv")):
+        return {"status": "unavailable", "component": "data"}, 503
+    return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
 
 # Load initial data if available
 try:
@@ -112,6 +130,12 @@ app.layout = html.Div(
             "Fixture demo: synthetic post and predefined model response; live NLP is not running.",
             style={"textAlign": "center"},
         ) if (DATA_DIR / "fixture-demo.json").exists() else None,
+        html.P(
+            "Real NLP and Supabase: synthetic startup post analyzed by the original model."
+            if PIPELINE_MODE == "demo" else
+            "Live Bluesky processing with real NLP and Supabase; includes a synthetic startup post.",
+            style={"textAlign": "center"},
+        ) if PIPELINE_MODE in ("demo", "live") else None,
         # The main container for the top row
         html.Div(
             style={
