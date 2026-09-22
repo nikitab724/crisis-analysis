@@ -1,13 +1,12 @@
-FROM --platform=linux/amd64 python:3.12
+FROM python:3.12
 
-COPY requirements.txt /proj-dev/requirements.txt
+WORKDIR /workspace
+COPY requirements.txt requirements-demo.txt ./
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_trf
 
-WORKDIR /proj-dev
+COPY . .
+EXPOSE 8051
 
-RUN pip install --no-cache-dir -r requirements.txt && python -m spacy download en_core_web_trf
-
-EXPOSE 8888 8050
-
-ENV NAME=World
-
-CMD [ "sleep", "infinity" ]
+# Development container: start the documented services with docker exec.
+CMD ["sleep", "infinity"]

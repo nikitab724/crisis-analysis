@@ -1,20 +1,9 @@
-import pandas as pd
-import spacy
-import glob
-import os
 import re
-from collections import Counter 
-from collections import defaultdict
-import numpy as np
-from spacy.lang.en import English
-from spacy.lookups import Lookups
-from spacy.pipeline import EntityRuler
-from spacytextblob.spacytextblob import SpacyTextBlob
-import json
-import sklearn
-import matplotlib.pyplot as plt
+from functools import lru_cache
+from pathlib import Path
 
-# data preprocessing
+import spacy
+from spacytextblob.spacytextblob import SpacyTextBlob  # noqa: F401 - registers the saved pipeline component
 
 pattern = re.compile(
     r"(?P<hashtag>\#[A-Za-z0-9_]+)"           # e.g. #RockIsland
@@ -41,10 +30,10 @@ def replace_func(match: re.Match) -> str:
         hashtag_text = match.group('hashtag')[1:]  # skip '#'
         splitted = split_camel_case(hashtag_text)
         return splitted + ","  # keep a trailing comma
-    
+
     if match.group('mention') or match.group('url') or match.group('remove'):
         return " "
-    
+
     # fallback
     return match.group(0)
 
@@ -59,26 +48,34 @@ def clean_text(text: str) -> str:
     # Normalize spaces
     return ' '.join(cleaned.split())
 
-nlp = spacy.load("../disaster_ner")
+@lru_cache(maxsize=1)
+def load_nlp():
+    """Load the existing custom pipeline once, independent of working directory."""
+    model_path = Path(__file__).resolve().parent.parent / "disaster_ner"
+    if not model_path.is_dir():
+        raise FileNotFoundError(
+            f"Custom NLP model is missing: {model_path}. "
+            "Restore disaster_ner or follow the model setup steps in README.md."
+        )
+    return spacy.load(model_path)
+
 
 def test_model(text):
-    doc = nlp(text)
+    doc = load_nlp()(text)
     for ent in doc.ents:
         print(f"Entity lemma: {ent.lemma_.lower()} | Ent text: {ent.text} | Label: {ent.label_} | Canonical label: {ent.ent_id_}")
     print(f"Polarity: {doc._.blob.polarity}, Subjectivity: {doc._.blob.subjectivity}")
-#print(df1.loc[0, "tweet_text"])
 
 #extract entities and sentiment from tweet text
 
 headers = ["Negative", "Neutral", "Positive"]
 def extract_ent_sent(text):
-    #print("entity extraction text: ", text)
-    doc = nlp(clean_text(text))
+    doc = load_nlp()(clean_text(text))
     disasters = set()  # Use set to deduplicate identical disasters
     locations = set()  # Use set to deduplicate identical locations
     sentiment = headers[1]
     score = doc._.blob.polarity
-    
+
     for ent in doc.ents:
         if ent.label_ == "DISASTER":
             disaster_id = ent.ent_id_ if ent.ent_id_ else ent.text
@@ -87,11 +84,8 @@ def extract_ent_sent(text):
             location = ent.text.strip("# ")
             if location.endswith("'s"):
                 location = location[:-2]
-            elif location.endswith("'s"):
-                location = location[:-2]
             locations.add(location)  # Use add() for set
-    
-    #print("locations in ent sent: ", locations)
+
 
     if score >= 0.1:
         sentiment = headers[2]
@@ -100,4 +94,4 @@ def extract_ent_sent(text):
     else:
         sentiment = headers[1]
 
-    return {"disasters": list(disasters), "locations": list(locations), "sentiment": sentiment, "polarity": score}
+    return {"disasters": sorted(disasters), "locations": sorted(locations), "sentiment": sentiment, "polarity": score}

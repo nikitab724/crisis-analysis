@@ -1,0 +1,6 @@
+# Minimal environment for fixture replay, pipeline tests, and the dashboard.
+numpy==2.2.2
+pandas==2.2.3
+dash==2.18.2
+requests==2.32.5
+plotly==6.3.0

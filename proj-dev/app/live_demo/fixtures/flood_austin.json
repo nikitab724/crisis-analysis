@@ -1,0 +1,17 @@
+{
+  "description": "Synthetic fixture for pipeline rehearsal, not a measured NLP prediction.",
+  "text": "Flood in Austin Texas.",
+  "response": {
+    "disasters": ["Flood"],
+    "locations": ["Austin Texas"],
+    "sentiment": "Neutral",
+    "polarity": 0.0,
+    "city": "Austin",
+    "state": "Texas",
+    "region": null,
+    "country": "US",
+    "latitude": 30.2672,
+    "longitude": -97.7431,
+    "all_locations": []
+  }
+}

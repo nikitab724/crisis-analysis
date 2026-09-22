@@ -31,11 +31,13 @@ async def resolve_author_handle(repo, resolver):
         print(f"Could not resolve handle for {repo}: {e}")
         return repo  # Fallback to DID
 
-async def listen_firehose(client: AsyncFirehoseSubscribeReposClient, 
-                          resolver: AsyncIdResolver, 
+async def listen_firehose(client: AsyncFirehoseSubscribeReposClient,
+                          resolver: AsyncIdResolver,
                           post_limit=50,
-                          post_list:list=[]):
+                          post_list=None):
     """Listen to the Firehose and process each received post."""
+    if post_list is None:
+        post_list = []
 
     async def message_handler(message):
         nonlocal post_list
@@ -62,13 +64,13 @@ class FirehoseAPI:
     def __init__(self):
         self.client = AsyncFirehoseSubscribeReposClient()
         self.resolver = AsyncIdResolver(cache=AsyncDidInMemoryCache())
-    
+
     async def fetch_posts(self, post_limit):
         self.client = AsyncFirehoseSubscribeReposClient()
         post_list = []
         await listen_firehose(self.client, self.resolver, post_limit, post_list)
         return post_list
-        
+
 scraper = FirehoseAPI()
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)

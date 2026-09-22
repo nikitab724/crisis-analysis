@@ -1,7 +1,7 @@
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from functools import lru_cache
 from flask import Flask, request, jsonify
 
@@ -86,7 +86,6 @@ state_coordinates = {
 @lru_cache(maxsize=2048)
 def lookup_city_state_country(loc_text: str):
     norm = loc_text
-    print(norm)
     def _run_query(builder) -> List[Dict[str, Any]]:
         try:
             resp = builder.execute()
@@ -109,7 +108,6 @@ def lookup_city_state_country(loc_text: str):
     )
 
     if not resp.data:
-        print("First query returned no data, trying ilike and alternate_list")
         resp = (
             supabase.table("gazetteer")
             .select("name, featureCode, stateCode, countryCode, latitude, longitude")
@@ -122,7 +120,6 @@ def lookup_city_state_country(loc_text: str):
             .execute()
         )
 
-    print(resp.data if resp.data else "No data found")
 
     city = state = region = place = state_code = country_code = latitude = longitude = None
 
@@ -151,7 +148,7 @@ def lookup_city_state_country(loc_text: str):
     all_states = {s.lower() for s in US_STATE_NAMES.values()} | {k.lower() for k in US_STATE_NAMES}
     if not state:
         city = None
-        if norm.lower() in all_states: #i have no idea what the fuck this is here for but it is and it works
+        if norm.lower() in all_states:  # State names should not be classified as free-form regions.
             region = None
         else:
             region = norm.title()
@@ -214,10 +211,8 @@ def lookup():
     payload = request.get_json(force=True, silent=True) or {}
     if not payload:
         return jsonify({"error": "No locations provided"}), 400
-    print("payload", payload)
     
     result = standardize_row(payload)
-    print("result", result)
     return jsonify(result), 200
 
 if __name__ == "__main__":

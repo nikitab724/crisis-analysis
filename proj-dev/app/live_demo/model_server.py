@@ -4,25 +4,21 @@ import gc
 import time
 import logging
 import psutil
-import requests
-import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from functools import lru_cache
 from flask import Flask, request, jsonify
 
-
-import spacy
-from flask import Flask, request, jsonify
-
-from entity_extraction import extract_ent_sent, clean_text
+from entity_extraction import extract_ent_sent, load_nlp
 
 ### Location standardization setup
 load_dotenv()
 
 url: str = os.environ.get('SUPABASE_URL')
 key: str = os.environ.get("SUPABASE_KEY")
+if not url or not key:
+    raise RuntimeError("Set SUPABASE_URL and SUPABASE_KEY; see .env.example and README.md.")
 supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
@@ -150,7 +146,6 @@ def lookup_city_state_country(loc_text: str):
                 .execute()
             )
 
-    print(resp.data if resp.data else "No data found")
 
     city = state = region = place = state_code = country_code = latitude = longitude = None
 
@@ -179,7 +174,7 @@ def lookup_city_state_country(loc_text: str):
     all_states = {s.lower() for s in US_STATE_NAMES.values()} | {k.lower() for k in US_STATE_NAMES}
     if not state:
         city = None
-        if norm.lower() in all_states: #i have no idea what the fuck this is here for but it is and it works
+        if norm.lower() in all_states:  # State names should not be classified as free-form regions.
             region = None
         else:
             region = norm.title()
@@ -225,7 +220,7 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
             "latitude": None,
             "longitude": None
         }
-    
+
     first, *rest = results
     return {
         "city": first.get("city"),
@@ -252,15 +247,13 @@ logger = logging.getLogger(__name__)
 # Global references to loaded data
 nlp = None
 
-APP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#print(APP_DIR)
 ###########################
 # Initialization Function #
 ###########################
 
 def initialize_globals():
     """
-    Load the spaCy model and gazetteer data once, if not already loaded.
+    Load the shared custom spaCy pipeline once.
     """
     global nlp
 
@@ -268,22 +261,15 @@ def initialize_globals():
     process = psutil.Process(os.getpid())
     logger.info(f"Memory usage before loading data: {process.memory_info().rss / 1024 / 1024:.2f} MB")
 
-    # 1) Load spaCy Model
     try:
-        nlp_path = os.path.join(os.path.join(APP_DIR, "app", "disaster_ner"))
-        logger.info(f"Loading spaCy model from: {nlp_path}")
-        nlp = spacy.load(nlp_path)
-    except Exception as e:
-        logger.error(f"Could not load custom spaCy model from {nlp_path}. Error: {e}")
-        logger.info("Falling back to en_core_web_sm (basic model).")
-        try:
-            nlp = spacy.load("en_core_web_sm")
-        except Exception as e2:
-            logger.error(f"Could not load fallback 'en_core_web_sm': {e2}")
-            nlp = None  # If we can’t load anything, set to None
+        nlp = load_nlp()
+        logger.info("Custom spaCy pipeline loaded.")
+    except Exception as exc:
+        logger.error("Could not load custom spaCy pipeline: %s", exc)
+        nlp = None
 
     # Force garbage collection after loading
-    gc.collect() 
+    gc.collect()
 
 ######################
 # Utility Functions  #
@@ -328,39 +314,23 @@ def extract_entities():
         return jsonify({'error': 'No text provided'}), 400
 
     logger.info(f"extract_entities called, text length={len(text)}")
-    
-    # Ensure everything is loaded
-    #initialize_globals()
-    # Extract using spaCy-based logic or fallback
-    if nlp:
-        ent_sent = extract_ent_sent(text)
-        ent_sent = convert_sets_to_lists(ent_sent)
-    else:
-        # If no spaCy loaded, return minimal structure
-        ent_sent = {
-            "disasters": [],
-            "locations": [],
-            "sentiment": "Neutral",
-            "polarity": 0.0
-        }
 
-    #print("locations in ent sent before standardization (model server): ", ent_sent['locations'])
+    if nlp is None:
+        return jsonify({'error': 'Custom NLP model unavailable; check /health and README.md.'}), 503
+    ent_sent = convert_sets_to_lists(extract_ent_sent(text))
 
     # Attempt location standardization if gazetteer is loaded
     if ent_sent['disasters'] and ent_sent['locations']:
-        print(ent_sent['disasters'], ent_sent['locations'])
         try:
             loc_series = standardize_row({'locations': ent_sent['locations']})
             # Update ent_sent with the standardization keys
-            print(loc_series)
             for key, val in loc_series.items():
                 ent_sent[key] = val
-            
 
-            print("ent sent after standardization:", ent_sent)
+
             # De-duplicate the 'locations' list if present
             if 'locations' in ent_sent and isinstance(ent_sent['locations'], list):
-                ent_sent['locations'] = list(set(ent_sent['locations']))
+                ent_sent['locations'] = sorted(set(ent_sent['locations']))
         except Exception as e:
             logger.error(f"Location standardization error: {e}")
             # Provide fallback
@@ -374,7 +344,6 @@ def extract_entities():
                 "all_locations": []
             })
 
-    #print("locations in ent sent after standardization (model server): ", ent_sent['city'], ent_sent['all_locations'])
     elapsed = time.time() - start_time
     logger.info(f"extract_entities completed in {elapsed:.2f}s")
 
@@ -387,12 +356,11 @@ def extract_entities():
 if __name__ == '__main__':
     # Only do the global initialization if we directly run this file
     initialize_globals()
-    
-    import waitress
+
     logger.info("Starting model server on port 5000 with Waitress")
     try:
         from waitress import serve
-        serve(app, port=5000, threads=4)
+        serve(app, host="127.0.0.1", port=5000, threads=4)
     except ImportError:
         logger.warning("Waitress not installed, falling back to Flask dev server.")
         app.run(port=5000, threaded=True)

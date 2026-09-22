@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+!.env.example
+.venv*
+.python
+.cache
+.demo
+.demo-live
+**/__pycache__
+**/.ipynb_checkpoints
+**/.DS_Store
+**/*.log
+**/*.backup
+proj-dev/app/disaster_ner
+proj-dev/app/live_demo/filtered_posts.csv
+proj-dev/app/live_demo/crisis_counts.csv

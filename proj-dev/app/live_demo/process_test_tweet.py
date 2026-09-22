@@ -1,129 +1,138 @@
 #!/usr/bin/env python3
+"""Inject one synthetic post through entry.py without touching live CSVs."""
 
-import os
-import time
-import inspect
+import argparse
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+from pathlib import Path
+import shutil
+from tempfile import TemporaryDirectory
+from threading import Thread
+from unittest.mock import patch
+
 import pandas as pd
 
-# Import from your existing pipeline code
-# (Adjust as needed if 'entry.py' is not in the same directory)
-from entry import filter_posts, extract_entities, reset_csv_files, calculate_crisis_counts
-from entry import main as entry_main
+import entry
+
+DEFAULT_TEXT = "Flood in Austin Texas."
+FIXTURE_FILE = Path(__file__).parent / "fixtures/flood_austin.json"
+OUTPUT_FILES = ("filtered_posts.csv", "crisis_counts.csv")
+
 
 def create_mock_post(text):
+    """Use a fixed ID and timestamp so repeated demo runs are comparable."""
+    return [{
+        "author": "synthetic-demo",
+        "created_at": "2025-04-21T12:00:00Z",
+        "post_id": "demo-flood-austin",
+        "text": text,
+        "uri": "at://did:plc:demo/app.bsky.feed.post/demo-flood-austin",
+    }]
+
+
+@contextmanager
+def fixture_model_server():
+    """Replay one predefined response over the pipeline's normal HTTP boundary."""
+    fixture = json.loads(FIXTURE_FILE.read_text(encoding="utf-8"))
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            if self.path != "/extract_entities" or request != {"text": fixture["text"]}:
+                self.send_error(400, "Fixture supports only the bundled demo post")
+                return
+            payload = json.dumps(fixture["response"]).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *_args):
+            pass
+
+    with HTTPServer(("127.0.0.1", 0), Handler) as server:
+        worker = Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            with patch.object(entry, "MODEL_SERVER_URL", f"http://127.0.0.1:{server.server_port}"):
+                yield
+        finally:
+            server.shutdown()
+            worker.join()
+
+
+def process_test_tweet(text=DEFAULT_TEXT, *, fixture=False, output_dir=None):
+    """Run real processing by default; fixture mode explicitly replaces model HTTP.
+
+    A temporary directory isolates each run from existing data. Only validated
+    results are exported, and the original scraper function is always restored.
     """
-    Create a single mock post dictionary that resembles 
-    the format a real 'scrape' would produce.
+    if not text.strip():
+        raise ValueError("Post text must not be empty.")
+    if fixture and text != DEFAULT_TEXT:
+        raise ValueError("Fixture mode only supports the bundled Flood/Austin Texas post.")
 
-    This avoids sending a request to any server's /test_tweet route.
-    """
-    # You can change these fields as needed
-    mock_post = {
-        'author': 'test_user.bsky.social',
-        'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        'post_id': '',
-        'text': text,
-        'uri': f'at://did:plc:test/{time.time()}'
-    }
-    # Return a list with this single dict, 
-    # matching the shape that get_scraped_posts(...) normally returns
-    return [mock_post]
+    with TemporaryDirectory(prefix="crisis-demo-") as temporary:
+        with patch.object(entry, "get_scraped_posts", return_value=create_mock_post(text)):
+            if fixture:
+                print("FIXTURE DEMO: predefined model response; no live NLP or Supabase lookup.")
+                with fixture_model_server():
+                    entry.main(post_limit=1, output_dir=temporary)
+            else:
+                print("LIVE MODEL: synthetic post sent to the configured model service.")
+                entry.main(post_limit=1, output_dir=temporary)
 
-def process_test_tweet(text):
-    """
-    Process a single test tweet through the 'entry.py' pipeline:
-      1. Backs up existing CSVs (filtered_posts.csv, crisis_counts.csv).
-      2. Creates a local mock post from 'text'.
-      3. Monkey-patches entry.scrape_posts so 'entry_main()' processes ONLY that single post.
-      4. Calls entry_main(), then restores the original function and CSV backups.
-    """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    filtered_posts_file = os.path.join(base_dir, "filtered_posts.csv")
-    crisis_counts_file = os.path.join(base_dir, "crisis_counts.csv")
-    
-    # 1) Back up existing CSV files, if they exist
-    backup_files = {}
-    for file_path in [filtered_posts_file, crisis_counts_file]:
-        if os.path.exists(file_path):
-            backup_path = file_path + ".backup"
-            print(f"Backing up {file_path} -> {backup_path}")
-            try:
-                with open(file_path, 'r') as src, open(backup_path, 'w') as dst:
-                    dst.write(src.read())
-                backup_files[file_path] = backup_path
-            except Exception as e:
-                print(f"Error backing up {file_path}: {e}")
-    
-    # 2) Create a single mock post from the text
-    print(f"Creating a single test post from: '{text}'")
-    posts = create_mock_post(text)
-    if not posts:
-        print("Error: No mock posts created. Aborting.")
-        return
-    
-    print(f"Test post created successfully! {len(posts)} post(s) in our list.")
+        paths = [Path(temporary) / name for name in OUTPUT_FILES]
+        if not all(path.exists() for path in paths):
+            raise RuntimeError(
+                "Demo failed: no complete crisis output. Check model health, "
+                "DISASTER/location detection, and the Supabase gazetteer."
+            )
+        posts, counts = (pd.read_csv(path) for path in paths)
+        if posts.empty or counts.empty or not posts["text"].eq(text).all():
+            raise RuntimeError("Demo failed: expected the injected post and nonempty crisis counts.")
+        if fixture and not (
+            len(posts) == len(counts) == 1
+            and posts.iloc[0]["city"] == "Austin"
+            and counts.iloc[0]["state"] == "Texas"
+            and counts.iloc[0]["disasters"] == "Flood"
+            and counts.iloc[0]["count"] == 1
+        ):
+            raise RuntimeError("Fixture output did not match the expected Flood/Austin/Texas result.")
 
-    # 3) Monkey-patch the scraping function so 'entry_main()' processes only that single post
-    import entry
-    original_scrape_posts = entry.get_scraped_posts  # or entry.get_scraped_posts, whichever your 'entry.py' calls
-    
-    def mock_scrape_posts(limit=None):
-        """
-        Returns the single test post only (ignoring real scraping).
-        """
-        print("Using mock scraper that returns the single test post only...")
-        return posts
-    
-    entry.get_scraped_posts = mock_scrape_posts
+        if output_dir is not None:
+            destination = Path(output_dir).resolve()
+            if destination == Path(__file__).parent.resolve() or destination == entry.DATA_DIR:
+                raise ValueError("Use a separate demo directory to preserve live CSVs.")
+            destination.mkdir(parents=True, exist_ok=True)
+            for path in paths:
+                shutil.copyfile(path, destination / path.name)
+            marker = destination / "fixture-demo.json"
+            if fixture:
+                marker.write_text(json.dumps({"mode": "fixture", "text": text}) + "\n", encoding="utf-8")
+            else:
+                marker.unlink(missing_ok=True)
+            print(f"Dashboard data saved to {destination}")
 
-    try:
-        # 4) Call entry_main() to run the pipeline
-        print("Processing test post through entry_main() pipeline...")
-        sig = inspect.signature(entry_main)
-        if 'post_limit' in sig.parameters:
-            entry_main(post_limit=1)
-        else:
-            entry_main()
+        print(posts[["text", "disasters", "city", "state", "sentiment"]].to_string(index=False))
+        print(counts.to_string(index=False))
+        print("PASS: injected post produced crisis records and aggregated counts.")
+        return posts, counts
 
-        # Check the results in filtered_posts.csv
-        if os.path.exists(filtered_posts_file):
-            try:
-                df = pd.read_csv(filtered_posts_file)
-                print(f"\nfiltered_posts.csv now has {len(df)} rows.")
-                if not df.empty:
-                    print("Sample rows:")
-                    print(df.head(5).to_string(index=False))
-                    
-                    if len(df) > 1:
-                        print("\nWARNING: More than one row was generated from a single test post!")
-                else:
-                    print("No rows found in filtered_posts after processing.")
-            except Exception as e:
-                print(f"Error reading {filtered_posts_file}: {e}")
-        else:
-            print("No filtered_posts.csv was created. Check for errors in the pipeline.")
-    
-    finally:
-        # Restore the original scrape function
-        entry.scrape_posts = original_scrape_posts
-        
-        # Restore backup CSV files
-        for original_path, backup_path in backup_files.items():
-            print(f"Restoring {original_path} from {backup_path}")
-            try:
-                with open(backup_path, 'r') as src, open(original_path, 'w') as dst:
-                    dst.write(src.read())
-            except Exception as e:
-                print(f"Error restoring {original_path}: {e}")
 
 def main():
-    print("=== Test Tweet Processor ===")
-    test_text = input("Enter test tweet text (or press Enter for default): ")
-    if not test_text.strip():
-        test_text = "Test tweet about a flood in Canada. Canada is experiencing severe flooding."
-        print(f"Using default test: '{test_text}'")
-    
-    process_test_tweet(test_text)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--text", default=DEFAULT_TEXT, help="Synthetic post text for the live model")
+    parser.add_argument("--fixture", action="store_true", help="Replay a labeled predefined model response")
+    parser.add_argument("--output-dir", type=Path, help="Export validated results; replaces this directory's demo CSVs")
+    args = parser.parse_args()
+    try:
+        process_test_tweet(args.text, fixture=args.fixture, output_dir=args.output_dir)
+    except (OSError, ValueError, RuntimeError) as exc:
+        parser.exit(1, f"Demo failed: {exc}\n")
+
 
 if __name__ == "__main__":
     main()

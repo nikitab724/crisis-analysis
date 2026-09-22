@@ -246,7 +246,6 @@ def standardize_row(row, gazetteer_df=None, location_dict=None):
     """
     # Get the locations list
     locs = row["locations"]
-    print("locs before processing in gazetteer: ", locs)
 
 
     # If no locations or gazetteer data, return empty values
@@ -290,5 +289,4 @@ def standardize_row(row, gazetteer_df=None, location_dict=None):
         "all_locations": remaining_locations  # Only include additional locations beyond the first
     }
     
-    #print("result from gazetteer: ", result)
     return pd.Series(result)

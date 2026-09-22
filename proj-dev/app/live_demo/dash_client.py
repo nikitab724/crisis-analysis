@@ -1,13 +1,14 @@
-from dash import Dash, dcc, html, Input, Output, callback
+from dash import Dash, dcc, html, Input, Output
 import pandas as pd
 import plotly.express as px
 import os
 import ast  # For safely evaluating string representations of lists
 import plotly.graph_objects as go
 from gazetteer import US_STATE_NAMES
-import requests
-import pickle
 import math
+from pathlib import Path
+
+DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 
 # Create the Dash app
 app = Dash(__name__)
@@ -15,13 +16,13 @@ server = app.server
 
 # Load initial data if available
 try:
-    if os.path.exists('crisis_counts.csv'):
-        df = pd.read_csv('crisis_counts.csv')
+    if os.path.exists(DATA_DIR / 'crisis_counts.csv'):
+        df = pd.read_csv(DATA_DIR / 'crisis_counts.csv')
     else:
         df = pd.DataFrame()
-        
-    if os.path.exists('filtered_posts.csv'):
-        posts_df = pd.read_csv('filtered_posts.csv')
+
+    if os.path.exists(DATA_DIR / 'filtered_posts.csv'):
+        posts_df = pd.read_csv(DATA_DIR / 'filtered_posts.csv')
     else:
         posts_df = pd.DataFrame()
 except Exception as e:
@@ -107,6 +108,10 @@ app.layout = html.Div(
                 "color": "#333",
             },
         ),
+        html.P(
+            "Fixture demo: synthetic post and predefined model response; live NLP is not running.",
+            style={"textAlign": "center"},
+        ) if (DATA_DIR / "fixture-demo.json").exists() else None,
         # The main container for the top row
         html.Div(
             style={
@@ -194,7 +199,7 @@ def get_city_coordinates(city_name: str, state_name: str) -> tuple[float, float]
 
     # always read the latest file
     try:
-        df = pd.read_csv("filtered_posts.csv", dtype={"city": "string", "state": "string"})
+        df = pd.read_csv(DATA_DIR / "filtered_posts.csv", dtype={"city": "string", "state": "string"})
     except FileNotFoundError:
         return None, None
 
@@ -215,18 +220,16 @@ def parse_cities_list(cities_str):
     """Safely parse a string representation of a list of cities."""
     if not cities_str or pd.isna(cities_str):
         return []
-    
+
     try:
         if isinstance(cities_str, str):
-            # Remove quotes and brackets for cleaner display
-            cities_str = cities_str.replace("'", '"')  # Replace single quotes with double quotes
             cities_list = ast.literal_eval(cities_str)
             if isinstance(cities_list, list):
                 return cities_list
-    except:
+    except (ValueError, SyntaxError):
         # If there's an error, just return empty list
         pass
-    
+
     return []
 
 def distance_in_degrees(lat1, lon1, lat2, lon2):
@@ -241,7 +244,7 @@ def update_dropdown_options(n_intervals):
     try:
         # Load crisis data with explicit column names
         try:
-            df = pd.read_csv('crisis_counts.csv', 
+            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
                            quotechar='"',  # Use double quotes for quoted fields
                            escapechar='\\', # Use backslash as escape character
                            names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
@@ -250,18 +253,18 @@ def update_dropdown_options(n_intervals):
             print(f"Error with standard CSV reader, trying alternative: {e}")
             # Try alternative reading approach with Python's csv module
             import csv
-            
-            with open('crisis_counts.csv', 'r') as f:
+
+            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
                 data = []
                 for row in reader:
                     if len(row) >= 7:  # Ensure we have at least 7 columns
                         data.append(row[:7])  # Take only the first 7 columns
-            
+
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-        
+
         return [{'label': state, 'value': state} for state in df['state'].unique() if state]
     except Exception as e:
         print(f"Error updating dropdown: {e}")
@@ -275,7 +278,7 @@ def update_crisis_map(n_intervals):
     try:
         # Load crisis data with explicit column names
         try:
-            df = pd.read_csv('crisis_counts.csv', 
+            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
                             quotechar='"',  # Use double quotes for quoted fields
                             escapechar='\\', # Use backslash as escape character
                             names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
@@ -284,30 +287,29 @@ def update_crisis_map(n_intervals):
             print(f"Error with standard CSV reader, trying alternative: {e}")
             # Try alternative reading approach with Python's csv module
             import csv
-            import io
-            
-            with open('crisis_counts.csv', 'r') as f:
+
+            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
                 data = []
                 for row in reader:
                     if len(row) >= 7:  # Ensure we have at least 7 columns
                         data.append(row[:7])  # Take only the first 7 columns
-            
+
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-        
+
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
         df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)
         df['severity'] = pd.to_numeric(df['severity'], errors='coerce').fillna(0)
-        
+
         if df.empty:
             return px.scatter_geo(title="No data available")
-        
+
         # Prepare data for the map - include both state and city markers
         map_data = []
-        
+
         # US state boundaries for the map
         usa_map = go.Figure(data=go.Scattergeo(
             locationmode='USA-states',
@@ -318,18 +320,18 @@ def update_crisis_map(n_intervals):
             marker_opacity=0,
             showlegend=False
         ))
-        
+
         # Process each crisis record
         for _, row in df.iterrows():
             state_name = row['state']
             state_full = state_to_full_name.get(state_name, state_name)
-            
+
             # Get state coordinates as a fallback
             if state_full in state_coordinates:
                 state_lat, state_lon = state_coordinates[state_full]
             else:
                 state_lat, state_lon = None, None
-                
+
             # Parse cities list
             cities = parse_cities_list(row['cities'])
             city_coords = []
@@ -358,7 +360,6 @@ def update_crisis_map(n_intervals):
                 if bubble_radius_degrees < 1:
                     bubble_radius_degrees = 1
 
-                print(bubble_radius_degrees, "degrees for", cities, "in", state_name)
                 # Create row in map_data
                 map_data.append({
                     'state': state_name,
@@ -368,7 +369,7 @@ def update_crisis_map(n_intervals):
                     'size': bubble_radius_degrees,  # We'll use this for px.scatter_geo(..., size='size')
                     'count': row['count'],
                     'disaster': row['disasters'],
-                    'city': ', '.join(cities), 
+                    'city': ', '.join(cities),
                     'severity': row.get('severity', 1.0),
                     'sentiment': row['avg_sentiment']
                 })
@@ -388,12 +389,12 @@ def update_crisis_map(n_intervals):
                         'severity': row.get('severity', 1.0),
                         'sentiment': row['avg_sentiment']
                     })
-        
+
         if not map_data:
             return px.scatter_geo(title="No valid location data available")
-            
+
         map_df = pd.DataFrame(map_data)
-        
+
         # Create the map with city-level markers
         fig = px.scatter_geo(
             map_df,
@@ -414,7 +415,7 @@ def update_crisis_map(n_intervals):
             title="Crisis Reports Across the United States",
             size_max=30,  # Maximum marker size
         )
-        
+
         fig.update_layout(
             legend_title_text='Disaster Type',
             geo=dict(
@@ -431,7 +432,7 @@ def update_crisis_map(n_intervals):
             ),
             uirevision='constant'
         )
-        
+
         return fig
     except Exception as e:
         print(f"Error updating crisis map: {e}")
@@ -447,7 +448,7 @@ def update_state_chart(n_intervals):
     try:
         # Load crisis data with explicit column names
         try:
-            df = pd.read_csv('crisis_counts.csv', 
+            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
                             quotechar='"',  # Use double quotes for quoted fields
                             escapechar='\\', # Use backslash as escape character
                             names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
@@ -456,39 +457,39 @@ def update_state_chart(n_intervals):
             print(f"Error with standard CSV reader, trying alternative: {e}")
             # Try alternative reading approach with Python's csv module
             import csv
-            
-            with open('crisis_counts.csv', 'r') as f:
+
+            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
                 data = []
                 for row in reader:
                     if len(row) >= 7:  # Ensure we have at least 7 columns
                         data.append(row[:7])  # Take only the first 7 columns
-            
+
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-        
+
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
-        
+
         if df.empty:
             return px.bar(title="No data available")
-        
+
         # Group by state and disaster type
         state_disaster_counts = df.groupby(['state', 'disasters']).agg(
             count=('count', 'sum')
         ).reset_index()
-        
+
         # Create the bar chart
         fig = px.bar(
-            state_disaster_counts, 
-            x='state', 
-            y='count', 
+            state_disaster_counts,
+            x='state',
+            y='count',
             color='disasters',
             title="Disaster Reports by State",
             labels={'count': 'Number of Reports', 'state': 'State', 'disasters': 'Disaster Type'}
         )
-        
+
         return fig
     except Exception as e:
         print(f"Error updating state chart: {e}")
@@ -501,15 +502,15 @@ def update_state_chart(n_intervals):
 def update_table(selected_state, n_intervals):
     if selected_state is None:
         return html.Div("Select a state to view related posts.")
-    
+
     try:
         # 1) Load or parse the CSV into a DataFrame
         try:
-            posts_df = pd.read_csv('filtered_posts.csv', quotechar='"', escapechar='\\')
+            posts_df = pd.read_csv(DATA_DIR / 'filtered_posts.csv', quotechar='"', escapechar='\\')
         except Exception as e:
             print(f"Error with standard CSV reader for posts, trying alternative: {e}")
             import csv
-            with open('filtered_posts.csv', 'r') as f:
+            with open(DATA_DIR / 'filtered_posts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
                 data = []
@@ -519,7 +520,7 @@ def update_table(selected_state, n_intervals):
                         row.append('')  # Pad with empty strings if needed
                     data.append(row[:len(headers)])  # Only columns that match headers
             posts_df = pd.DataFrame(data, columns=headers)
-        
+
         # 2) Filter by selected state
         filtered_posts = posts_df[posts_df['state'] == selected_state]
         if filtered_posts.empty:
@@ -529,28 +530,27 @@ def update_table(selected_state, n_intervals):
         columns_to_display = ['text', 'disasters', 'city', 'state', 'sentiment', 'polarity']
 
         # 3) Define a helper function to format each cell
-        import ast
 
         def format_cell_value(val, col_name):
             """Return a nicely formatted string from the cell value."""
-            
-                       # If it's a string that looks like a list, parse it
+
+            # Parse list-valued CSV cells for display.
             if isinstance(val, str) and (val.startswith('[') and val.endswith(']')):
                 try:
                     parsed = ast.literal_eval(val)  # e.g. ['flood', 'hurricane']
                     if isinstance(parsed, list):
                         val = parsed
-                except:
+                except (ValueError, SyntaxError):
                     pass  # fallback to using val as-is if parsing fails
 
             # For all other columns, just title-case the string if it's not numeric
             if isinstance(val, list):
                 # If it's a list for some reason, join it with commas
                 return ", ".join(str(item).title() for item in val)
-            
+
             if isinstance(val, str):
-                return val.title()  # Convert to Title Case for a nicer look
-            
+                return val if col_name == "text" else val.title()
+
             # If it's numeric or something else, just convert to string
             return str(val)
 
@@ -578,7 +578,7 @@ def update_stats(n_intervals):
     try:
         # Load crisis data with explicit column names
         try:
-            df = pd.read_csv('crisis_counts.csv', 
+            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
                             quotechar='"',  # Use double quotes for quoted fields
                             escapechar='\\', # Use backslash as escape character
                             names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
@@ -587,42 +587,42 @@ def update_stats(n_intervals):
             print(f"Error with standard CSV reader, trying alternative: {e}")
             # Try alternative reading approach with Python's csv module
             import csv
-            
-            with open('crisis_counts.csv', 'r') as f:
+
+            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
                 reader = csv.reader(f, quotechar='"', escapechar='\\')
                 headers = next(reader)  # Get header row
                 data = []
                 for row in reader:
                     if len(row) >= 7:  # Ensure we have at least 7 columns
                         data.append(row[:7])  # Take only the first 7 columns
-            
+
             # Convert to DataFrame
             df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-        
+
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
         df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)
-        
+
         if df.empty:
             return html.Div("No statistics available.")
-        
+
         # Calculate statistics
         total_disasters = len(df['disasters'].unique())
         total_states = len(df['state'].unique())
-        
+
         # Count cities - safely parse the cities column
         total_cities = 0
         all_cities = set()
-        
+
         for cities_str in df['cities']:
             cities = parse_cities_list(cities_str)
             all_cities.update(cities)
-        
+
         total_cities = len(all_cities)
-        
+
         avg_sentiment = df['avg_sentiment'].mean()
         total_reports = df['count'].sum()
-        
+
         return html.Table([
             html.Tr([html.Th("Total Reports"), html.Td(total_reports)]),
             html.Tr([html.Th("Total Unique Disasters"), html.Td(total_disasters)]),
