@@ -2,6 +2,8 @@
 
 A college prototype that turns public social posts into a geographic view of potential crisis reports.
 
+**[Open the live interview demo](https://crisis-analysis-interview-demo.onrender.com)** — a labeled, deterministic fixture walkthrough. It demonstrates the processing/dashboard flow without running live NLP, Supabase, or Bluesky ingestion.
+
 ## The problem
 
 Social feeds can contain early reports of floods, wildfires, and other emergencies, but relevant posts are mixed with unrelated discussion. Manually finding disaster mentions, locating them, and grouping reports takes time.
