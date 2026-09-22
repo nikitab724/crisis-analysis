@@ -19,6 +19,7 @@ __pycache__/
 .demo-live/
 .demo-hosted/
 .restore/
+supabase/.temp/
 .pytest_cache/
 .coverage
 htmlcov/

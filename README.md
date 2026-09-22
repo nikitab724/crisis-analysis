@@ -52,7 +52,7 @@ This is the shortest rehearsal path. It injects a synthetic post, **“Flood in 
 From the repository root, with Python 3.12 installed:
 
 ```sh
-git clone https://github.com/nikitab724/crisis-analysis.git
+git clone --branch polish/interview-demo https://github.com/nikitab724/crisis-analysis.git
 cd crisis-analysis
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -96,7 +96,7 @@ For an alternate local port, run `PORT=8052 bash scripts/start_demo.sh`. The ful
 
 ## Connect the real backend
 
-The real backend can use your existing Supabase `gazetteer` table. [Follow the backend setup guide](docs/BACKEND.md) for the separate Render Blueprint (`render-live.yaml`), secret environment settings, and local startup. The model, processor, and dashboard run together on one host because the dashboard reads their local CSVs.
+The real backend uses a Supabase `gazetteer` table. The original backup has been recovered into a new Free Supabase project, and the real NLP → hosted database → dashboard path was verified with 193,736 location records on September 22, 2026. [Follow the backend setup guide](docs/BACKEND.md) for the separate Render Blueprint (`render-live.yaml`), secret environment settings, and local startup. The model, processor, and dashboard run together on one host because the dashboard reads their local CSVs.
 
 The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. The real model used about 2.6 GiB by itself locally, so this Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
 

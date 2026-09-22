@@ -10,7 +10,11 @@ The real transformer used approximately **2.6 GiB for the model process alone** 
 
 Render's Free instance has 512 MB RAM. The optional `render-live.yaml` defines a separate **paid `2c-4g` instance**, currently listed at **$85/month** on [Render's pricing page](https://render.com/pricing), checked September 22, 2026. Review the current price in Render before creating it. The existing `render.yaml` remains Free. Running the real pipeline locally avoids this additional hosting charge.
 
-## Use the existing Supabase project
+## Configure Supabase
+
+The replacement **crisis-analysis** project is running in **nikitab724's Org** on the quoted **$0/month Free plan**, in Ohio (`us-east-2`). The owner can manage it in the [Supabase dashboard](https://supabase.com/dashboard/project/zhsnegbrxgdthfdcblpn). Its API URL is `https://zhsnegbrxgdthfdcblpn.supabase.co`. The restored table contains 193,736 original location records; server access is read-only and browser roles have no table access.
+
+On the recovery machine, the ignored, owner-readable `.env` already contains the hosted credentials and ports 5002/8052. With the existing model/environment, run `.venv-live-check/bin/python scripts/run_pipeline.py --mode demo` from the repository root, then open **http://localhost:8052**. Stop any already-running copy first. The real model and all five dashboard callbacks have been verified against this hosted database. Credentials and model weights are not included in a fresh clone.
 
 If the old project has exceeded its pause recovery window, [restore the downloaded gazetteer backup into a new project](GAZETTEER_RESTORE.md) first. That guide also covers a local Supabase rehearsal without hosting charges.
 
@@ -74,4 +78,4 @@ Open **http://localhost:8052**. Port 5002 avoids macOS services that sometimes o
 
 Every start uses a fresh temporary data directory and regenerates the known post. CSV history is **not durable** across restarts/deploys. Existing local data directories are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and the presence of both CSVs; it does not prove recent firehose activity or incident accuracy.
 
-Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for actual checks. Local tests with controlled database responses do not verify your real Supabase credentials, policies, or data.
+Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for the hosted database verification and separate tests using controlled responses. The public Render fixture has not been switched to the real transformer service.

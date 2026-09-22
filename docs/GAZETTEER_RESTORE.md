@@ -6,6 +6,16 @@ This app needs the `public.gazetteer` data. The supplied cluster backup was insp
 
 The original backup remains untouched and is not committed or uploaded by preparation. The generated restore file also stays outside Git in `.restore/`.
 
+## Completed hosted recovery
+
+On September 22, 2026, the selected records were restored to the replacement **crisis-analysis** project in **nikitab724's Org**, on the confirmed **$0/month Free plan**. The [project dashboard](https://supabase.com/dashboard/project/zhsnegbrxgdthfdcblpn) requires owner access. The old paused project and unrelated projects were left untouched.
+
+The hosted schema matches the restore script. The data was uploaded in batches through the Supabase API using a private server key and a temporary INSERT grant. That grant was removed after import: `service_role` can SELECT only, while `anon` and `authenticated` have no table privileges. RLS remains enabled, with no public policies. Credentials are stored only in ignored, owner-readable local files.
+
+Verification found **193,736 rows**, the expected Austin/Texas IDs, and an identical complete-table fingerprint in the local and hosted databases (`a253760600912226de1dee9f3e9c9fc1`, computed from ordered row JSON). Hosted storage measured **40 MB for the table including indexes**, **51 MB for the database** immediately after restoration. The original backup is still untouched.
+
+The local app now uses this hosted project at **http://localhost:8052**. This hosts the location database only; the transformer, processor, and dashboard still run locally. The public Render URL remains the separate fixture demo.
+
 ## Prepare the restore
 
 From the repository root:
@@ -59,7 +69,7 @@ Then set the new project's `SUPABASE_URL` and server-only `SUPABASE_KEY` in the 
 
 ## Local recovered rehearsal
 
-On the recovery machine, a separate local Supabase project was initialized under the ignored `.restore/local-supabase` directory with project ID `crisis-analysis-rehearsal`. It uses API port **55431**, database port **55432**, and the original restored data. Its settings are separate from other local projects. The app's local credentials are in the ignored `.env` with owner-only permissions.
+On the recovery machine, a separate local Supabase project was initialized under the ignored `.restore/local-supabase` directory with project ID `crisis-analysis-rehearsal`. It uses API port **55431**, database port **55432**, and the original restored data. Its settings are separate from other local projects. Its credentials are preserved in the ignored, owner-readable `.env.local`; `.env` now selects the hosted database.
 
 To restart the prepared local project and demo:
 
@@ -67,10 +77,17 @@ To restart the prepared local project and demo:
 supabase start --workdir .restore/local-supabase \
   -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 source .venv-live-check/bin/activate
-python scripts/run_pipeline.py --mode demo
+python - <<'PY'
+import os
+import sys
+from dotenv import load_dotenv
+
+load_dotenv(".env.local", override=True)
+os.execv(sys.executable, [sys.executable, "scripts/run_pipeline.py", "--mode", "demo"])
+PY
 ```
 
-Open **http://localhost:8052**. Stop the app with Ctrl+C and stop only this database with `supabase stop --workdir .restore/local-supabase`. Ordinary local stop preserves its database volume; do not use reset or delete the volume to stop it.
+Stop an existing dashboard before starting this fallback, since both use **http://localhost:8052**. The command above selects the local database for that run without changing `.env`. Stop the app with Ctrl+C and stop only this database with `supabase stop --workdir .restore/local-supabase`. Ordinary local stop preserves its database volume; do not use reset or delete the volume to stop it.
 
 The local project directory and credentials are machine-specific, not included in a fresh clone. For a fresh local setup, initialize a separate Supabase CLI project, select unused ports in its `supabase/config.toml`, start it, and restore the generated SQL into that project's database. Use its local API URL/service key in `.env`, then follow the normal model build/start instructions.
 
