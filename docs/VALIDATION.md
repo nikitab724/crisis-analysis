@@ -2,6 +2,18 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Current map sizing and validation
+
+The owner chose report counts as the meaning of circle size. The previous map averaged cities together, measured their spread in latitude/longitude degrees, multiplied that distance by 50, and passed it to an automatically scaled pixel marker. State-only records used a separate arbitrary size. Those values did not measure report volume or a geographic disaster radius.
+
+The map now reads one complete `filtered_posts.csv` snapshot and counts saved records per resolved location and first disaster label. Different cities keep their own coordinates. State-only records and city records lacking valid coordinates use a labeled approximate state centroid. Unresolved/foreign records are excluded. These are the same saved location-record units as the existing aggregates, including possible cross-batch repeats; no unique-incident count is claimed.
+
+Display diameter is `8 × sqrt(min(record_count, 64))` pixels, with Plotly explicitly using diameter mode and scale factor 1. Circle area is therefore proportional to count through 64 records, and other markers never rescale an existing point. Above 64 records the display remains 64 px, the hover explanation states that the size is capped, and the exact count is retained. A visible 1/4/16 size key and a note distinguish report volume from affected area. The [Plotly marker reference](https://plotly.com/python/reference/scattergeo/#scattergeo-marker-size) documents pixel marker sizing; these are display symbols, not geodesic circles.
+
+All **54 regression tests passed** in the live environment. The fixture environment passed 27 and skipped 27 optional live checks. Nine new tests cover area ratios, separate city positions, invariance under distant/high-count outliers, shared scaling across disaster types and state-level records, truthful capping with exact counts, coordinate validation/fallback, exclusion of unresolved places, and compatibility with the existing first-disaster counting convention. Targeted lint, whitespace, and the UI mechanical scan passed.
+
+Only the dashboard worker was reloaded; the model, collector, current CSV directory, and tunnel remained in place. Public HTTPS checks passed all six callbacks, updated layout/size-key CSS, live readiness, and each returned map point's diameter against its actual hover count. Visual browser rendering remains unverified because the admin security-policy check is unavailable.
+
 ## Current location behavior and validation
 
 The latest refinement replaces population-based guesses with conservative unique matching. Earlier checkpoints below describe previous revisions, including the old two-record Austin/Texas result; the current result is **one resolved location**.

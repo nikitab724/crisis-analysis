@@ -2,6 +2,7 @@ from dash import Dash, dcc, html, Input, Output
 import pandas as pd
 import requests
 import plotly.express as px
+import plotly.graph_objects as go
 import os
 import ast
 from datetime import datetime, timezone
@@ -129,6 +130,21 @@ state_coordinates = {k: (float(lat), float(lon)) for k, (lat, lon) in state_coor
 # Add common state abbreviations for matching
 state_to_full_name = {abbr: name for abbr, name in US_STATE_NAMES.items()}
 
+# Fixed display scale: area is proportional to count through 64 saved records.
+MAP_BASE_DIAMETER_PX = 8
+MAP_SIZE_CAP_RECORDS = 64
+
+
+def marker_diameter(count):
+    try:
+        count = float(count)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    if not math.isfinite(count) or count <= 0:
+        return 0
+    return MAP_BASE_DIAMETER_PX * math.sqrt(min(count, MAP_SIZE_CAP_RECORDS))
+
+
 MODE_LABELS = {"fixture": "Fixture demo", "demo": "Model demo", "live": "Live Bluesky"}
 MODE_NOTES = {
     "fixture": "Synthetic post and predefined model response. Live NLP is not running.",
@@ -162,7 +178,16 @@ app.layout = html.Main(className="app-shell", children=[
             ]),
             dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
                       config={"displayModeBar": False, "scrollZoom": False}),
-            html.P("Locations inferred from post text.", className="section-note"),
+            html.Div(className="map-size-key", children=[
+                html.Span("Report records", className="section-note"),
+                *[html.Span(className="size-key-item", children=[
+                    html.Span(className="size-key-circle", style={
+                        "width": f"{marker_diameter(count):g}px", "height": f"{marker_diameter(count):g}px",
+                    }, **{"aria-hidden": "true"}),
+                    html.Span(str(count)),
+                ]) for count in (1, 4, 16)],
+            ], **{"aria-label": "Circle size examples: 1, 4, and 16 report records"}),
+            html.P("Circle area shows report counts, not affected area. Sizes cap at 64 records; hover for exact counts.", className="section-note"),
         ]),
         html.Aside(className="summary-section", children=[
             html.H2("Reports by state"),
@@ -191,6 +216,7 @@ app.layout = html.Main(className="app-shell", children=[
             html.Summary("About the data"),
             html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
             html.P("Counts represent resolved locations, not verified incidents. Ambiguous names stay off the map. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 5 seconds."),
+            html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Repeated posts across batches can count again."),
         ]),
     ]),
     dcc.Interval(id="interval-component", interval=5000, n_intervals=0),
@@ -252,29 +278,6 @@ def style_figure(fig):
     return fig
 
 
-def get_city_coordinates(city_name: str, state_name: str) -> tuple[float, float]:
-    if not state_name or not city_name:
-        return None, None
-
-    # always read the latest file
-    try:
-        df = pd.read_csv(DATA_DIR / "filtered_posts.csv", dtype={"city": "string", "state": "string"})
-    except FileNotFoundError:
-        return None, None
-
-    city_norm  = city_name.strip().lower()
-    state_norm = state_name.strip().lower()
-
-    mask = (
-        df["city"].astype("string").str.lower().str.strip().eq(city_norm)
-        & df["state"].astype("string").str.lower().str.strip().eq(state_norm)
-    )
-    if not mask.any():
-        return None, None
-
-    row = df.loc[mask].iloc[0]
-    return row["latitude"], row["longitude"]
-
 def parse_cities_list(cities_str):
     """Safely parse a string representation of a list of cities."""
     if not cities_str or pd.isna(cities_str):
@@ -290,10 +293,6 @@ def parse_cities_list(cities_str):
         pass
 
     return []
-
-def distance_in_degrees(lat1, lon1, lat2, lon2):
-    # Simple Euclidean in degrees – purely approximate
-    return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
 
 @app.callback(
     Output('state-dropdown', 'options'),
@@ -329,167 +328,95 @@ def update_dropdown_options(n_intervals):
         print(f"Error updating dropdown: {e}")
         return []
 
-@app.callback(
-    Output('crisis-map', 'figure'),
-    Input('interval-component', 'n_intervals')
-)
-def update_crisis_map(n_intervals):
-    try:
-        # Load crisis data with explicit column names
+def map_points_from_posts(posts):
+    """Count saved records per resolved location without averaging different cities."""
+    required = {"state", "city", "disasters"}
+    if not required.issubset(posts.columns):
+        raise ValueError("Post data is missing required map columns")
+    points = {}
+    states_by_name = {name.casefold(): name for name in state_coordinates}
+
+    def clean(value):
+        return "" if pd.isna(value) else str(value).strip()
+
+    for row in posts.to_dict("records"):
+        raw_state = clean(row.get("state"))
+        state = state_to_full_name.get(raw_state.upper(), states_by_name.get(raw_state.casefold()))
+        if not state or clean(row.get("country")) not in ("", "US"):
+            continue
+        if clean(row.get("location_status")) in {"ambiguous", "unresolved", "error"}:
+            continue
+        labels = row.get("disasters")
+        if isinstance(labels, str):
+            try:
+                labels = ast.literal_eval(labels)
+            except (ValueError, SyntaxError):
+                labels = [labels] if labels.strip() and not labels.lstrip().startswith("[") else []
+        if not isinstance(labels, list) or not labels or not isinstance(labels[0], str):
+            continue
+        # Match the existing state's first-disaster aggregation convention.
+        disaster = labels[0]
+        city = clean(row.get("city"))
         try:
-            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
-                            quotechar='"',  # Use double quotes for quoted fields
-                            escapechar='\\', # Use backslash as escape character
-                            names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
-                            header=0)  # First row is header
-        except Exception as e:
-            print(f"Error with standard CSV reader, trying alternative: {e}")
-            # Try alternative reading approach with Python's csv module
-            import csv
+            lat, lon = float(row.get("latitude")), float(row.get("longitude"))
+            valid_coords = math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180
+        except (TypeError, ValueError):
+            valid_coords = False
+        if city and valid_coords:
+            location = f"{city}, {state}"
+            precision = "City-level location"
+        else:
+            city = ""
+            lat, lon = state_coordinates[state]
+            location = state
+            precision = "State centroid (approximate)"
+        key = (state, city.casefold(), disaster, lat, lon)
+        if key not in points:
+            points[key] = dict(location=location, state=state, city=city, disaster=disaster,
+                               lat=lat, lon=lon, precision=precision, count=0)
+        points[key]["count"] += 1
+    return sorted(points.values(), key=lambda point: (-point["count"], point["location"], point["disaster"]))
 
-            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
-                reader = csv.reader(f, quotechar='"', escapechar='\\')
-                headers = next(reader)  # Get header row
-                data = []
-                for row in reader:
-                    if len(row) >= 7:  # Ensure we have at least 7 columns
-                        data.append(row[:7])  # Take only the first 7 columns
 
-            # Convert to DataFrame
-            df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-
-        # Convert numeric columns
-        df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
-        df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)
-        df['severity'] = pd.to_numeric(df['severity'], errors='coerce').fillna(0)
-
-        if df.empty:
-            return px.scatter_geo(title="No data available")
-
-        # Prepare data for the map - include both state and city markers
-        map_data = []
-
-        # Process each crisis record
-        for _, row in df.iterrows():
-            state_name = row['state']
-            state_full = state_to_full_name.get(state_name, state_name)
-
-            # Get state coordinates as a fallback
-            if state_full in state_coordinates:
-                state_lat, state_lon = state_coordinates[state_full]
-            else:
-                state_lat, state_lon = None, None
-
-            # Parse cities list
-            cities = parse_cities_list(row['cities'])
-            city_coords = []
-            if cities:
-                for city in cities:
-                    city_lat, city_lon = get_city_coordinates(city, state_name)
-                    if city_lat is not None and city_lon is not None:
-                        city_coords.append((city_lat, city_lon))
-
-            # If we have recognized city coords, compute centroid
-            if city_coords:
-                avg_lat = sum(lat for lat, _ in city_coords) / len(city_coords)
-                avg_lon = sum(lon for _, lon in city_coords) / len(city_coords)
-
-                # Now compute a bubble radius = max distance from centroid to each city
-                max_dist = 0.0
-                for (city_lat, city_lon) in city_coords:
-                    dist_deg = distance_in_degrees(city_lat, city_lon, avg_lat, avg_lon)
-                    if dist_deg > max_dist:
-                        max_dist = dist_deg
-
-                # Scale the bubble radius if you want. We'll do a simple scale
-                # e.g. if max_dist=0.1, maybe we want 'size'=5 or so
-                bubble_radius_degrees = max_dist * 50
-                # If you want to ensure a minimum bubble size, do something like:
-                if bubble_radius_degrees < 1:
-                    bubble_radius_degrees = 1
-
-                # Create row in map_data
-                map_data.append({
-                    'state': state_name,
-                    'full_state': state_full,
-                    'lat': avg_lat,
-                    'lon': avg_lon,
-                    'size': bubble_radius_degrees,  # We'll use this for px.scatter_geo(..., size='size')
-                    'count': row['count'],
-                    'disaster': row['disasters'],
-                    'city': ', '.join(cities),
-                    'severity': row.get('severity', 1.0),
-                    'sentiment': row['avg_sentiment']
-                })
-            else:
-                # If we got no recognized cities, fallback to state
-                if state_lat is not None and state_lon is not None:
-                    # You can also add a uniform 'size' if you want
-                    map_data.append({
-                        'state': state_name,
-                        'full_state': state_full,
-                        'lat': state_lat,
-                        'lon': state_lon,
-                        'size': 5,  # or 0.1 or something small
-                        'count': row['count'],
-                        'disaster': row['disasters'],
-                        'city': 'State-level data',
-                        'severity': row.get('severity', 1.0),
-                        'sentiment': row['avg_sentiment']
-                    })
-
-        if not map_data:
-            return px.scatter_geo(title="No valid location data available")
-
-        map_df = pd.DataFrame(map_data)
-
-        # Create the map with city-level markers
-        fig = px.scatter_geo(
-            map_df,
-            lat='lat',
-            lon='lon',
-            size='size',
-            color='disaster',
-            color_discrete_map=CHART_COLORS,
-            hover_name='full_state',
-            hover_data={
-                'lat': False,
-                'lon': False,
-                'count': True,
-                'city': True,
-                'sentiment': True,
-                'severity': False
-            },
-            scope='usa',
-            title="Crisis Reports Across the United States",
-            size_max=30,  # Maximum marker size
-        )
-
-        fig.update_layout(
-            legend_title_text='Disaster Type',
-            geo=dict(
-                showland=True,
-                landcolor='#f1f5f9',
-                bgcolor='white',
-                subunitcolor='#cbd5e1',
-                coastlinewidth=0.5,
-                countrywidth=0.5,
-                subunitwidth=0.5,
-                showlakes=True,
-                lakecolor='rgb(255, 255, 255)',
-                showsubunits=True,
-                showcountries=True,
-                resolution=50
-            ),
-            uirevision='constant'
-        )
-
-        return style_figure(fig)
-    except Exception as e:
-        print(f"Error updating crisis map: {e}")
-        import traceback
-        traceback.print_exc()
-        return px.scatter_geo(title="Map unavailable. Retrying on the next refresh.")
+@app.callback(Output('crisis-map', 'figure'), Input('interval-component', 'n_intervals'))
+def update_crisis_map(n_intervals):
+    fig = go.Figure()
+    try:
+        # One atomic CSV snapshot gives actual counts for each city/state location.
+        points = map_points_from_posts(pd.read_csv(DATA_DIR / "filtered_posts.csv"))
+        for disaster in sorted({point["disaster"] for point in points}):
+            group = [point for point in points if point["disaster"] == disaster]
+            fig.add_trace(go.Scattergeo(
+                lat=[point["lat"] for point in group], lon=[point["lon"] for point in group],
+                text=[point["location"] for point in group], name=disaster, mode="markers",
+                customdata=[[
+                    point["count"], point["precision"],
+                    "Display size capped; count is exact" if point["count"] > MAP_SIZE_CAP_RECORDS else "",
+                ] for point in group],
+                marker={
+                    "size": [marker_diameter(point["count"]) for point in group],
+                    "sizemode": "diameter", "sizeref": 1, "sizemin": 0,
+                    "color": CHART_COLORS.get(disaster, "#526277"), "opacity": 0.75,
+                    "line": {"color": "white", "width": 1},
+                },
+                hovertemplate=("<b>%{text}</b><br>%{customdata[0]:,d} report records"
+                               "<br>%{customdata[1]}<br>%{customdata[2]}<extra>%{fullData.name}</extra>"),
+            ))
+        if not points:
+            fig.add_annotation(text="No resolved locations yet", x=0.5, y=0.5,
+                               xref="paper", yref="paper", showarrow=False)
+    except (OSError, ValueError, KeyError, pd.errors.ParserError):
+        server.logger.exception("Could not load map locations")
+        fig.add_annotation(text="Map unavailable. Retrying on the next refresh.", x=0.5, y=0.5,
+                           xref="paper", yref="paper", showarrow=False)
+    fig.update_layout(
+        geo=dict(scope="usa", projection_type="albers usa", showland=True,
+                 landcolor="#f1f5f9", bgcolor="white", subunitcolor="#cbd5e1",
+                 coastlinewidth=0.5, countrywidth=0.5, subunitwidth=0.5,
+                 showlakes=True, lakecolor="white", showsubunits=True, showcountries=True, resolution=50),
+        legend={"itemsizing": "constant"},
+    )
+    return style_figure(fig)
 
 @app.callback(
     Output('state-chart', 'figure'),

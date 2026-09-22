@@ -34,6 +34,9 @@ h2 { font-size: 17px; font-weight: 600; line-height: 1.4; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .secondary-label { color: var(--muted); font-size: 12px; }
 .map-graph { height: 390px; }
+.map-size-key { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; min-height: 40px; margin: 4px 0 8px; }
+.size-key-item { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.size-key-circle { display: inline-block; flex: none; border-radius: 50%; background: #71869d; }
 .summary-section { min-width: 0; padding: 24px 0 24px 28px; border-left: 1px solid var(--line); }
 .state-graph { height: 210px; }
 .overview-title { margin: 12px 0 10px; padding-top: 16px; border-top: 1px solid var(--line); }
