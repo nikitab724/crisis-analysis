@@ -69,6 +69,8 @@ class LocationResolutionTests(unittest.TestCase):
             place("Texas", "TX", feature="ADM1", latitude=3),
             place("Alaska", "AK", feature="ADM1", latitude=4),
             place("New Mexico", "NM", feature="ADM1"), place("West Virginia", "WV", feature="ADM1"),
+            place("Georgia", "GA", feature="ADM1"), place("Atlanta", "GA", 500000),
+            place("Dallas", "TX", 1200000),
         ]
         self.client = Mock()
         self.client.table.side_effect = lambda _name: GazetteerQuery(self.records)
@@ -134,8 +136,69 @@ class LocationResolutionTests(unittest.TestCase):
     def test_case_and_hashtag_duplicates_do_not_add_records(self):
         result = self.resolve("Flood in Austin Texas #austin #texas", ["Austin", "Texas", "austin", "texas", "TX"])
         self.assertEqual(result["city"], "Austin")
+        self.assertEqual(result["all_locations"], [])
+        self.assertEqual(result["location_detail"], "City + state in text")
+
+    def test_population_alone_does_not_resolve_ambiguous_name(self):
+        result = self.resolve("Flood in Portland.", ["Portland"])
+        self.assertIsNone(result["state"])
+        self.assertIsNone(result["latitude"])
+        self.assertEqual(result["location_status"], "ambiguous")
+        self.assertEqual(result["location_mentions"], "Portland")
+
+    def test_ambiguity_inside_explicit_state_is_not_a_city_match(self):
+        self.records.append(place("Austin", "TX", 1, latitude=40))
+        result = self.resolve("Flood in Austin, Texas.", ["Austin", "Texas"])
+        self.assertIsNone(result["city"])
+        self.assertEqual(result["state"], "Texas")
+        self.assertEqual(result["location_detail"], "State mention")
+        self.assertIn("Austin", result["location_review"])
+
+    def test_state_only_report_is_retained(self):
+        result = self.resolve("Flood in Texas.", ["Texas"])
+        self.assertIsNone(result["city"])
+        self.assertEqual(result["state"], "Texas")
+        self.assertEqual(result["all_locations"], [])
+
+    def test_city_removes_only_its_own_supporting_state(self):
+        result = self.resolve("Flood in Austin, Texas and Alaska.", ["Alaska", "Austin", "Texas"])
+        matches = [result, *result["all_locations"]]
+        self.assertEqual({(m["city"], m["state"]) for m in matches}, {(None, "Alaska"), ("Austin", "Texas")})
+
+    def test_two_cities_in_one_state_are_kept(self):
+        result = self.resolve("Flood in Austin and Dallas, Texas.", ["Austin", "Dallas", "Texas"])
+        self.assertEqual({result["city"], result["all_locations"][0]["city"]}, {"Austin", "Dallas"})
+        self.assertEqual(result["location_detail"], "Single state in post")
         self.assertEqual(len(result["all_locations"]), 1)
-        self.assertEqual(result["all_locations"][0]["state"], "Texas")
+
+    def test_ambiguous_place_is_reported_alongside_resolved_place(self):
+        result = self.resolve("Flood in Portland and McAllen.", ["Portland", "McAllen"])
+        self.assertEqual(result["city"], "McAllen")
+        self.assertIn("Portland", result["location_review"])
+
+    def test_multiple_exact_aliases_require_context(self):
+        self.records.append(place("Elsewhere", "ME", 1, "['NYC']"))
+        result = self.resolve("Flood in NYC.", ["NYC"])
+        self.assertEqual(result["location_status"], "ambiguous")
+        self.assertIsNone(result["state"])
+
+    def test_truncated_alias_search_cannot_claim_unique_match(self):
+        self.records.extend(place(f"Other {n}", "TX", n, "['NYC suffix']") for n in range(30))
+        result = self.resolve("Flood in NYC.", ["NYC"])
+        self.assertEqual(result["location_status"], "ambiguous")
+
+    def test_georgia_needs_us_evidence(self):
+        for text, locations in (("Flood in Georgia.", ["Georgia"]),
+                                ("Flood in Tbilisi, Georgia.", ["Tbilisi", "Georgia"])):
+            with self.subTest(text=text):
+                result = self.resolve(text, locations)
+                self.assertIsNone(result["state"])
+                self.assertEqual(result["location_status"], "ambiguous")
+        for text, locations in (("Flood in Georgia, USA.", ["Georgia"]),
+                                ("Flood in GA.", ["GA"]),
+                                ("Flood in Atlanta, Georgia.", ["Atlanta", "Georgia"])):
+            with self.subTest(text=text):
+                self.assertEqual(self.resolve(text, locations)["state"], "Georgia")
 
     def test_mixed_case_exact_name_and_whole_alias(self):
         self.assertEqual(self.resolve("Flood in McAllen, TX", ["McAllen"])["city"], "McAllen")

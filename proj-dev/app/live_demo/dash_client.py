@@ -170,7 +170,7 @@ app.layout = html.Main(className="app-shell", children=[
                       config={"displayModeBar": False}),
             html.H2("Overview", className="overview-title"),
             html.Div(id="stats-table"),
-            html.P("One post may contain several locations.", className="section-note"),
+            html.P("Resolved locations only. A city and its state count once.", className="section-note"),
         ]),
     ]),
     html.Section(className="posts-section", children=[
@@ -190,7 +190,7 @@ app.layout = html.Main(className="app-shell", children=[
         html.Details([
             html.Summary("About the data"),
             html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
-            html.P("Counts represent extracted locations, not verified incidents. The dashboard refreshes every 5 seconds."),
+            html.P("Counts represent resolved locations, not verified incidents. Ambiguous names stay off the map. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 5 seconds."),
         ]),
     ]),
     dcc.Interval(id="interval-component", interval=5000, n_intervals=0),
@@ -584,13 +584,23 @@ def update_table(selected_state, n_intervals):
                     labels = ", ".join(str(item) for item in parsed)
             except (ValueError, SyntaxError):
                 pass
-            location = ", ".join(value for value in (clean(row.get("city")), clean(row.get("state"))) if value) or "Unresolved"
+            location = ", ".join(value for value in (clean(row.get("city")), clean(row.get("state"))) if value)
+            location_detail = clean(row.get("location_detail"))
+            if not location:
+                location = clean(row.get("location_mentions")) or "Unresolved"
+                location_detail = location_detail or "No supported US match"
+            location_content = [html.Div(location)]
+            if location_detail:
+                location_content.append(html.Div(location_detail, className="section-note"))
+            review = clean(row.get("location_review"))
+            if review:
+                location_content.append(html.Div(review, className="section-note"))
             posted = row["_posted"].strftime("%b %d, %H:%M UTC") if pd.notna(row["_posted"]) else "Unknown date"
             metadata = [html.Span("Example")] if synthetic else [html.Span(posted), source]
             rows.append(html.Tr([
                 html.Td([html.P(clean(row.get("text")), className="post-text"),
                          html.Div(metadata, className="post-meta")], className="post-cell"),
-                html.Td(location), html.Td(labels), html.Td(clean(row.get("sentiment"))),
+                html.Td(location_content), html.Td(labels), html.Td(clean(row.get("sentiment"))),
             ], className="example-row" if synthetic else ""))
         return html.Table([
             html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment")])),

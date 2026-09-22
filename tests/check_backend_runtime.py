@@ -119,7 +119,8 @@ def main():
                     assert "Flood in Austin Texas." in json.dumps(table)
                     stats = callback(base, "stats-table.children", interval)
                     assert "Location records" in json.dumps(stats)
-                    assert stats["props"]["children"][0]["props"]["children"][1]["props"]["children"] == 2
+                    assert stats["props"]["children"][0]["props"]["children"][1]["props"]["children"] == 1
+                    assert "City + state in text" in json.dumps(table)
                     assert any(q.get("name") == ["ilike.austin"] and q.get("stateCode") == ["eq.TX"]
                                and q.get("countryCode") == ["eq.US"] for q in queries)
                     assert any(q.get("featureCode") == ["eq.ADM1"] for q in queries)

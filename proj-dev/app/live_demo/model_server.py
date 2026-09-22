@@ -13,7 +13,7 @@ from flask import Flask, request, jsonify
 
 from entity_extraction import extract_ent_sent, load_nlp
 from gazetteer import US_STATE_NAMES
-from location_context import location_candidates, state_code
+from location_context import explicit_us_context, location_candidates, state_code
 
 ### Location standardization setup
 load_dotenv()
@@ -26,7 +26,7 @@ supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
 
-GAZETTEER_FIELDS = "name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list"
+GAZETTEER_FIELDS = "geonameid, name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list"
 
 
 def exact_aliases(value):
@@ -44,10 +44,11 @@ def exact_aliases(value):
 
 @lru_cache(maxsize=2048)
 def lookup_city_state_country(loc_text: str, state_hint=None):
-    """Resolve exact names/aliases, constrained by an explicit state when available."""
+    """Require a single database match; population ordering never resolves ambiguity."""
     norm = loc_text.strip()
     code = state_code(norm)
-    empty = dict(city=None, state=None, region=norm, country=None, latitude=None, longitude=None)
+    empty = dict(city=None, state=None, region=norm, country=None, latitude=None, longitude=None,
+                 location_status="unresolved", location_detail="No exact US match")
     # Treat user text as a literal place name, never an ILIKE wildcard pattern.
     if not norm or any(char in norm for char in "%_*\\"):
         return empty
@@ -61,14 +62,20 @@ def lookup_city_state_country(loc_text: str, state_hint=None):
             result = result.eq("stateCode", state_hint)
         return result.order("population", desc=True, nullsfirst=False).order("geonameid")
 
+    method = "State mention" if code else "Unique US name match"
+    incomplete = False
     if code:
         records = query().eq("featureCode", "ADM1").eq("stateCode", code).limit(1).execute().data
     else:
         # ILIKE without wildcards preserves mixed-case names such as McAllen.
-        records = cities().ilike("name", norm).limit(1).execute().data
+        records = cities().ilike("name", norm).limit(2).execute().data
         if not records and len(norm) > 2:
-            candidates = cities().ilike("alternate_list", f"%{norm}%").limit(25).execute().data
+            candidates = cities().ilike("alternate_list", f"%{norm}%").limit(26).execute().data
             records = [record for record in candidates if norm.casefold() in exact_aliases(record.get("alternate_list"))]
+            incomplete = len(candidates) == 26
+            method = "Unique US alias match"
+    if len(records) > 1 or incomplete:
+        return {**empty, "location_status": "ambiguous", "location_detail": "Needs context — no unique match"}
     if not records:
         return empty
     record = records[0]
@@ -79,6 +86,7 @@ def lookup_city_state_country(loc_text: str, state_hint=None):
         "city": None if record.get("featureCode") == "ADM1" else record.get("name"),
         "state": state, "region": None, "country": "US",
         "latitude": record.get("latitude"), "longitude": record.get("longitude"),
+        "location_status": "matched", "location_detail": method,
     }
 
 
@@ -91,14 +99,36 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
 
     seen = set()
-    for loc, place, hint in location_candidates(locs, row.get("text", "")):
+    unresolved = []
+    deferred_georgia = []
+    text = row.get("text", "")
+    for loc, place, hint, basis in location_candidates(locs, text):
+        if place.casefold() == "georgia" and not explicit_us_context(text):
+            deferred_georgia.append(loc)
+            continue
         match = lookup_city_state_country(state_code(place) or place.casefold(), hint)
         identity = tuple(match.get(key) for key in ("city", "state", "latitude", "longitude"))
         if match.get("state") and identity not in seen:
             seen.add(identity)
-            results.append({"location": loc, **match})
+            detail = {"explicit_state": "City + state in text", "post_state": "Single state in post"}.get(basis)
+            results.append({"location": loc, **match, "location_detail": detail or match["location_detail"]})
+        elif not match.get("state"):
+            unresolved.append({"location": loc, **match})
+
+    city_states = {match["state"] for match in results if match["city"]}
+    if not any(match["state"] == "Georgia" for match in results):
+        unresolved.extend({"location": loc, "location_status": "ambiguous"} for loc in deferred_georgia)
+    # A supporting state is part of the city match, not another location record.
+    # State-only reports and genuinely different cities/states remain separate.
+    results = [match for match in results if match["city"] or match["state"] not in city_states]
+    mentioned = {}
+    for loc in locs:
+        mentioned.setdefault(loc.casefold(), loc)
+    mentions = "; ".join(mentioned.values())
+    review = "; ".join(dict.fromkeys(item["location"] for item in unresolved))
 
     if not results:
+        ambiguous = any(item["location_status"] == "ambiguous" for item in unresolved)
         return {
             "city": None,
             "state": None,
@@ -106,7 +136,11 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
             "country": None,
             "latitude": None,
             "longitude": None,
-            "all_locations": []
+            "all_locations": [],
+            "location_status": "ambiguous" if ambiguous else "unresolved",
+            "location_detail": "Needs context — no unique match" if ambiguous else "No supported US match",
+            "location_mentions": mentions,
+            "location_review": "",
         }
 
     first, *rest = results
@@ -118,6 +152,11 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "latitude": first.get("latitude"),
         "longitude": first.get("longitude"),
         "all_locations": rest,
+        "location": first["location"],
+        "location_status": first["location_status"],
+        "location_detail": first["location_detail"],
+        "location_mentions": mentions,
+        "location_review": f"Unresolved mentions: {review}" if review else "",
     }
 
 
@@ -245,7 +284,10 @@ def extract_entities():
                 "country": None,
                 "latitude": None,
                 "longitude": None,
-                "all_locations": []
+                "all_locations": [],
+                "location_status": "error",
+                "location_detail": "Location lookup unavailable",
+                "location_mentions": "; ".join(ent_sent.get("locations", [])),
             })
 
     elapsed = time.time() - start_time

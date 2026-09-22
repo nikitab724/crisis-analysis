@@ -24,7 +24,7 @@ FOREIGN_NAMES.update({
     "iran", "syria", "vietnam", "laos", "taiwan", "palestine",
 })
 FOREIGN_NAMES.update(place.name.casefold() for place in pycountry.subdivisions.get(country_code="CA"))
-# Georgia remains a supported US state; the country/state ambiguity is unresolved.
+# Georgia is handled separately after checking for a resolved US city or US context.
 FOREIGN_NAMES.difference_update(STATE_CODES)
 BROAD_REGIONS = {
     "north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest",
@@ -58,8 +58,12 @@ def adjacent_states(place, text):
     return {state_code(match["state"]) for match in re.finditer(pattern, text)}
 
 
+def explicit_us_context(text):
+    return bool(re.search(r"\b(?:USA|US)\b|\bU\.S\.(?:A\.)?|(?i:\bUnited States\b|\bstate of Georgia\b|\bGeorgia state\b)", text))
+
+
 def location_candidates(locations, text):
-    """Yield unique (entity, place, state hint) triples without guessing foreign cities."""
+    """Yield unique entity/place/state/basis candidates for the gazetteer."""
     places = [split_place(location) for location in locations]
     foreign_context = any(
         place.casefold() in FOREIGN_NAMES and not hint and not adjacent_states(place, text)
@@ -67,6 +71,8 @@ def location_candidates(locations, text):
     )
     states = {hint or state_code(place) for place, hint in places} - {None}
     sole_state = next(iter(states)) if len(states) == 1 and not foreign_context else None
+    if sole_state == "GA" and not explicit_us_context(text) and not any(place == "GA" for place, _ in places):
+        sole_state = None
     seen = set()
     for location, (place, embedded_hint) in zip(locations, places):
         if not place:
@@ -82,4 +88,5 @@ def location_candidates(locations, text):
             identity = (place.casefold(), hint)
             if identity not in seen:
                 seen.add(identity)
-                yield location, place, hint
+                basis = "state" if is_state else ("explicit_state" if hints else ("post_state" if hint else "name"))
+                yield location, place, hint, basis

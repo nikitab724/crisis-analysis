@@ -100,7 +100,7 @@ The real backend uses a Supabase `gazetteer` table. The original backup has been
 
 The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. For a public interview link with no additional hosting charge, [share the working local dashboard through a temporary Cloudflare tunnel](docs/BACKEND.md#share-the-real-local-demo-for-free). The Mac must remain awake and online.
 
-For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent extracted location records, not verified incidents or unique posts.
+For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once; ambiguous names stay visible in the table but off the map. Each result explains its matching basis.
 
 The real model used about 2.6 GiB by itself locally, so the separate Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
 
@@ -146,7 +146,7 @@ Set `SUPABASE_URL` and `SUPABASE_KEY` for a database containing the existing `ga
 | `countryCode` | Country code, such as `US` |
 | `latitude`, `longitude` | Numeric coordinates |
 | `alternate_list` | Searchable text of alternate names, comma-delimited for token matching |
-| `population` | Numeric population for fallback ordering |
+| `population` | Numeric population for deterministic candidate ordering; not a confidence score |
 
 The credentials must allow the server to read that table. For an expired project with a downloaded backup, [restore the gazetteer with the recovery guide](docs/GAZETTEER_RESTORE.md). The backup, populated database, and original GeoNames `US.txt` download are **not included** in Git. The legacy `proj-dev/data/load_csv.py` remains an experiment. Do not commit credentials.
 
@@ -237,8 +237,8 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 ## Limitations and next steps
 
 - **Unverified social reports:** keyword/rule matches can include figurative language, historical reports, negation, and misinformation. Human review is required.
-- **U.S.-focused location handling:** city/state context and exact aliases improve matching, and explicit foreign mentions stay unresolved. Unqualified names still use population ordering; missing context, counties, and the Georgia country/state ambiguity remain limitations. Unknown locations do not appear on the map. The original model still identifies Austin and Texas separately.
-- **Counts represent extracted records:** a post with several locations can create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
+- **U.S.-focused location handling:** exact names/aliases must resolve uniquely within the available context. Ambiguous names and unsupported foreign places remain unresolved and off the map. “Georgia” needs a resolved US city, a state abbreviation, or explicit US context. A unique US database match is still not proof of the intended real-world location; counties, indirect references, and missing context remain limitations. Match labels describe rules, not calibrated confidence.
+- **Counts represent resolved locations:** a city and its supporting state count once per post; different cities or states can still create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.
 - **Prototype storage and services:** individual CSVs are replaced atomically, but the posts/counts pair is not a transaction. There is no user authentication, retry queue, or durable hosted history. The launcher supervises existing processes, but is not a production orchestration system. Live collection samples the Bluesky firehose in batches and can miss posts between connections; it does not provide complete stream coverage or historical backfill.

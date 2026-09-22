@@ -72,7 +72,8 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
     required_columns = [
         'author', 'created_at', 'post_id', 'text', 'uri',
         'disasters', 'sentiment', 'polarity',
-        'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location'
+        'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location',
+        'location_status', 'location_detail', 'location_mentions', 'location_review'
     ]
 
     # Process each row individually to avoid entity_data errors
@@ -115,7 +116,11 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'country': entity_result.get('country', 'US'),
                         'latitude': entity_result.get('latitude', None),
                         'longitude': entity_result.get('longitude', None),
-                        'location': entity_result.get('city', '')
+                        'location': entity_result.get('location', entity_result.get('city', '')),
+                        'location_status': entity_result.get('location_status', ''),
+                        'location_detail': entity_result.get('location_detail', ''),
+                        'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
+                        'location_review': entity_result.get('location_review', ''),
                     }
             processed_rows.append(top_row)
             # Get standardized location info
@@ -143,7 +148,11 @@ def filter_posts(df: pd.DataFrame, on_progress=None):
                         'country': loc_info.get('country', 'US'),
                         'latitude': loc_info.get('latitude', None),
                         'longitude': loc_info.get('longitude', None),
-                        'location': loc_info.get('location', '')
+                        'location': loc_info.get('location', ''),
+                        'location_status': loc_info.get('location_status', ''),
+                        'location_detail': loc_info.get('location_detail', ''),
+                        'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
+                        'location_review': entity_result.get('location_review', ''),
                     }
 
                     processed_rows.append(new_row)

@@ -21,6 +21,13 @@ CASES = [
     ("Flood in Hamilton, Ontario, Canada.", None, None),
     ("Flood in New Mexico.", None, "New Mexico"),
     ("Flood in West Virginia.", None, "West Virginia"),
+    ("Flood in Portland.", None, None),
+    ("Flood in Springfield.", None, None),
+    ("Flood in Austin.", None, None),
+    ("Flood in Georgia.", None, None),
+    ("Flood in Georgia, USA.", None, "Georgia"),
+    ("Flood in Atlanta, Georgia.", "Atlanta", "Georgia"),
+    ("Flood in Texas.", None, "Texas"),
 ]
 
 
@@ -41,7 +48,10 @@ def main():
         assert (city, state) in actual, (text, actual)
         assert all(match.get("state") == state for match in matches), (text, actual)
         assert len(actual) == len(set(actual)), (text, "duplicate location", actual)
-        print(f"PASS: {text} → {actual}")
+        assert len(actual) == 1, (text, "city and state counted separately", actual)
+        if text in {"Flood in Portland.", "Flood in Springfield.", "Flood in Austin.", "Flood in Georgia."}:
+            assert data["location_status"] == "ambiguous", (text, data)
+        print(f"PASS: {text} → {actual}; {data['location_detail']}")
     print(f"PASS: {len(CASES)} real NLP + gazetteer location checks.")
 
 

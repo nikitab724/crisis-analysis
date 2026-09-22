@@ -126,6 +126,34 @@ class DemoPipelineTests(unittest.TestCase):
             self.assertIn("https://bsky.app/profile/did:plc:sample/post/latest", table)
             self.assertIn("Example", table)
 
+    def test_ambiguous_location_stays_visible_but_out_of_map_and_counts(self):
+        responses = [
+            {"disasters": ["Flood"], "locations": ["Portland"], "city": None, "state": None,
+             "country": None, "polarity": 0, "location_status": "ambiguous",
+             "location_mentions": "Portland", "location_detail": "Needs context — no unique match"},
+            {"disasters": ["Flood"], "locations": ["Austin", "Texas"], "city": "Austin", "state": "Texas",
+             "country": "US", "polarity": 0, "latitude": 30.2672, "longitude": -97.7431,
+             "location_status": "matched", "location_detail": "City + state in text", "all_locations": []},
+        ]
+        posts = pd.DataFrame([*demo.create_mock_post("Flood in Portland."), *demo.create_mock_post("Flood in Austin Texas.")])
+        with patch.object(entry, "extract_entities", side_effect=responses):
+            filtered = entry.filter_posts(posts)
+        counts = entry.calculate_crisis_counts(filtered)
+        self.assertEqual(len(filtered), 2)
+        self.assertEqual(counts.iloc[0]["count"], 1)
+        self.assertEqual(set(counts["state"]), {"Texas"})
+        with TemporaryDirectory() as directory:
+            destination = Path(directory)
+            filtered.to_csv(destination / "filtered_posts.csv", index=False)
+            counts.to_csv(destination / "crisis_counts.csv", index=False)
+            with patch.object(dashboard, "DATA_DIR", destination):
+                table = str(dashboard.update_table(None, 0))
+                self.assertIn("Needs context", table)
+                self.assertIn("Portland", table)
+                self.assertIn("City + state in text", table)
+                self.assertNotIn("Portland", str(dashboard.update_crisis_map(0)))
+                self.assertEqual(dashboard.update_dropdown_options(0), [{"label": "Texas", "value": "Texas"}])
+
 
 if __name__ == "__main__":
     unittest.main()

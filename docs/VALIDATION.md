@@ -2,6 +2,23 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Current location behavior and validation
+
+The latest refinement replaces population-based guesses with conservative unique matching. Earlier checkpoints below describe previous revisions, including the old two-record Austin/Texas result; the current result is **one resolved location**.
+
+- Exact city names require a single gazetteer match within the available state context. Multiple matches stay unresolved and carry no map coordinates. Exact aliases also require uniqueness; a truncated candidate search cannot claim a unique result.
+- Match explanations travel through the model API and CSVs into the post table. They describe the evidence (city/state pair, one state in the post, unique US name/alias, or state mention), not numerical confidence. Unresolved mentions remain readable, including when another location in the same post resolves.
+- A city and its supporting state produce one record. Standalone states and different cities/states remain separate. Counts still represent resolved locations, not verified incidents or globally unique posts.
+- Bare “Georgia” requires more context. A resolved US city paired with Georgia, an explicit US reference, or the state abbreviation can establish the US interpretation. This remains a text heuristic and does not understand every geographic or semantic ambiguity.
+
+Validation on September 22, 2026: **45 regression tests passed**, including 24 resolver tests and a CSV/dashboard test proving ambiguous Portland stays visible but is excluded from map/count data. The fixture-only environment passed 18 tests and skipped 27 optional live checks. Both real-model integration checks passed; the injector produces one Austin/Texas/Flood record, and runtime coverage includes dashboard callbacks, database outage/recovery, and child-process cleanup.
+
+The running real model plus hosted Supabase passed **19 extraction examples**, including unqualified Portland/Springfield/Austin/Georgia remaining ambiguous, qualified cities resolving, Georgia/USA and Atlanta/Georgia resolving, foreign examples staying unresolved, and standalone states remaining supported. Run `python tests/check_location_pipeline.py --url http://127.0.0.1:5002` to repeat them without publishing test posts.
+
+The live service was restarted with old CSVs archived outside Git and the existing tunnel preserved. Public HTTPS checks passed readiness, activity, all six callbacks, the single startup row, and its matching explanation. Lint, whitespace, and the UI mechanical scan passed. Visual browser verification remains blocked by the unavailable admin security-policy check.
+
+Tradeoff: more vague posts remain unresolved, reducing map coverage. Uniqueness means unique within the restored US database, not globally unique or necessarily the intended place. County coverage, historical aliases, negation, and the relationship between an incident and a mentioned place remain limitations. The original NLP weights, disaster rules, sentiment, and HTTP/CSV architecture are unchanged; no new service or subscription is introduced.
+
 ## Audit findings addressed
 
 | Finding | Change |

@@ -46,8 +46,9 @@ with make_server("127.0.0.1", 0, model_server.app) as server:
         assert set(posts["state"]) == {"Texas"}
         assert "Austin" in set(posts["city"].dropna())
         assert counts.iloc[0]["disasters"] == "Flood"
-        # Preserve current record counting: Austin + Texas produce two location rows.
-        assert counts.iloc[0]["count"] == len(posts) == 2
+        # Texas qualifies Austin; it must not add a second location record.
+        assert counts.iloc[0]["count"] == len(posts) == 1
+        assert posts.iloc[0]["location_detail"] == "City + state in text"
         assert query.execute.call_count == 2
         with patch.object(model_server, "nlp", None):
             response = requests.post(f"{base}/extract_entities", json={"text": "Flood"}, timeout=10)
