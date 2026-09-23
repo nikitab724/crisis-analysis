@@ -17,6 +17,10 @@ from post_context import record_metadata
 ROOT = Path(__file__).resolve().parents[3]
 
 
+class CollectionPaused(Exception):
+    """Stop receiving at the committed cursor while HTTP delivery stays available."""
+
+
 def event_timestamp(value):
     """Use the relay's commit time, not a user's editable post publication time."""
     try:
@@ -52,6 +56,8 @@ class CheckpointClient(AsyncFirehoseSubscribeReposClient):
         self.collector = collector
 
     async def _before_connect(self):
+        if self.collector.pause_requested():
+            raise CollectionPaused()
         cursor = self.collector.queue.cursor
         self.update_params({'cursor': cursor} if cursor is not None else {})
         self.collector.connections += 1
@@ -65,7 +71,7 @@ class CheckpointClient(AsyncFirehoseSubscribeReposClient):
 
 
 class ContinuousCollector:
-    def __init__(self, queue, client_factory=CheckpointClient):
+    def __init__(self, queue, client_factory=CheckpointClient, pause_file=None):
         self.queue = queue
         self.client_factory = client_factory
         self.state = 'starting'
@@ -76,8 +82,14 @@ class ContinuousCollector:
         self.thread = None
         self.loop = None
         self.client = None
+        self.pause_file = Path(pause_file) if pause_file is not None else None
+
+    def pause_requested(self):
+        return self.pause_file is not None and self.pause_file.is_file()
 
     async def handle_message(self, frame):
+        if self.pause_requested():
+            raise CollectionPaused()
         body = getattr(frame, 'body', {})
         if isinstance(body, dict) and body.get('error'):
             raise RuntimeError('The stream rejected this connection/cursor')
@@ -100,6 +112,11 @@ class ContinuousCollector:
         self.loop = asyncio.get_running_loop()
         delay = 1
         while not self.stopping.is_set():
+            if self.pause_requested():
+                self.state = 'paused'
+                self.error = None
+                await asyncio.sleep(.25)
+                continue
             started = time.monotonic()
             self.client = self.client_factory(self)
             try:
@@ -111,7 +128,10 @@ class ContinuousCollector:
                 cause = exc
                 while cause.__cause__ is not None:
                     cause = cause.__cause__
-                if isinstance(cause, QueueFull):
+                if isinstance(cause, CollectionPaused):
+                    self.state = 'paused'
+                    self.error = None
+                elif isinstance(cause, QueueFull):
                     self.state = 'backpressure'
                     self.error = 'Queue full; waiting for processing before resuming from the saved position.'
                 else:
@@ -191,7 +211,7 @@ if __name__ == '__main__':
     owner = (directory / 'collector.lock').open('a')
     fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
     queue = IngestQueue(directory / 'queue.sqlite3')
-    collector = ContinuousCollector(queue)
+    collector = ContinuousCollector(queue, pause_file=directory / 'collection.paused')
     collector.start()
 
     def shutdown(_signum, _frame):

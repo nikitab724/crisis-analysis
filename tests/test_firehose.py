@@ -1,5 +1,6 @@
 """Continuous collection, cursor recovery, and acknowledged HTTP delivery."""
 import asyncio
+import importlib.util
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -125,6 +126,76 @@ class FirehoseTests(unittest.TestCase):
         asyncio.run(client._before_connect())
         self.assertEqual(client._params, {'cursor': 48})
         self.assertEqual(self.collector.connections, 2)
+
+    def test_pause_preserves_cursor_and_keeps_queued_http_delivery_available(self):
+        marker = Path(self.directory.name) / 'collection.paused'
+        self.collector.pause_file = marker
+        self.queue.append(42, [post(1), post(2)])
+        marker.touch()
+        with self.assertRaises(firehose.CollectionPaused):
+            asyncio.run(self.collector.handle_message(SimpleNamespace(body={})))
+        client = firehose.CheckpointClient(self.collector)
+        with self.assertRaises(firehose.CollectionPaused):
+            asyncio.run(client._before_connect())
+        self.assertEqual(self.queue.cursor, 42)
+        batch = self.http.get('/scrape?limit=1').json
+        self.assertEqual(batch['posts'], [post(1)])
+        self.assertEqual(self.http.post('/ack', json={'receipt': batch['receipt']}).status_code, 200)
+        self.assertEqual(self.queue.status()['queue_depth'], 1)
+        self.assertEqual(self.queue.status()['gap_events'], 0)
+        marker.unlink()
+        asyncio.run(client._before_connect())
+        self.assertEqual(client._params, {'cursor': 42})
+        self.assertEqual(self.http.get('/scrape?limit=1').json['posts'], [post(2)])
+
+    def test_paused_start_does_not_connect_and_resumes_when_marker_is_removed(self):
+        marker = Path(self.directory.name) / 'collection.paused'
+        marker.touch()
+        self.queue.append(42, [post(1)])
+        self.collector.pause_file = marker
+        seen = []
+        client = firehose.CheckpointClient(self.collector)
+        async def connect(_handler):
+            await client._before_connect()
+            seen.append(client._params.copy())
+            self.collector.stopping.set()
+        client.start = AsyncMock(side_effect=connect)
+        client.stop = AsyncMock()
+        self.collector.client_factory = lambda _collector: client
+        async def scenario():
+            running = asyncio.create_task(self.collector.run())
+            try:
+                while self.collector.state != 'paused':
+                    await asyncio.sleep(.01)
+                client.start.assert_not_called()
+                self.assertEqual(self.collector.status()['state'], 'paused')
+                self.assertEqual(self.queue.cursor, 42)
+                marker.unlink()
+                await running
+            finally:
+                self.collector.stopping.set()
+                await running
+        asyncio.run(asyncio.wait_for(scenario(), timeout=3))
+        self.assertEqual(seen, [{'cursor': 42}])
+        client.stop.assert_awaited_once()
+
+    def test_pause_control_survives_restarts_and_never_modifies_queue_data(self):
+        script = Path(__file__).resolve().parents[1] / 'scripts/collection_control.py'
+        spec = importlib.util.spec_from_file_location('collection_control_test', script)
+        control = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(control)
+        directory = Path(self.directory.name)
+        self.queue.append(42, [post(1)])
+        self.assertTrue(control.set_collection_state(directory, 'pause'))
+        restarted = firehose.ContinuousCollector(self.queue, pause_file=directory / 'collection.paused')
+        self.assertTrue(restarted.pause_requested())
+        self.assertTrue(control.set_collection_state(directory, 'status'))
+        self.assertFalse(control.set_collection_state(directory, 'resume'))
+        self.assertFalse(control.set_collection_state(directory, 'resume'))
+        self.assertEqual(self.queue.cursor, 42)
+        self.assertEqual(self.queue.status()['queue_depth'], 1)
+        with self.assertRaises(ValueError):
+            control.set_collection_state(directory / 'missing', 'pause')
 
     def test_sdk_cannot_swallow_bad_record_or_decode_failure(self):
         client = firehose.CheckpointClient(self.collector)

@@ -206,6 +206,19 @@ class PipelineActivityTests(unittest.TestCase):
             status['collector']['state'] = 'unavailable'
             self.assertNotIn('815,803', str(dashboard.update_activity(0)))
 
+    def test_intentional_collection_pause_is_distinct_from_disconnection(self):
+        status = {'phase': 'processing', 'batch_received': 100, 'batch_processed': 76,
+                  'collector': {'state': 'paused', 'acknowledged': 1000, 'queue_depth': 300}}
+        with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                patch.object(dashboard, 'activity_snapshot', return_value=status), \
+                patch.object(dashboard, 'activity_is_stale', return_value=False):
+            rendered = str(dashboard.update_activity(0))
+            self.assertIn('Collection paused. Processing saved posts.', rendered)
+            self.assertNotIn('disconnected', rendered)
+            self.assertIn('1,000', rendered)
+            status['phase'] = 'error'
+            self.assertIn('Collection paused. Analysis is waiting to retry.', str(dashboard.update_activity(0)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -236,7 +236,12 @@ def update_activity(n_intervals):
     phase = status.get('phase', 'starting')
     stale = activity_is_stale(status)
     message = None
-    if stale:
+    if collector.get('state') == 'paused':
+        message = ('Collection paused. Analysis is delayed.' if stale else
+                   'Collection paused. Analysis is waiting to retry.' if phase == 'error' else
+                   'Collection paused. Processing saved posts.' if phase == 'processing' else
+                   'Collection paused.')
+    elif stale:
         message = "Live updates are delayed."
     elif phase == 'error':
         message = ("Analysis is paused. The usage limit has been reached."

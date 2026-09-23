@@ -116,7 +116,21 @@ The saved cursor advances in the same SQLite transaction as incoming posts. Norm
 
 If classification is unavailable or an enabled per-process request budget is exhausted, the affected batch waits for recovery while collection continues into the queue. This can increase backlog; it never bypasses the relevance check or silently drops that batch. Disabling the request cap removes that source of pauses; provider outages and rate limits can still delay processing.
 
-The dashboard hides routine activity statistics and recovered error totals. It shows one concise warning for a stale processor, a disconnected/full collector, an active processing error, pending work older than 30 seconds, source-stream lag over 60 seconds, or an unrecoverable coverage gap. `/activity` retains all diagnostic counters plus `collector` details (`captured`, `acknowledged`, `cursor`, `connections`, `queue_depth`, `oldest_pending_seconds`, `source_lag_seconds`, `gap_events`, and `last_gap`). Source lag measures the relay's event timestamp, committed with its cursor, independently of local queue age and user-controlled post timestamps. A nearly empty queue can still be consuming an old replay. `/health` reports unavailable while source lag exceeds 60 seconds. The dashboard asks the collector for fresh status even while analysis is busy. NLP/Jev check/error counts include retry attempts. The processor drains full batches without an added pause, waits 0.1 seconds after partial/empty batches and two seconds after an error, and coalesces progress updates to four per second plus completion/errors. The dashboard refreshes every two seconds.
+The dashboard shows cumulative completed posts, queued posts (including the held batch), and current batch progress. Completed posts use the queue's persistent acknowledgement counter, include filtered-out posts, and are not the number of mapped crisis reports. It shows one concise warning for a stale processor, a paused/disconnected/full collector, an active processing error, pending work older than 30 seconds, source-stream lag over 60 seconds, or an unrecoverable coverage gap. `/activity` retains all diagnostic counters plus `collector` details (`captured`, `acknowledged`, `cursor`, `connections`, `queue_depth`, `oldest_pending_seconds`, `source_lag_seconds`, `gap_events`, and `last_gap`). Source lag measures the relay's event timestamp, committed with its cursor, independently of local queue age and user-controlled post timestamps. A nearly empty queue can still be consuming an old replay. `/health` reports unavailable while source lag exceeds 60 seconds. The dashboard asks the collector for fresh status even while analysis is busy. NLP/Jev check/error counts include retry attempts. The processor drains full batches without an added pause, waits 0.1 seconds after partial/empty batches and two seconds after an error, and coalesces progress updates to four per second plus completion/errors. The dashboard refreshes every two seconds.
+
+### Pause incoming collection while processing saved posts
+
+From the repository root, with the live Python environment active:
+
+```sh
+python scripts/collection_control.py pause
+python scripts/collection_control.py status
+python scripts/collection_control.py resume
+```
+
+These commands use `CRISIS_INGEST_DIR` from the environment or ignored `.env`, defaulting to `.demo-live/ingest`. Use `--ingest-dir /absolute/path` for a different running queue. The local `collection.paused` marker survives collector restarts. An updated collector disconnects at its committed cursor while keeping its HTTP queue delivery running; the processor can continue saving and acknowledging existing posts. No public pause/resume endpoint is exposed. Confirm the actual state through the collector's `/status` or the dashboard's `/activity`.
+
+Resume removes only the marker and reconnects from the saved position. It does **not** jump to the live head or discard queued data. Pausing limits local queue growth, but does not stop Bluesky producing posts or fix insufficient processing throughput. A long pause can outlast the provider's replay window and leave a reported coverage gap. Normal 24-hour report retention still applies. The dashboard labels an intentional pause; `/health` is unavailable while collection is paused.
 
 Rehearse continuous collection, forced reconnection, queue restart, and acknowledgement against the real feed without publishing reports or calling NLP/Jev:
 
