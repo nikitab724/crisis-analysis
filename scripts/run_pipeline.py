@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import signal
 import shutil
+import socket
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -28,6 +29,27 @@ def check_children(children):
     for name, process in children:
         if process.poll() is not None:
             raise RuntimeError(f"{name} exited with status {process.returncode}; stopping the pipeline.")
+
+
+def check_ports(env, mode):
+    ports = [int(env.get('MODEL_PORT', '5000')), int(env.get('PORT', '8051'))]
+    if mode == 'live':
+        ports.append(int(env.get('SCRAPER_PORT', '5001')))
+    if len(set(ports)) != len(ports) or not all(1 <= port <= 65535 for port in ports):
+        raise ValueError('Model, collector, and dashboard need distinct valid ports.')
+    for port in ports:
+        # macOS may allow a wildcard bind alongside a specific-interface listener.
+        with socket.socket() as connection:
+            connection.settimeout(.25)
+            if connection.connect_ex(('127.0.0.1', port)) == 0:
+                raise RuntimeError(f'Port {port} is already in use. Stop the previous app before starting another.')
+        with socket.socket() as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind(('0.0.0.0', port))
+                probe.listen(1)
+            except OSError as exc:
+                raise RuntimeError(f'Port {port} is already in use. Stop the previous app before starting another.') from exc
 
 
 def wait_ready(url, children, timeout=180):
@@ -131,6 +153,7 @@ def main():
 
     with TemporaryDirectory(prefix="crisis-pipeline-") as temporary:
         try:
+            check_ports(env, args.mode)
             if args.resume_from:
                 restore_run(args.resume_from, temporary)
             start("Model service", sys.executable, str(APP / "model_server.py"))
@@ -157,7 +180,7 @@ def main():
                   "dash_client:server", "--bind", f"0.0.0.0:{env.get('PORT', '8051')}",
                   "--workers", "1", "--threads", "2", "--graceful-timeout", "10",
                   "--access-logfile", "-", "--error-logfile", "-")
-            print(f"Pipeline running in {args.mode} mode. Data is scoped to this server run.", flush=True)
+            print(f"Pipeline running in {args.mode} mode. Report CSVs are scoped to this server run.", flush=True)
             while True:
                 check_children(children)
                 time.sleep(1)

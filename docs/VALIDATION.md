@@ -2,6 +2,19 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Continuous collection checkpoint
+
+On September 22, 2026, replaced per-batch firehose connections with one independent continuous collector and a local SQLite queue. Stream positions and incoming posts commit together. The processor acknowledges work only after successful analysis and saves; failed batches are redelivered, source URIs prevent replay duplication, and totals rebuild from the complete saved records. The existing transformer, disaster rules, location/relevance decisions, Jev thresholds, and request cap are unchanged. The Mac still runs the backend behind the Free Render gateway.
+
+- **117 regression tests passed** in the full environment; the lightweight environment passed 78 and skipped 39 optional live checks. Coverage includes durable pending batches/cursors, continued collection during a held batch, replay deduplication, rollback when the queue is full, reconnect cursor selection, expired replay/oversized-commit warnings, model/Jev failures, failed writes, lost acknowledgements, fresh collector status, and duplicate port detection.
+- An isolated **real-feed rehearsal** held a batch while collection continued, forced a disconnect, restarted the collector against the same disk queue, and verified unchanged pending delivery plus idempotent acknowledgement. Normal batch reads never reopened the stream. No known gaps were reported. No NLP/Jev calls or dashboard reports were created by this rehearsal.
+- The **real-backend runtime check** passed real NLP through the database SDK and local HTTP test responses, all five data callbacks, database outage/recovery, stalled reads, process cleanup, and preservation of existing data.
+- The live upgrade preserved **29 archived report records** and prior activity. Over 12 samples spanning about 22 seconds, the collector received **698 posts** and the consumer acknowledged **694**, with **one connection**, **zero reported gaps**, and no model/location/relevance errors. Pending work peaked at 68 posts with an oldest age of 2.1 seconds; the final sample had four posts pending, oldest 0.1 seconds. This is a short workload observation, not a throughput or completeness guarantee.
+- The existing public Render URL passed live readiness, 11 browser assets, all six dashboard callbacks, and Jev activity. Its layout now reports a continuous connection, pending count, oldest waiting age, and known coverage gaps. Browser visual inspection remains unavailable; these are HTTP/data checks.
+- Upgrade startup exposed two old orphan processes holding local ports. They were stopped after report archival; queue recovery retained newly collected work. The launcher now rejects occupied ports before starting children, preventing readiness checks from mistaking a previous service for a new one.
+
+The new queue starts coverage at its first stream position; it does not reconstruct posts missed by the former sampling implementation. Recovery depends on the provider replay window, and oversized commits or long outages can leave visible gaps. Pending storage is bounded to 100,000 posts without silent eviction. The unchanged Jev budget can pause analysis while incoming posts accumulate. See [continuous ingestion and operational limits](BACKEND.md#continuous-ingestion).
+
 ## Latency and Render gateway checkpoint
 
 On September 22, 2026, the existing Free Render service was connected to the live Mac dashboard through its public tunnel. NLP, Jev, ingestion, and CSV storage remain on the Mac. The public gateway passed live readiness, all 11 browser assets, all six dashboard callbacks, Jev activity, and rejection of public model API calls. No paid instance was created.

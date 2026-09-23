@@ -95,6 +95,28 @@ class PipelineActivityTests(unittest.TestCase):
                 save_csv(broken_frame, path)
             self.assertEqual(path.read_text(), "previous complete data\n")
 
+    def test_backlog_and_known_gaps_are_visible_even_while_analysis_runs(self):
+        with TemporaryDirectory() as directory:
+            write_status(directory, phase='processing', collector={
+                'state': 'connected', 'queue_depth': 42, 'oldest_pending_seconds': 8, 'gap_events': 1})
+            with patch.object(dashboard, 'DATA_DIR', Path(directory)), patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                    patch.dict(os.environ, {'SCRAPER_SERVER_URL': ''}):
+                rendered = str(dashboard.update_activity(0))
+                self.assertIn('42 queued', rendered)
+                self.assertIn('Stream connected', rendered)
+                self.assertIn('history could not be recovered', rendered)
+
+    def test_collector_outage_is_visible_with_a_fresh_processor_snapshot(self):
+        with TemporaryDirectory() as directory:
+            write_status(directory, phase='processing', collector={'state': 'connected', 'queue_depth': 3})
+            with patch.object(dashboard, 'DATA_DIR', Path(directory)), patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                    patch.dict(os.environ, {'SCRAPER_SERVER_URL': 'http://127.0.0.1:5004'}), \
+                    patch.object(dashboard.backend_http, 'get', side_effect=requests.Timeout):
+                snapshot = dashboard.activity_snapshot()
+                self.assertEqual(snapshot['collector']['state'], 'unavailable')
+                self.assertEqual(snapshot['collector']['queue_depth'], 3)
+                self.assertIn('Stream reconnecting / paused', str(dashboard.update_activity(0)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,20 @@ def default_entity_data():
         'all_locations': None
     }
 
+class CollectedPosts(list):
+    def __init__(self, posts, receipt=None, collector=None):
+        super().__init__(posts)
+        self.receipt = receipt
+        self.collector = collector or {}
+
+
+def acknowledge_posts(posts):
+    receipt = getattr(posts, 'receipt', None)
+    if receipt:
+        response = requests.post(f"{SCRAPER_SERVER_URL}/ack", json={'receipt': receipt}, timeout=5)
+        response.raise_for_status()
+
+
 def get_scraped_posts(limit=20):
     url = f"{SCRAPER_SERVER_URL}/scrape"
     params = {"limit": limit}
@@ -50,7 +64,7 @@ def get_scraped_posts(limit=20):
         response = requests.get(url, params=params, timeout=60)
         response.raise_for_status()
         data = response.json()
-        return data.get("posts", [])
+        return CollectedPosts(data.get("posts", []), data.get("receipt"), data.get("collector"))
     except requests.exceptions.RequestException as e:
         print(f"Could not fetch posts: {e}")
         if os.environ.get("CRISIS_PIPELINE_MODE") == "live":
@@ -64,8 +78,13 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
     df = df.copy()
 
-    # Remove duplicate posts based on text content
-    df = df.drop_duplicates(subset=['text'])
+    # Distinct source posts may have identical text. Deduplicate by URI when available.
+    if 'uri' in df:
+        identified = df['uri'].fillna('').ne('')
+        df = pd.concat([df[identified].drop_duplicates(subset=['uri']),
+                        df[~identified].drop_duplicates(subset=['text'])]).sort_index()
+    else:
+        df = df.drop_duplicates(subset=['text'])
 
     # Drop rows where text is empty (has zero length)
     df = df[df['text'].str.len() > 0]
@@ -93,8 +112,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
             entity_result = extract_entities(row['text'])
 
             if not entity_result or not isinstance(entity_result, dict):
-                # If there's no valid entity data, skip
-                continue
+                raise ValueError('The model returned no valid entity data')
             if entity_result.get('skipped_non_crisis') is True:
                 relevance_stats['rule_skipped'] = relevance_stats.get('rule_skipped', 0) + 1
 
@@ -208,6 +226,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
         except Exception as e:
             print(f"Error processing row {idx}: {e}")
             errors += 1
+            relevance_stats['model_errors'] = errors
             continue
         finally:
             if on_progress:
@@ -248,10 +267,14 @@ def calculate_crisis_counts(df, existing_counts_file=None):
     # Ensure disasters is a string if it's a list
     if 'disasters' in df_copy.columns:
         # Convert list to string only for grouping
-        df_copy['disaster_str'] = df_copy['disasters'].apply(
-            lambda x: x[0] if isinstance(x, list) and len(x) > 0 else
-                    (x if isinstance(x, str) else 'Unknown')
-        )
+        def first_disaster(value):
+            if isinstance(value, str) and value.startswith('['):
+                try:
+                    value = ast.literal_eval(value)
+                except (ValueError, SyntaxError):
+                    return 'Unknown'
+            return value[0] if isinstance(value, list) and value else (value if isinstance(value, str) else 'Unknown')
+        df_copy['disaster_str'] = df_copy['disasters'].apply(first_disaster)
 
     # Process new data - use disaster_str for grouping
     exploded_new = df_copy.copy()
@@ -376,7 +399,6 @@ def reset_csv_files(output_dir=DATA_DIR):
 def main(post_limit=20, output_dir=DATA_DIR):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    reset_csv_files(output_dir)
     previous = read_status(output_dir)
     relevance_stats = {}
     write_status(output_dir, phase="collecting", last_error=None,
@@ -388,9 +410,18 @@ def main(post_limit=20, output_dir=DATA_DIR):
         write_status(output_dir, phase="error", last_error="Could not collect Bluesky posts. Retrying.")
         return
 
+    collector = getattr(posts, 'collector', {})
+    if collector:
+        write_status(output_dir, collector=collector)
+    receipt = getattr(posts, 'receipt', None)
+    replay = bool(receipt and receipt == previous.get('batch_receipt'))
+    processed_base = previous.get('batch_processed_base', 0) if replay else previous.get('posts_processed', 0)
+
     if not posts:
         print("No posts to process. Skipping this run.")
         write_status(output_dir, phase="waiting", batch_received=0)
+        if collector and collector.get('state') != 'connected':
+            write_status(output_dir, phase="error", last_error="Collection interrupted; reconnecting from the saved position.")
         return
 
     # Load collected posts
@@ -404,17 +435,23 @@ def main(post_limit=20, output_dir=DATA_DIR):
     processing_started = time.perf_counter()
     write_status(output_dir, phase="processing", batch_received=len(df), batch_processed=0,
                  collection_ms=round((processing_started - collect_started) * 1000, 1),
-                 posts_received=previous.get("posts_received", 0) + len(df))
+                 posts_received=previous.get("posts_received", 0) + (0 if replay else len(df)),
+                 batch_receipt=receipt, batch_processed_base=processed_base)
 
     def progress(processed, errors):
         write_status(output_dir, phase="processing", batch_processed=processed,
-                     posts_processed=previous.get("posts_processed", 0) + processed - errors,
+                     posts_processed=processed_base + processed - errors,
                      model_errors=previous.get("model_errors", 0) + errors,
                      **{key: previous.get(key, 0) + relevance_stats.get(key, 0)
                         for key in ('relevance_checked', 'relevance_excluded', 'relevance_errors',
                                     'location_checked', 'location_resolved', 'location_errors', 'rule_skipped')})
 
     def finish(matches=0):
+        try:
+            acknowledge_posts(posts)
+        except requests.RequestException:
+            write_status(output_dir, phase="error", last_error="Could not acknowledge saved work. The batch will be retried.")
+            return
         write_status(output_dir, phase="waiting", batch_matches=matches,
                      processing_ms=round((time.perf_counter() - processing_started) * 1000, 1),
                      batches_completed=previous.get("batches_completed", 0) + 1,
@@ -428,84 +465,39 @@ def main(post_limit=20, output_dir=DATA_DIR):
         write_status(output_dir, phase="error", last_error="This batch could not be analyzed. Retrying.")
         return
 
+    if receipt and any(relevance_stats.get(key, 0) for key in ('model_errors', 'location_errors', 'relevance_errors')):
+        write_status(output_dir, phase="error", last_error="Analysis unavailable. Keeping this batch queued for retry.")
+        return
+
     if filtered_df.empty:
         print("No crisis posts found. Skipping this run.")
         finish()
         return
 
-    # Save filtered posts
+    # Rebuild totals from the saved records: replay after a write/ack failure is idempotent.
     try:
-        filtered_posts_output_file = output_dir / 'filtered_posts.csv'
-
-        # For appending, handle existing file properly
-        if os.path.exists(filtered_posts_output_file) and os.path.getsize(filtered_posts_output_file) > 0:
-            try:
-                # Try to read existing file
-                existing_df = us_records(pd.read_csv(filtered_posts_output_file))
-
-                # Ensure column consistency
-                for col in filtered_df.columns:
-                    if col not in existing_df.columns:
-                        if col in ['disasters', 'locations', 'cities']:
-                            existing_df[col] = [[] for _ in range(len(existing_df))]
-                        elif col in ['polarity']:
-                            existing_df[col] = 0.0
-                        elif col in ['sentiment']:
-                            existing_df[col] = 'Neutral'
-                        else:
-                            existing_df[col] = ''
-
-                for col in existing_df.columns:
-                    if col not in filtered_df.columns:
-                        if col in ['disasters', 'locations', 'cities']:
-                            filtered_df[col] = [[] for _ in range(len(filtered_df))]
-                        elif col in ['polarity']:
-                            filtered_df[col] = 0.0
-                        elif col in ['sentiment']:
-                            filtered_df[col] = 'Neutral'
-                        else:
-                            filtered_df[col] = ''
-
-                # Combine and save
-                combined_df = pd.concat([existing_df, filtered_df])
-                save_csv(combined_df, filtered_posts_output_file)
-                print(f"Successfully appended {len(filtered_df)} records to {filtered_posts_output_file}")
-
-            except Exception as e:
-                print(f"Error reading existing filtered posts, creating new file: {e}")
-                save_csv(filtered_df, filtered_posts_output_file)
-        else:
-            # Create new file
-            save_csv(filtered_df, filtered_posts_output_file)
-            print(f"Created new file {filtered_posts_output_file} with {len(filtered_df)} records")
-    except Exception as e:
-        print(f"Error saving filtered posts: {e}")
-        write_status(output_dir, phase="error", last_error="Could not save the latest posts. Retrying.")
-        return
-
-    try:
-        # Calculate crisis counts
-        crisis_counts_output_file = output_dir / 'crisis_counts.csv'
-        counts = calculate_crisis_counts(filtered_df, crisis_counts_output_file)
-
-        if counts is not None and not counts.empty:
-            save_csv(counts, crisis_counts_output_file)
-            print(f"Successfully updated crisis counts with {len(counts)} records")
-        else:
-            print("No crisis counts to save")
-        finish(len(filtered_df))
-    except Exception as e:
-        print(f"Error calculating or saving crisis counts: {e}")
-        write_status(output_dir, phase="error", last_error="Could not update report counts. Retrying.")
-        import traceback
-        traceback.print_exc()
+        destination = output_dir / 'filtered_posts.csv'
+        existing = us_records(pd.read_csv(destination)) if destination.is_file() else pd.DataFrame()
+        combined = pd.concat([existing, filtered_df], ignore_index=True)
+        keys = combined[['uri', 'country', 'state', 'city']].fillna('')
+        repeated = keys['uri'].ne('') & keys.duplicated(keep='first')
+        combined = combined[~repeated].copy()
+        added = max(0, len(combined) - len(existing))
+        save_csv(combined, destination)
+        counts = calculate_crisis_counts(combined)
+        if not counts.empty:
+            save_csv(counts, output_dir / 'crisis_counts.csv')
+        finish(added)
+    except Exception as exc:
+        print(f"Could not save this batch: {exc}")
+        write_status(output_dir, phase="error", last_error="Could not save posts and counts. Keeping this batch queued for retry.")
 
 if __name__ == '__main__':
     post_limit = 20
     while True:
         try:
             main(post_limit)
-            time.sleep(0.1)
+            time.sleep(2 if read_status(DATA_DIR).get("phase") == "error" else 0.1)
         except KeyboardInterrupt:
             break
         except Exception as e:

@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 import sys
+import socket
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -11,6 +12,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 
 @unittest.skipUnless(importlib.util.find_spec('dotenv'), 'requires live launcher dependencies')
 class ResumeRunTests(unittest.TestCase):
+    def test_launcher_rejects_ports_owned_by_an_existing_app(self):
+        from run_pipeline import check_ports
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            port = listener.getsockname()[1]
+            with self.assertRaisesRegex(RuntimeError, 'already in use'):
+                check_ports({'MODEL_PORT': str(port), 'PORT': '1'}, 'demo')
+        with self.assertRaisesRegex(ValueError, 'distinct'):
+            check_ports({'MODEL_PORT': '8052', 'PORT': '8052'}, 'demo')
+
     def test_restores_only_data_and_counters_and_preserves_source(self):
         from run_pipeline import restore_run
         with TemporaryDirectory() as source, TemporaryDirectory() as destination:

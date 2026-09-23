@@ -136,6 +136,7 @@ class DemoPipelineTests(unittest.TestCase):
              "location_status": "matched", "location_detail": "City + state in text", "all_locations": []},
         ]
         posts = pd.DataFrame([*demo.create_mock_post("Flood in Portland."), *demo.create_mock_post("Flood in Austin Texas.")])
+        posts.loc[1, 'uri'] += '-austin'
         with patch.object(entry, "extract_entities", side_effect=responses):
             filtered = entry.filter_posts(posts)
         counts = entry.calculate_crisis_counts(filtered)

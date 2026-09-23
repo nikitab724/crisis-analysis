@@ -36,6 +36,19 @@ def activity_is_stale(status):
         return True
 
 
+def activity_snapshot():
+    status = read_status(DATA_DIR)
+    scraper = os.environ.get('SCRAPER_SERVER_URL')
+    if PIPELINE_MODE == 'live' and scraper:
+        try:
+            response = backend_http.get(scraper.rstrip('/') + '/status', timeout=1)
+            response.raise_for_status()
+            status['collector'] = response.json()
+        except (requests.RequestException, ValueError):
+            status['collector'] = {**status.get('collector', {}), 'state': 'unavailable'}
+    return status
+
+
 @server.get('/health')
 def health_check():
     if PIPELINE_MODE in ("demo", "live"):
@@ -49,8 +62,10 @@ def health_check():
     if not all((DATA_DIR / name).is_file() for name in ("filtered_posts.csv", "crisis_counts.csv")):
         return {"status": "unavailable", "component": "data"}, 503
     if PIPELINE_MODE == "live":
-        status = read_status(DATA_DIR)
-        if activity_is_stale(status) or status.get("phase") == "error":
+        status = activity_snapshot()
+        collector = status.get('collector', {})
+        if (activity_is_stale(status) or status.get("phase") == "error"
+                or (collector and collector.get('state') != 'connected')):
             return {"status": "unavailable", "component": "collector"}, 503
     return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
 
@@ -150,7 +165,7 @@ MODE_LABELS = {"fixture": "Fixture demo", "demo": "Model demo", "live": "Live Bl
 MODE_NOTES = {
     "fixture": "Synthetic post and predefined model response. Live NLP is not running.",
     "demo": "Real NLP and Supabase. Showing a synthetic example for rehearsal.",
-    "live": "Real NLP and Supabase. New Bluesky posts are checked in batches; counts include the startup example.",
+    "live": "Real NLP and Supabase. A continuous Bluesky connection queues new posts while analysis runs; counts include the startup example. Recovery depends on the provider's replay window.",
 }
 MODE_SUMMARIES = {
     "fixture": "Synthetic example · Live NLP is not running",
@@ -216,8 +231,8 @@ app.layout = html.Main(className="app-shell", children=[
         html.Details([
             html.Summary("About the data"),
             html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
-            html.P("Only locations resolved to the 50 US states or DC are shown. Foreign and unresolved locations are skipped. Counts are not verified incidents. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 5 seconds."),
-            html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Repeated posts across batches can count again."),
+            html.P("Only locations resolved to the 50 US states or DC are shown. Foreign and unresolved locations are skipped. Counts are not verified incidents. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 2 seconds."),
+            html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Retries of the same source post and location do not add another count; different posts can describe the same event."),
         ]),
     ]),
     dcc.Interval(id="interval-component", interval=2000, n_intervals=0),
@@ -226,7 +241,7 @@ app.layout = html.Main(className="app-shell", children=[
 
 @server.get("/activity")
 def activity():
-    return {"mode": PIPELINE_MODE or "dashboard", **read_status(DATA_DIR)}
+    return {"mode": PIPELINE_MODE or "dashboard", **activity_snapshot()}
 
 
 @app.callback(Output("pipeline-activity", "children"), Input("interval-component", "n_intervals"))
@@ -234,7 +249,7 @@ def update_activity(n_intervals):
     if PIPELINE_MODE != "live":
         return html.Span("Example ready" if PIPELINE_MODE in ("fixture", "demo") else "Saved reports",
                          className="activity-label")
-    status = read_status(DATA_DIR)
+    status = activity_snapshot()
     phase = status.get("phase", "starting")
     labels = {"starting": "Starting collection", "collecting": "Collecting posts",
               "processing": "Analyzing posts", "waiting": "Waiting for the next batch",
@@ -250,10 +265,18 @@ def update_activity(n_intervals):
     parts = [
         html.Span(labels.get(phase, "Updates delayed"),
                   className="activity-label warning" if phase in ("error", "stalled") else "activity-label"),
-        html.Span(f"{status.get('posts_received', 0):,} posts collected"),
+        html.Span(f"{status.get('posts_received', 0):,} posts sent to analysis"),
         html.Span(f"{status.get('posts_processed', 0):,} analyzed"),
         html.Span(f"Updated {time_label}" if updated else time_label, className="activity-time"),
     ]
+    collector = status.get('collector', {})
+    if collector:
+        state = collector.get('state')
+        parts.append(html.Span('Stream connected' if state == 'connected' else 'Stream reconnecting / paused',
+                               className='' if state == 'connected' else 'warning'))
+        parts.append(html.Span(f"{collector.get('queue_depth', 0):,} queued · oldest {collector.get('oldest_pending_seconds', 0):.0f}s"))
+        if collector.get('gap_events'):
+            parts.append(html.Span('Some stream history could not be recovered', className='warning'))
     if status.get("model_errors", 0):
         parts.append(html.Span(f"{status['model_errors']:,} analysis errors", className="warning"))
     if status.get("relevance_mode") == "jev":

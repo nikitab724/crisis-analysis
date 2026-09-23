@@ -18,6 +18,9 @@ __pycache__/
 .demo/
 .demo-live/
 .demo-hosted/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 .restore/
 supabase/.temp/
 .pytest_cache/

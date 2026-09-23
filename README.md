@@ -18,8 +18,9 @@ The intended users are analysts and operations teams exploring social-media situ
 
 ```mermaid
 flowchart LR
-    B[Bluesky firehose] --> S[Firehose service · 5001]
-    S --> E[Batch processor · entry.py]
+    B[Bluesky firehose] --> S[Continuous collector · 5001]
+    S --> Q[Local SQLite queue + stream cursor]
+    Q --> E[Batch processor · entry.py]
     E --> M[Model service · 5000]
     M --> N[spaCy transformer + disaster rules + sentiment]
     M --> G[Supabase gazetteer]
@@ -28,14 +29,14 @@ flowchart LR
     C --> D[Dash dashboard · 8051]
 ```
 
-The processes run on one host (or in one development container). The model service and scraper communicate with the processor over local HTTP. The dashboard reads CSV files on a five-second refresh interval. This cleanup retains those boundaries and the existing NLP approach.
+The processes run on one host (or in one development container). The model service and collector communicate with the processor over local HTTP. The dashboard reads CSV files on a two-second refresh interval. Ingestion uses a local retry queue while retaining those service boundaries and the existing NLP approach.
 
 ## Tech stack
 
 | Layer | Implementation |
 | --- | --- |
 | Runtime | Python 3.12 |
-| Ingestion | Bluesky AT Protocol client, Flask |
+| Ingestion | Bluesky AT Protocol client, Flask, SQLite retry queue |
 | NLP | spaCy 3.8.4, `en_core_web_trf`, EntityRuler disaster patterns |
 | Sentiment | spaCyTextBlob / TextBlob polarity |
 | Location lookup | Supabase/PostgreSQL gazetteer |
@@ -65,7 +66,7 @@ On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1` and set `$env:
 
 Open **http://localhost:8051**. Expect one Flood report in Texas, an Austin marker, and the synthetic post after selecting Texas in the dropdown. Repeating the injection replaces the two demo CSVs with the same result. Without `--output-dir`, the script validates temporary results and removes them on exit. Live CSVs are preserved. Stop the dashboard with Ctrl+C.
 
-Map circles show **saved report records at each resolved location**, not a disaster radius. Circle area is proportional to the count through 64 records: diameters are 8 px for one record, 16 px for four, and 32 px for sixteen. Larger counts are capped at 64 px and labeled in the tooltip; exact counts remain visible. City points use their own gazetteer coordinates, while state-only or missing-city-coordinate records use a labeled approximate state centroid. Counts can include repeats across batches and are not verified incidents.
+Map circles show **saved report records at each resolved location**, not a disaster radius. Circle area is proportional to the count through 64 records: diameters are 8 px for one record, 16 px for four, and 32 px for sixteen. Larger counts are capped at 64 px and labeled in the tooltip; exact counts remain visible. City points use their own gazetteer coordinates, while state-only or missing-city-coordinate records use a labeled approximate state centroid. Retries of the same source post/location are deduplicated; different posts may describe the same event. Counts are not verified incidents.
 
 The browser's geographic basemap may require internet access to Plotly's geographic assets. Rehearse on the presentation network beforehand; the table and bar chart do not depend on the map download.
 
@@ -186,7 +187,9 @@ python proj-dev/app/live_demo/entry.py
 python proj-dev/app/live_demo/dash_client.py
 ```
 
-Each processor run requests up to 20 posts, with a two-second collection window and a 0.1-second pause between batches. The dashboard refreshes every two seconds. A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. This improves latency for collected posts, but does not provide complete firehose coverage. Default live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
+The collector keeps one Bluesky connection open while the processor drains batches of up to 20 posts from a local SQLite queue. Each stream position is committed with its posts; reconnects request replay from that saved position. Batches remain queued until analysis and CSV writes succeed. A retry of the same source post/location cannot add another count. The dashboard refreshes every two seconds and shows connection state, pending work, oldest queued age, and known coverage gaps. See [continuous ingestion and its limits](docs/BACKEND.md#continuous-ingestion).
+
+A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. Default standalone live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts; the supervisor uses a temporary run directory. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
 
 ## Docker
 
@@ -253,7 +256,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 - **Counts represent resolved locations:** a city and its supporting state count once per post; different cities or states can still create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
 - **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.
-- **Prototype storage and services:** individual CSVs are replaced atomically, but the posts/counts pair is not a transaction. There is no user authentication, retry queue, or durable hosted history. The launcher supervises existing processes, but is not a production orchestration system. Live collection samples the Bluesky firehose in batches and can miss posts between connections; it does not provide complete stream coverage or historical backfill.
+- **Prototype storage and services:** individual CSVs are replaced atomically, but the posts/counts pair is not a transaction. There is no user authentication or durable hosted report history. A local acknowledged queue and saved cursor provide retry/reconnect recovery; the launcher is not a production orchestration system. Coverage begins when the collector first starts and is limited by provider replay availability, oversized commits, disk capacity, and network outages. It does not provide complete historical backfill.
 - **Reproducibility limits:** primary versions are pinned, but not all transitive dependencies. A full cross-platform lockfile and CI are future work.
 - **Legacy experiments:** `proj-dev/app/main.py`, `live_demo/scraper_server.py`, `gazetteer_db.py`, and the notebook are not the supported demo startup path. The old scraper references an absent `blueskyapi_copy` module.
 
