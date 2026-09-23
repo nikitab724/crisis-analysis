@@ -2,7 +2,7 @@
 
 The dashboard reads local CSVs; Supabase supplies location lookups, not report storage. Run the existing model service, processor, and dashboard on **one host** so they share those CSVs. `scripts/run_pipeline.py` starts and supervises them without changing the NLP pipeline or service boundaries.
 
-The currently published free service is still the labeled fixture demo. Adding Supabase variables to that service alone does not activate the real model.
+The Free Render service can [forward the live Mac dashboard](RENDER_FREE.md) by setting `LIVE_DASHBOARD_URL`. Without that setting it runs the labeled fixture demo. Adding Supabase variables to the Free service alone does not activate the real model.
 
 ## Hosting and cost
 
@@ -23,7 +23,7 @@ caffeinate -i cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8052
 
 Open the `https://...trycloudflare.com` URL printed by the tunnel. The `caffeinate` command prevents idle sleep while the tunnel runs on macOS; keep the Mac plugged in, its lid open, and its network connected. On Linux, omit `caffeinate -i`. Stop the tunnel with Ctrl+C in its terminal; this removes public access while leaving the separately launched local pipeline running.
 
-Only the dashboard port is forwarded. Model/database credentials remain in the backend. The startup input is still the labeled synthetic post processed by real NLP and Supabase. This is a temporary demo link, not always-on hosting: restarting the tunnel creates a new address, closing either process breaks the link, and Quick Tunnels have no uptime guarantee. The Render fixture remains an independent backup.
+Only the dashboard port is forwarded. Model/database credentials remain in the backend. The startup input is still the labeled synthetic post processed by real NLP and Supabase. This is a temporary demo link, not always-on hosting: restarting the tunnel creates a new address, closing either process breaks the link, and Quick Tunnels have no uptime guarantee. The [Render Free gateway](RENDER_FREE.md) can keep the public Render address stable while forwarding to this tunnel; update its environment when the tunnel address changes. The independent fixture can be restored by removing that forwarding setting and redeploying.
 
 ## Configure Supabase
 
@@ -103,7 +103,7 @@ The activity row reports posts received, successfully analyzed posts, analysis e
 
 Every start uses a fresh temporary data directory and regenerates the known post. CSV history is **not durable** across restarts/deploys. Existing local data directories are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and both CSVs. Live mode also requires a processor update within three minutes and no current collection error. This does not establish complete stream coverage, recent matching posts, or incident accuracy.
 
-Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for the hosted database verification and separate tests using controlled responses. The public Render fixture has not been switched to the real transformer service.
+Original CSV concurrency, location ambiguity, counting, and live-feed limitations still apply. See [validation results](VALIDATION.md) for the hosted database verification and separate tests using controlled responses. Render Free forwarding does not move the transformer onto Render.
 
 ## Optional semantic relevance filter
 

@@ -69,7 +69,11 @@ Map circles show **saved report records at each resolved location**, not a disas
 
 The browser's geographic basemap may require internet access to Plotly's geographic assets. Rehearse on the presentation network beforehand; the table and bar chart do not depend on the map download.
 
-## Deploy the interview demo to Render
+## Deploy to Render Free
+
+For the **live app at the existing Render URL**, [use the Free gateway setup](docs/RENDER_FREE.md): set `LIVE_DASHBOARD_URL` to the Mac's current public tunnel origin and deploy the latest commit. Render serves the real dashboard and forwards its callbacks; NLP, Jev, ingestion, and CSVs remain on the Mac. The Mac and tunnel must stay online. This mode requires no model weights or provider secrets on Render, and never silently substitutes fixture results when the backend is unavailable.
+
+With `LIVE_DASHBOARD_URL` unset, the same service starts the independent fixture described below.
 
 [Deploy the fixture demo to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fnikitab724%2Fcrisis-analysis%2Ftree%2Fpolish%2Finterview-demo)
 
@@ -83,7 +87,7 @@ Sign in to Render, follow the link, and create the Blueprint from the `polish/in
 | Health check | `/_dash-layout` |
 | Instance plan | Free |
 
-The launcher regenerates the synthetic demo data at each start and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard explicitly labels its data as a fixture. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
+In fixture mode, the launcher regenerates the synthetic demo data at each start and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard explicitly labels its data as a fixture. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
 
 Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the fixture label, Texas map/chart, and post table. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
 
