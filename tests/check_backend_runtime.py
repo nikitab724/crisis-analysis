@@ -5,6 +5,7 @@ or Bluesky traffic is used. Only gazetteer HTTP responses are substituted.
 """
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -112,6 +113,20 @@ def main():
                     layout.raise_for_status()
                     assert "Real NLP and Supabase" in layout.text
                     assert "FIXTURE DEMO" not in layout.text
+                    model_base = f"http://127.0.0.1:{env['MODEL_PORT']}"
+                    texts = ['Flood in Austin Texas.', 'A quiet afternoon in Austin Texas.']
+                    def extract(text):
+                        response = requests.post(model_base + '/extract_entities', json={'text': text}, timeout=15)
+                        response.raise_for_status()
+                        return response.json()
+                    originals = list(map(extract, texts))
+                    screening = requests.post(model_base + '/disaster_candidates',
+                                              json={'texts': texts * 4}, timeout=15)
+                    screening.raise_for_status()
+                    assert screening.json()['candidates'] == [True, False] * 4
+                    with ThreadPoolExecutor(max_workers=4) as pool:
+                        assert list(pool.map(extract, texts * 4)) == originals * 4
+                    print('PASS: real-model batch screening and concurrent requests preserve serial outputs.')
                     interval = [{"id": "interval-component", "property": "n_intervals", "value": 0}]
                     options = callback(base, "state-dropdown.options", interval)
                     assert options == [{"label": "Texas", "value": "Texas"}]

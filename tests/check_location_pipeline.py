@@ -5,6 +5,7 @@ Usage: python tests/check_location_pipeline.py --url http://127.0.0.1:5002
 """
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -34,11 +35,14 @@ CASES = [
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True, help="Running model API URL, not the dashboard URL")
-    base = parser.parse_args().url.rstrip("/")
+    parser.add_argument("--workers", type=int, choices=range(1, 5), default=1)
+    args = parser.parse_args()
+    base = args.url.rstrip("/")
     ready = requests.get(base + "/ready", timeout=15)
     ready.raise_for_status()
     assert ready.json()["status"] == "healthy"
-    for text, city, state in CASES:
+    def check(case):
+        text, city, state = case
         response = requests.post(base + "/extract_entities", json={"text": text}, timeout=30)
         response.raise_for_status()
         data = response.json()
@@ -52,7 +56,9 @@ def main():
         if text in {"Flood in Portland.", "Flood in Springfield.", "Flood in Austin.", "Flood in Georgia."}:
             assert data["location_status"] == "ambiguous", (text, data)
         print(f"PASS: {text} → {actual}; {data['location_detail']}")
-    print(f"PASS: {len(CASES)} real NLP + gazetteer location checks.")
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        list(pool.map(check, CASES))
+    print(f"PASS: {len(CASES)} real NLP + gazetteer location checks with {args.workers} worker(s).")
 
 
 if __name__ == "__main__":

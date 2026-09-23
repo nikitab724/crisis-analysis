@@ -4,6 +4,8 @@ This classifies the claim in a post; it does not verify that the event happened.
 """
 
 from collections import OrderedDict
+from concurrent.futures import Future
+import threading
 from functools import lru_cache
 import hashlib
 import json
@@ -64,7 +66,11 @@ class JevRelevance:
         self.threshold = threshold
         self.max_calls = max_calls
         self.calls = 0
-        self.session = session if session is not None else requests.Session()
+        self.session = session
+        self._sessions = threading.local()
+        self._lock = threading.RLock()
+        self._slots = threading.BoundedSemaphore(2)
+        self._inflight = {}
         self.cache = OrderedDict()
         self.retry_after = 0
 
@@ -144,52 +150,87 @@ class JevRelevance:
                                  "location_context_probability": evidence})
         return selected
 
+    def _session(self):
+        if self.session is not None:
+            return self.session
+        if not hasattr(self._sessions, 'value'):
+            self._sessions.value = requests.Session()
+            self._sessions.value.trust_env = False
+        return self._sessions.value
+
+    def diagnostics(self):
+        with self._lock:
+            return {'jev_calls': self.calls, 'jev_max_calls': self.max_calls,
+                    'jev_cooldown_seconds': round(max(0, self.retry_after - time.monotonic()), 1)}
+
     def _evaluate(self, state, questions):
-        """Both classification stages share timeouts, cooldown, cache, and call cap."""
+        """Two concurrent calls share one atomic budget, cooldown, and result cache."""
         payload = {"model": MODEL, "state": state, "questions": questions}
         cache_key = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
-        if cache_key in self.cache:
-            self.cache.move_to_end(cache_key)
-            return self.cache[cache_key]
-        else:
-            if self.calls >= self.max_calls:
-                raise RelevanceUnavailable("Jev request cap reached; classification unavailable.")
-            if time.monotonic() < self.retry_after:
-                raise RelevanceUnavailable("Jev temporarily unavailable; classification will need a retry.")
-            self.calls += 1
-            try:
-                response = self.session.post(
-                    ENDPOINT,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    json=payload,
-                    timeout=(3, 6), allow_redirects=False,
-                )
-                if response.status_code != 200:
-                    raise ValueError("Jev request failed")
-                answers = response.json()["answers"]
-                for name, question in questions.items():
-                    answer = answers[name]
-                    if answer["type"] != question["type"]:
-                        raise ValueError("Incorrect answer type")
-                    if question["type"] == "boolean":
-                        if not valid_probability(answer["probability"]):
-                            raise ValueError("Invalid probability")
-                    else:
-                        probabilities = answer["probabilities"]
-                        choice = answer["choice"]
-                        if (set(probabilities) != set(question["criteria"])
-                                or choice not in probabilities
-                                or not all(valid_probability(p) for p in probabilities.values())
-                                or not math.isclose(sum(probabilities.values()), 1, abs_tol=0.01)
-                                or probabilities[choice] != max(probabilities.values())):
-                            raise ValueError("Invalid choice probabilities")
-            except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
+        with self._lock:
+            if cache_key in self.cache:
+                self.cache.move_to_end(cache_key)
+                return self.cache[cache_key]
+            future = self._inflight.get(cache_key)
+            owner = future is None
+            if owner:
+                future = self._inflight[cache_key] = Future()
+        if not owner:
+            return future.result()
+        try:
+            with self._slots:
+                with self._lock:
+                    if self.calls >= self.max_calls:
+                        raise RelevanceUnavailable("Jev request cap reached; classification unavailable.")
+                    if time.monotonic() < self.retry_after:
+                        raise RelevanceUnavailable("Jev temporarily unavailable; classification will need a retry.")
+                    self.calls += 1
+                answers = self._request_answers(payload, questions)
+                with self._lock:
+                    self.cache[cache_key] = answers
+                    if len(self.cache) > 512:
+                        self.cache.popitem(last=False)
+                future.set_result(answers)
+                return answers
+        except BaseException as exc:
+            future.set_exception(exc)
+            raise
+        finally:
+            with self._lock:
+                self._inflight.pop(cache_key, None)
+
+    def _request_answers(self, payload, questions):
+        try:
+            response = self._session().post(
+                ENDPOINT,
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
+                timeout=(3, 6), allow_redirects=False,
+            )
+            if response.status_code != 200:
+                raise ValueError("Jev request failed")
+            answers = response.json()["answers"]
+            for name, question in questions.items():
+                answer = answers[name]
+                if answer["type"] != question["type"]:
+                    raise ValueError("Incorrect answer type")
+                if question["type"] == "boolean":
+                    if not valid_probability(answer["probability"]):
+                        raise ValueError("Invalid probability")
+                else:
+                    probabilities = answer["probabilities"]
+                    choice = answer["choice"]
+                    if (set(probabilities) != set(question["criteria"])
+                            or choice not in probabilities
+                            or not all(valid_probability(p) for p in probabilities.values())
+                            or not math.isclose(sum(probabilities.values()), 1, abs_tol=0.01)
+                            or probabilities[choice] != max(probabilities.values())):
+                        raise ValueError("Invalid choice probabilities")
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
+            with self._lock:
                 self.retry_after = time.monotonic() + 30
-                # Never log a response body, request headers, or provider exception with secrets.
-                raise RelevanceUnavailable("Jev request failed; classification unavailable.") from None
-            self.cache[cache_key] = answers
-            if len(self.cache) > 512:
-                self.cache.popitem(last=False)
+            # Never log a response body, request headers, or provider exception with secrets.
+            raise RelevanceUnavailable("Jev request failed; classification unavailable.") from None
         return answers
 
 

@@ -133,7 +133,9 @@ def main():
     env.pop("CRISIS_DATA_DIR", None)
     env["MODEL_SERVER_URL"] = f"http://127.0.0.1:{env.get('MODEL_PORT', '5000')}"
     env["SCRAPER_SERVER_URL"] = f"http://127.0.0.1:{env.get('SCRAPER_PORT', '5001')}"
-    env["MODEL_THREADS"] = "1"
+    # Four bounded post workers plus a thread for screening/readiness requests.
+    # The transformer itself is protected by a lock and remains a single instance.
+    env["MODEL_THREADS"] = "5"
     env["CRISIS_PIPELINE_MODE"] = args.mode
     env["PYTHONUNBUFFERED"] = "1"
     env.setdefault("OMP_NUM_THREADS", "1")

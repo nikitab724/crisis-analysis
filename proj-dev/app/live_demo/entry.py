@@ -1,4 +1,7 @@
 import ast
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
+import threading
 import os
 import time
 from pathlib import Path
@@ -8,11 +11,38 @@ import requests
 from pipeline_status import read_status, save_csv, write_status
 from us_scope import is_us_location, us_records
 from retention import live_retention_enabled, recent_posts
-from jev_relevance import get_relevance_client, RelevanceUnavailable
+from jev_relevance import JevRelevance, get_relevance_client, RelevanceUnavailable
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
 SCRAPER_SERVER_URL = os.environ.get("SCRAPER_SERVER_URL", "http://127.0.0.1:5001").rstrip("/")
+
+_http = threading.local()
+
+
+def model_session():
+    if not hasattr(_http, 'session'):
+        _http.session = requests.Session()
+        _http.session.trust_env = False
+    return _http.session
+
+
+def screen_candidates(texts):
+    response = model_session().post(f"{MODEL_SERVER_URL}/disaster_candidates",
+                                    json={'texts': texts}, timeout=10)
+    if response.status_code == 404:
+        return [True] * len(texts)  # Older model/fixture servers remain compatible.
+    response.raise_for_status()
+    flags = response.json().get('candidates')
+    if not isinstance(flags, list) or len(flags) != len(texts) or any(type(flag) is not bool for flag in flags):
+        raise ValueError('Invalid batch screening response; keep the batch queued.')
+    return flags
+
+
+@lru_cache(maxsize=4)
+def processing_pool(workers):
+    return ThreadPoolExecutor(max_workers=workers, thread_name_prefix='crisis-post')
+
 
 def extract_entities(text):
     """
@@ -20,7 +50,7 @@ def extract_entities(text):
     Raises an exception if there's any HTTP/network error or if
     the server responds with 4xx/5xx status.
     """
-    response = requests.post(
+    response = model_session().post(
         f"{MODEL_SERVER_URL}/extract_entities",
         json={'text': text},
         timeout=10
@@ -75,7 +105,10 @@ def get_scraped_posts(limit=20):
         print(f"Invalid scraper response: {e}")
         return []
 
-def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
+def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
+                 workers=1, prefilter=False, completed=None, progress_interval=0):
+    if not 1 <= workers <= 4:
+        raise ValueError("Processing workers must be between 1 and 4.")
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
     df = df.copy()
 
@@ -100,142 +133,179 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
         'relevance_status', 'relevance_model', 'relevance_probability'
     ]
 
-    # Process each row individually to avoid entity_data errors
-    processed_rows = []
     relevance = get_relevance_client()
     if relevance_stats is None:
         relevance_stats = {}
+    completed = {} if completed is None else completed
+    rows = list(df.iterrows())
+    keys = [(str(row.get('uri', '')), row['text'], str(row.get('created_at', '')))
+            for _, row in rows]
+    pending = [i for i, key in enumerate(keys) if key not in completed]
+    candidates = dict(zip(pending, screen_candidates([rows[i][1]['text'] for i in pending]))) if prefilter and pending else {}
+    results, finished, errors, last_progress = {}, 0, 0, 0
 
-    errors = 0
-    for processed, (idx, row) in enumerate(df.iterrows(), start=1):
-        try:
-            # Extract entities with error handling
-            entity_result = extract_entities(row['text'])
+    def consume(position, result, reused=False):
+        nonlocal finished, errors, last_progress
+        records, stats, failures = result
+        results[position] = records
+        for key, value in stats.items():
+            relevance_stats[key] = relevance_stats.get(key, 0) + value
+        if not reused and not any(stats.get(key, 0) for key in ('model_errors', 'relevance_errors', 'location_errors')):
+            completed[keys[position]] = records
+        finished += 1
+        errors += failures
+        now = time.monotonic()
+        if on_progress and (finished == len(rows) or failures or now - last_progress >= progress_interval):
+            last_progress = now
+            on_progress(finished, errors)
 
-            if not entity_result or not isinstance(entity_result, dict):
-                raise ValueError('The model returned no valid entity data')
-            if entity_result.get('skipped_non_crisis') is True:
-                relevance_stats['rule_skipped'] = relevance_stats.get('rule_skipped', 0) + 1
+    jobs = []
+    for position, key in enumerate(keys):
+        if key in completed:
+            consume(position, (completed[key], {}, 0), reused=True)
+        elif candidates.get(position) is False:
+            consume(position, ([], {'rule_skipped': 1}, 0))
+        else:
+            jobs.append(position)
+    if workers == 1:
+        for position in jobs:
+            consume(position, analyze_post(*rows[position], relevance))
+    else:
+        futures = {processing_pool(workers).submit(analyze_post, *rows[position], relevance): position
+                   for position in jobs}
+        for future in as_completed(futures):
+            consume(futures[future], future.result())
+    records = [record for position in range(len(rows)) for record in results[position]]
+    return pd.DataFrame(records, columns=required_columns)
 
-            disasters = entity_result.get('disasters', [])
-            locations = entity_result.get('locations', [])
-            sentiment = entity_result.get('sentiment', 'Neutral')
-            polarity = entity_result.get('polarity', 0.0)
 
-            # Require both a disaster mention and a location.
-            if not disasters or not locations:
-                continue
-            chosen_locations = []
-            choices = entity_result.get('location_choices', [])
-            if relevance and choices:
-                try:
-                    chosen_locations = relevance.choose_locations(row['text'], choices)
-                    relevance_stats['location_checked'] = relevance_stats.get('location_checked', 0) + len(choices)
-                    relevance_stats['location_resolved'] = relevance_stats.get('location_resolved', 0) + len(chosen_locations)
-                except RelevanceUnavailable as exc:
-                    relevance_stats['location_errors'] = relevance_stats.get('location_errors', 0) + 1
-                    print(str(exc))
-            resolved_mentions = {loc['location'] for loc in chosen_locations}
-            unresolved = [loc for loc in entity_result.get('unresolved_locations', [])
-                          if loc not in resolved_mentions]
-            location_review = entity_result.get('location_review', '')
-            if 'unresolved_locations' in entity_result:
-                location_review = 'Unresolved mentions: ' + '; '.join(dict.fromkeys(unresolved)) if unresolved else ''
-            location_rows = []
-            top_row = {
-                        'author': row.get('author', ''),
-                        'created_at': row.get('created_at', ''),
-                        'post_id': row.get('post_id', ''),
-                        'text': row.get('text', ''),
-                        'uri': row.get('uri', ''),
-                        'disasters': disasters,
-                        'sentiment': sentiment,
-                        'polarity': polarity,
-                        'city': entity_result.get('city', ''),
-                        'state': entity_result.get('state', ''),
-                        'region': entity_result.get('region', ''),
-                        'country': entity_result.get('country'),
-                        'latitude': entity_result.get('latitude', None),
-                        'longitude': entity_result.get('longitude', None),
-                        'location': entity_result.get('location', entity_result.get('city', '')),
-                        'location_status': entity_result.get('location_status', ''),
-                        'location_detail': entity_result.get('location_detail', ''),
-                        'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
-                        'location_review': location_review,
-                        'geonameid': entity_result.get('geonameid'),
-                    }
-            if is_us_location(top_row):
-                location_rows.append(top_row)
-            # Get standardized location info
-            all_locations = entity_result.get('all_locations', [])
-            all_locations = (all_locations if isinstance(all_locations, list) else []) + chosen_locations
+def analyze_post(idx, row, relevance):
+    """A worker returns data only; progress, CSV writes, and acknowledgement stay serial."""
+    processed_rows, relevance_stats, errors = [], {}, 0
+    try:
+        # Extract entities with error handling
+        entity_result = extract_entities(row['text'])
 
-            # If we have location details, create rows for each location
-            if isinstance(all_locations, list) and all_locations:
-                for loc_info in all_locations:
-                    if not isinstance(loc_info, dict) or not is_us_location(loc_info):
-                        continue
+        if not entity_result or not isinstance(entity_result, dict):
+            raise ValueError('The model returned no valid entity data')
+        if entity_result.get('location_status') == 'error':
+            raise ValueError('Location lookup unavailable; keep the post queued.')
+        if entity_result.get('skipped_non_crisis') is True:
+            relevance_stats['rule_skipped'] = relevance_stats.get('rule_skipped', 0) + 1
 
-                    # Create a new row with required fields
-                    new_row = {
-                        'author': row.get('author', ''),
-                        'created_at': row.get('created_at', ''),
-                        'post_id': row.get('post_id', ''),
-                        'text': row.get('text', ''),
-                        'uri': row.get('uri', ''),
-                        'disasters': disasters,
-                        'sentiment': sentiment,
-                        'polarity': polarity,
-                        'city': loc_info.get('city', ''),
-                        'state': loc_info.get('state', ''),
-                        'region': loc_info.get('region', ''),
-                        'country': loc_info.get('country'),
-                        'latitude': loc_info.get('latitude', None),
-                        'longitude': loc_info.get('longitude', None),
-                        'location': loc_info.get('location', ''),
-                        'location_status': loc_info.get('location_status', ''),
-                        'location_detail': loc_info.get('location_detail', ''),
-                        'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
-                        'location_review': location_review,
-                        **{key: loc_info.get(key) for key in (
-                            'geonameid', 'location_model', 'location_probability', 'location_context_probability')},
-                    }
+        disasters = entity_result.get('disasters', [])
+        locations = entity_result.get('locations', [])
+        sentiment = entity_result.get('sentiment', 'Neutral')
+        polarity = entity_result.get('polarity', 0.0)
 
-                    location_rows.append(new_row)
+        # Require both a disaster mention and a location.
+        if not disasters or not locations:
+            return [], relevance_stats, errors
+        chosen_locations = []
+        choices = entity_result.get('location_choices', [])
+        if relevance and choices:
+            try:
+                chosen_locations = relevance.choose_locations(row['text'], choices)
+                relevance_stats['location_checked'] = relevance_stats.get('location_checked', 0) + len(choices)
+                relevance_stats['location_resolved'] = relevance_stats.get('location_resolved', 0) + len(chosen_locations)
+            except RelevanceUnavailable as exc:
+                relevance_stats['location_errors'] = relevance_stats.get('location_errors', 0) + 1
+                print(str(exc))
+        resolved_mentions = {loc['location'] for loc in chosen_locations}
+        unresolved = [loc for loc in entity_result.get('unresolved_locations', [])
+                      if loc not in resolved_mentions]
+        location_review = entity_result.get('location_review', '')
+        if 'unresolved_locations' in entity_result:
+            location_review = 'Unresolved mentions: ' + '; '.join(dict.fromkeys(unresolved)) if unresolved else ''
+        location_rows = []
+        top_row = {
+                    'author': row.get('author', ''),
+                    'created_at': row.get('created_at', ''),
+                    'post_id': row.get('post_id', ''),
+                    'text': row.get('text', ''),
+                    'uri': row.get('uri', ''),
+                    'disasters': disasters,
+                    'sentiment': sentiment,
+                    'polarity': polarity,
+                    'city': entity_result.get('city', ''),
+                    'state': entity_result.get('state', ''),
+                    'region': entity_result.get('region', ''),
+                    'country': entity_result.get('country'),
+                    'latitude': entity_result.get('latitude', None),
+                    'longitude': entity_result.get('longitude', None),
+                    'location': entity_result.get('location', entity_result.get('city', '')),
+                    'location_status': entity_result.get('location_status', ''),
+                    'location_detail': entity_result.get('location_detail', ''),
+                    'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
+                    'location_review': location_review,
+                    'geonameid': entity_result.get('geonameid'),
+                }
+        if is_us_location(top_row):
+            location_rows.append(top_row)
+        # Get standardized location info
+        all_locations = entity_result.get('all_locations', [])
+        all_locations = (all_locations if isinstance(all_locations, list) else []) + chosen_locations
 
-            # A new context-selected city replaces its supporting state, and
-            # aliases for the same coordinates must not inflate report counts.
-            city_states = {loc['state'] for loc in location_rows if loc.get('city')}
-            unique_locations = {}
-            for loc in location_rows:
-                if not loc.get('city') and loc['state'] in city_states:
+        # If we have location details, create rows for each location
+        if isinstance(all_locations, list) and all_locations:
+            for loc_info in all_locations:
+                if not isinstance(loc_info, dict) or not is_us_location(loc_info):
                     continue
-                identity = tuple(loc.get(key) for key in ('city', 'state', 'latitude', 'longitude'))
-                unique_locations.setdefault(identity, loc)
-            location_rows = list(unique_locations.values())
 
-            if relevance and location_rows:
-                screened = relevance.screen(row['text'], row.get('created_at', ''), location_rows)
-                relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
-                relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
-                location_rows = screened
-            processed_rows.extend(location_rows)
+                # Create a new row with required fields
+                new_row = {
+                    'author': row.get('author', ''),
+                    'created_at': row.get('created_at', ''),
+                    'post_id': row.get('post_id', ''),
+                    'text': row.get('text', ''),
+                    'uri': row.get('uri', ''),
+                    'disasters': disasters,
+                    'sentiment': sentiment,
+                    'polarity': polarity,
+                    'city': loc_info.get('city', ''),
+                    'state': loc_info.get('state', ''),
+                    'region': loc_info.get('region', ''),
+                    'country': loc_info.get('country'),
+                    'latitude': loc_info.get('latitude', None),
+                    'longitude': loc_info.get('longitude', None),
+                    'location': loc_info.get('location', ''),
+                    'location_status': loc_info.get('location_status', ''),
+                    'location_detail': loc_info.get('location_detail', ''),
+                    'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
+                    'location_review': location_review,
+                    **{key: loc_info.get(key) for key in (
+                        'geonameid', 'location_model', 'location_probability', 'location_context_probability')},
+                }
 
-        except RelevanceUnavailable as exc:
-            relevance_stats['relevance_errors'] = relevance_stats.get('relevance_errors', 0) + 1
-            print(str(exc))
-        except Exception as e:
-            print(f"Error processing row {idx}: {e}")
-            errors += 1
-            relevance_stats['model_errors'] = errors
-            continue
-        finally:
-            if on_progress:
-                on_progress(processed, errors)
+                location_rows.append(new_row)
 
-    result_df = pd.DataFrame(processed_rows, columns=required_columns)
+        # A new context-selected city replaces its supporting state, and
+        # aliases for the same coordinates must not inflate report counts.
+        city_states = {loc['state'] for loc in location_rows if loc.get('city')}
+        unique_locations = {}
+        for loc in location_rows:
+            if not loc.get('city') and loc['state'] in city_states:
+                continue
+            identity = tuple(loc.get(key) for key in ('city', 'state', 'latitude', 'longitude'))
+            unique_locations.setdefault(identity, loc)
+        location_rows = list(unique_locations.values())
 
-    return result_df
+        if relevance and location_rows:
+            screened = relevance.screen(row['text'], row.get('created_at', ''), location_rows)
+            relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
+            relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
+            location_rows = screened
+        processed_rows.extend(location_rows)
+
+    except RelevanceUnavailable as exc:
+        relevance_stats['relevance_errors'] = relevance_stats.get('relevance_errors', 0) + 1
+        print(str(exc))
+    except Exception as e:
+        print(f"Error processing row {idx}: {e}")
+        errors += 1
+        relevance_stats['model_errors'] = errors
+
+    return processed_rows, relevance_stats, errors
 
 def parse_cities(value):
     """Read CSV list values without executing code or accepting other types."""
@@ -401,6 +471,8 @@ def reset_csv_files(output_dir=DATA_DIR):
                 print(f"Removed corrupted file: {file_path}")
 
 _next_retention_sweep = {}
+_pending_receipt = None
+_completed_posts = {}
 
 
 def prune_saved_reports(output_dir, now=None):
@@ -415,6 +487,7 @@ def prune_saved_reports(output_dir, now=None):
 
 
 def main(post_limit=20, output_dir=DATA_DIR):
+    global _pending_receipt, _completed_posts
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     retention = live_retention_enabled(output_dir)
@@ -440,6 +513,9 @@ def main(post_limit=20, output_dir=DATA_DIR):
     if collector:
         write_status(output_dir, collector=collector)
     receipt = getattr(posts, 'receipt', None)
+    if (str(output_dir), receipt) != _pending_receipt or not receipt:
+        _pending_receipt = (str(output_dir), receipt)
+        _completed_posts = {}
     replay = bool(receipt and receipt == previous.get('batch_receipt'))
     processed_base = previous.get('batch_processed_base', 0) if replay else previous.get('posts_processed', 0)
 
@@ -486,15 +562,25 @@ def main(post_limit=20, output_dir=DATA_DIR):
                      matched_records=previous.get("matched_records", 0) + matches)
 
     try:
-        filtered_df = filter_posts(df, on_progress=progress, relevance_stats=relevance_stats)
+        filtered_df = filter_posts(df, on_progress=progress, relevance_stats=relevance_stats,
+                                   workers=int(os.environ.get('CRISIS_PROCESSING_WORKERS', '4' if retention else '1')),
+                                   prefilter=retention, completed=_completed_posts if receipt else None,
+                                   progress_interval=0.25)
         print(f'Processed and identified {len(filtered_df)} crisis posts')
+        reviewer = get_relevance_client()
+        if isinstance(reviewer, JevRelevance):
+            relevance_stats.update(reviewer.diagnostics())
+            write_status(output_dir, **{key: value for key, value in relevance_stats.items() if key.startswith('jev_')})
     except Exception as e:
         print(f"Error filtering posts: {e}")
         write_status(output_dir, phase="error", last_error="This batch could not be analyzed. Retrying.")
         return
 
     if receipt and any(relevance_stats.get(key, 0) for key in ('model_errors', 'location_errors', 'relevance_errors')):
-        write_status(output_dir, phase="error", last_error="Analysis unavailable. Keeping this batch queued for retry.")
+        capped = ('jev_calls' in relevance_stats and relevance_stats['jev_calls'] >= relevance_stats['jev_max_calls'])
+        message = ("Jev's configured request limit is reached. Posts remain queued."
+                   if capped else "Analysis unavailable. Keeping this batch queued for retry.")
+        write_status(output_dir, phase="error", last_error=message)
         return
 
     if filtered_df.empty:
@@ -523,11 +609,17 @@ def main(post_limit=20, output_dir=DATA_DIR):
         write_status(output_dir, phase="error", last_error="Could not save posts and counts. Keeping this batch queued for retry.")
 
 if __name__ == '__main__':
-    post_limit = 20
+    post_limit = int(os.environ.get('CRISIS_BATCH_SIZE', '100' if live_retention_enabled(DATA_DIR) else '20'))
+    if not 1 <= post_limit <= 100:
+        raise ValueError('CRISIS_BATCH_SIZE must be between 1 and 100.')
     while True:
         try:
             main(post_limit)
-            time.sleep(2 if read_status(DATA_DIR).get("phase") == "error" else 0.1)
+            status = read_status(DATA_DIR)
+            if status.get('phase') == 'error':
+                time.sleep(2)
+            elif status.get('batch_received', 0) < post_limit:
+                time.sleep(0.1)
         except KeyboardInterrupt:
             break
         except Exception as e:

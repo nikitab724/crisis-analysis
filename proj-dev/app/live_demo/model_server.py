@@ -27,6 +27,7 @@ if not url or not key:
 supabase: Client = create_client(url, key, options=ClientOptions(postgrest_client_timeout=3))
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 
 GAZETTEER_FIELDS = "geonameid, name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list"
 
@@ -268,6 +269,19 @@ def readiness_check():
         logger.error("Gazetteer readiness failed; check credentials, SELECT permissions, and required columns.")
         return jsonify({'status': 'unavailable', 'component': 'gazetteer'}), 503
     return jsonify({'status': 'healthy', 'details': {'spaCy': 'loaded', 'gazetteer': 'readable'}})
+
+@app.post('/disaster_candidates')
+def disaster_candidates():
+    """Batch only the existing conservative token-rule gate, never model decisions."""
+    data = request.get_json(silent=True)
+    texts = data.get('texts') if isinstance(data, dict) else None
+    if (not isinstance(texts, list) or not 1 <= len(texts) <= 100
+            or any(not isinstance(text, str) or len(text) > 10000 for text in texts)):
+        return jsonify(error='Supply 1–100 texts of at most 10000 characters each.'), 400
+    if nlp is None:
+        return jsonify(error='Custom NLP model unavailable.'), 503
+    return jsonify(candidates=[has_disaster_candidate(text) for text in texts])
+
 
 @app.route('/extract_entities', methods=['POST'])
 def extract_entities():

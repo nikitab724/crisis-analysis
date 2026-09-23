@@ -1,9 +1,13 @@
 import re
 from functools import lru_cache
 from pathlib import Path
+from threading import RLock
 
 import spacy
 from spacytextblob.spacytextblob import SpacyTextBlob  # noqa: F401 - registers the saved pipeline component
+
+# Share one transformer safely while HTTP/location lookups overlap outside it.
+NLP_LOCK = RLock()
 
 pattern = re.compile(
     r"(?P<hashtag>\#[A-Za-z0-9_]+)"           # e.g. #RockIsland
@@ -86,9 +90,10 @@ def has_disaster_candidate(text):
     A match still requires the complete original pipeline and all later checks.
     Unknown model/rule shapes bypass this shortcut so they cannot lose candidates.
     """
-    nlp = load_nlp()
-    ruler = surface_disaster_ruler(nlp)
-    return ruler is None or bool(ruler.matcher(nlp.make_doc(clean_text(text))))
+    with NLP_LOCK:
+        nlp = load_nlp()
+        ruler = surface_disaster_ruler(nlp)
+        return ruler is None or bool(ruler.matcher(nlp.make_doc(clean_text(text))))
 
 
 def test_model(text):
@@ -101,6 +106,11 @@ def test_model(text):
 
 headers = ["Negative", "Neutral", "Positive"]
 def extract_ent_sent(text):
+    with NLP_LOCK:
+        return _extract_ent_sent(text)
+
+
+def _extract_ent_sent(text):
     doc = load_nlp()(clean_text(text))
     disasters = set()  # Use set to deduplicate identical disasters
     locations = set()  # Use set to deduplicate identical locations

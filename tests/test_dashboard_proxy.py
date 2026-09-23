@@ -64,7 +64,7 @@ class DashboardProxyTests(unittest.TestCase):
             self.assertNotIn(name, response.headers)
 
     def test_only_dashboard_routes_and_methods_are_forwarded(self):
-        for route, method, expected in [('/extract_entities', 'post', 404), ('/.env', 'get', 404),
+        for route, method, expected in [('/extract_entities', 'post', 404), ('/disaster_candidates', 'post', 404), ('/.env', 'get', 404),
                                         ('/assets/../.env', 'get', 404), ('/health', 'post', 405),
                                         ('/_dash-update-component', 'get', 405),
                                         ('/_dash-update-component', 'post', 415)]:

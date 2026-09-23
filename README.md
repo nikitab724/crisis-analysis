@@ -2,7 +2,7 @@
 
 A college prototype that turns public social posts into a geographic view of potential crisis reports.
 
-**[Open the live interview demo](https://crisis-analysis-interview-demo.onrender.com)** — a labeled, deterministic fixture walkthrough. It demonstrates the processing/dashboard flow without running live NLP, Supabase, or Bluesky ingestion.
+**[Open the live interview demo](https://crisis-analysis-interview-demo.onrender.com)** — current US crisis reports from Bluesky, processed by the Mac backend through the Free Render gateway. The Mac and its temporary tunnel must stay online. The deterministic fixture walkthrough below remains available for rehearsal without live services.
 
 ## The problem
 
@@ -187,7 +187,7 @@ CRISIS_PIPELINE_MODE=live python proj-dev/app/live_demo/entry.py
 CRISIS_PIPELINE_MODE=live python proj-dev/app/live_demo/dash_client.py
 ```
 
-The collector keeps one Bluesky connection open while the processor drains batches of up to 20 posts from a local SQLite queue. Each stream position is committed with its posts; reconnects request replay from that saved position. Batches remain queued until analysis and CSV writes succeed. A retry of the same source post/location cannot add another count. The dashboard refreshes every two seconds and shows a short notice only for an interruption, a queue delayed by at least 30 seconds, or known coverage gaps. Routine diagnostics remain available through `/activity`. See [continuous ingestion and its limits](docs/BACKEND.md#continuous-ingestion).
+The collector keeps one Bluesky connection open while the processor drains batches of up to 100 posts from a local SQLite queue. Each stream position is committed with its posts; reconnects request replay from that saved position. Four bounded workers overlap location and model-service requests, with at most two Jev calls in flight. The transformer remains one shared instance. Batches remain queued until analysis and CSV writes succeed. A retry of the same source post/location cannot add another count. The dashboard refreshes every two seconds and shows a short notice only for an interruption, a queue delayed by at least 30 seconds, or known coverage gaps. Routine diagnostics remain available through `/activity`. See [continuous ingestion and its limits](docs/BACKEND.md#continuous-ingestion).
 
 A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. Saved live reports are pruned between batches on a 30-second cleanup cadence, even when collection returns no matches or fails. Dashboard reads also apply the cutoff immediately, so stale files cannot keep old reports visible. Default standalone live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts; the supervisor uses a temporary run directory. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
 
