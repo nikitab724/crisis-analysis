@@ -587,7 +587,8 @@ def main(post_limit=20, output_dir=DATA_DIR):
         return
 
     if receipt and any(relevance_stats.get(key, 0) for key in ('model_errors', 'location_errors', 'relevance_errors')):
-        capped = ('jev_calls' in relevance_stats and relevance_stats['jev_calls'] >= relevance_stats['jev_max_calls'])
+        call_limit = relevance_stats.get('jev_max_calls', 0)
+        capped = call_limit > 0 and relevance_stats.get('jev_calls', 0) >= call_limit
         message = ("Jev's configured request limit is reached. Posts remain queued."
                    if capped else "Analysis unavailable. Keeping this batch queued for retry.")
         write_status(output_dir, phase="error", last_error=message)

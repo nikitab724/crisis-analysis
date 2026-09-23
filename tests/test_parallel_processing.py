@@ -212,6 +212,27 @@ class ParallelProcessingTests(unittest.TestCase):
         self.assertEqual(status['jev_max_calls'], 1)
         self.assertIn('configured request limit', status['last_error'])
 
+    def test_uncapped_provider_failure_keeps_receipt_without_false_limit_warning(self):
+        session = Mock(post=Mock(return_value=Mock(status_code=429)))
+        client = JevRelevance('fixture-key', max_calls=0, session=session)
+        client.calls = 200
+        batch = entry.CollectedPosts([post(0)], receipt='b' * 32)
+        with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()), \
+                patch.dict(os.environ, CRISIS_PIPELINE_MODE='demo', CRISIS_PROCESSING_WORKERS='4'), \
+                patch.object(entry, 'get_scraped_posts', return_value=batch), \
+                patch.object(entry, 'extract_entities', side_effect=entities), \
+                patch.object(entry, 'get_relevance_client', return_value=client), \
+                patch.object(entry, 'acknowledge_posts') as ack:
+            entry.main(output_dir=directory)
+            entry.main(output_dir=directory)
+            status = read_status(directory)
+        ack.assert_not_called()
+        self.assertEqual(session.post.call_count, 1)
+        self.assertEqual(status['jev_calls'], 201)
+        self.assertEqual(status['jev_max_calls'], 0)
+        self.assertGreater(status['jev_cooldown_seconds'], 0)
+        self.assertEqual(status['last_error'], 'Analysis unavailable. Keeping this batch queued for retry.')
+
 
 @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ('spacy', 'spacytextblob', 'supabase')),
                      'requires live dependencies')

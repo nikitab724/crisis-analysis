@@ -2,6 +2,15 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Optional request cap and live recovery checkpoint
+
+On September 23, 2026, added `JEV_MAX_CALLS_PER_RUN=0` to disable the app's per-process request cap, following the owner's request. Positive limits retain the existing atomic cap. Two concurrent requests, caching, confidence thresholds, provider-failure cooldown, and durable retry behavior remain active. The repository default is still 200; the running Mac backend's ignored `.env` now explicitly uses 0. Semantic crisis classification remains optional and was not activated by this operational change.
+
+- All **157 regression tests passed**, plus targeted lint and whitespace checks. New tests cover continuing past 200 calls in uncapped mode, environment loading, invalid limits, cache reuse, and a provider 429 that retains the receipt and applies cooldown without falsely reporting an exhausted app limit.
+- Archived the 447 existing reports, verified their totals, and replaced only the processor. The original supervisor had already exited; the model, collector, dashboard, and tunnel were still running and were preserved. The replacement uses the same report directory and durable queue; process metadata now records the individual service PIDs.
+- Public Render `/activity` confirmed `jev_max_calls: 0`. The first provider call failed and triggered the existing cooldown; the retry succeeded and processing resumed. At 22:00 UTC, 2,303 additional queued posts had been acknowledged and the queue had fallen from 100,000 to 97,697. This establishes recovery, not a guarantee that the full backlog has caught up or that provider delays cannot recur.
+- The public warning callback returned HTTP 200 with no usage-limit warning. API unavailability and backlog still produce their appropriate warnings. No provider account limits, billing settings, or Render plan were changed.
+
 ## Optional semantic classifier checkpoint
 
 On September 23, 2026, added opt-in Jev crisis classification and retained the original rules as the default. The owner explicitly chose comparison before live activation. No live environment setting, processing budget, model weights, database schema, or pipeline process was changed.

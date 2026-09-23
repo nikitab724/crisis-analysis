@@ -83,6 +83,26 @@ class JevRelevanceTests(unittest.TestCase):
             self.assertNotIn("fixture-secret", str(raised.exception))
         self.assertEqual(self.session.post.call_count, 1)
 
+    def test_zero_cap_continues_past_default_limit_and_still_caches(self):
+        client = JevRelevance("fixture-secret", max_calls=0, session=self.session)
+        client.calls = 200
+        self.session.post.return_value = response(0.9)
+        for text in ("first", "second", "first"):
+            self.assertEqual(len(client.screen(text, "", [record()])), 1)
+        self.assertEqual(client.calls, 202)
+        self.assertEqual(self.session.post.call_count, 2)
+        self.assertEqual(client.diagnostics()['jev_max_calls'], 0)
+
+    def test_zero_cap_environment_and_invalid_caps(self):
+        get_relevance_client.cache_clear()
+        self.addCleanup(get_relevance_client.cache_clear)
+        with patch.dict(os.environ, CRISIS_RELEVANCE_MODE='jev', AI_GATEWAY_API_KEY='fixture-secret',
+                        JEV_MAX_CALLS_PER_RUN='0'):
+            self.assertEqual(get_relevance_client().max_calls, 0)
+        for limit in (-1, True, 0.5, float('nan')):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                JevRelevance('fixture-secret', max_calls=limit)
+
     def test_malformed_missing_and_nonfinite_probabilities_are_rejected(self):
         for probability in (None, "0.9", True, float("nan"), float("inf"), -0.1, 1.1):
             with self.subTest(probability=probability):

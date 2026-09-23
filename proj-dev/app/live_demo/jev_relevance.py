@@ -72,8 +72,9 @@ class JevRelevance:
     def __init__(self, api_key, threshold=0.8, max_calls=200, session=None):
         if not api_key:
             raise ValueError("Jev requires AI_GATEWAY_API_KEY in the server environment.")
-        if not math.isfinite(threshold) or not 0 < threshold <= 1 or max_calls < 1:
-            raise ValueError("Set JEV_MIN_PROBABILITY in (0, 1] and JEV_MAX_CALLS_PER_RUN >= 1.")
+        if (not math.isfinite(threshold) or not 0 < threshold <= 1
+                or type(max_calls) is not int or max_calls < 0):
+            raise ValueError("Set JEV_MIN_PROBABILITY in (0, 1] and JEV_MAX_CALLS_PER_RUN to an integer >= 0 (0 disables the cap).")
         self.api_key = api_key
         self.threshold = threshold
         self.max_calls = max_calls
@@ -243,7 +244,7 @@ class JevRelevance:
         try:
             with self._slots:
                 with self._lock:
-                    if self.calls >= self.max_calls:
+                    if self.max_calls > 0 and self.calls >= self.max_calls:
                         raise RelevanceUnavailable("Jev request cap reached; classification unavailable.")
                     if time.monotonic() < self.retry_after:
                         raise RelevanceUnavailable("Jev temporarily unavailable; classification will need a retry.")
