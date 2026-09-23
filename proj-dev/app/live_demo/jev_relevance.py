@@ -153,9 +153,9 @@ class JevRelevance:
             return self.cache[cache_key]
         else:
             if self.calls >= self.max_calls:
-                raise RelevanceUnavailable("Jev request cap reached; unchecked candidates are skipped.")
+                raise RelevanceUnavailable("Jev request cap reached; classification unavailable.")
             if time.monotonic() < self.retry_after:
-                raise RelevanceUnavailable("Jev temporarily unavailable; unchecked candidates are skipped.")
+                raise RelevanceUnavailable("Jev temporarily unavailable; classification will need a retry.")
             self.calls += 1
             try:
                 response = self.session.post(
@@ -186,7 +186,7 @@ class JevRelevance:
             except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
                 self.retry_after = time.monotonic() + 30
                 # Never log a response body, request headers, or provider exception with secrets.
-                raise RelevanceUnavailable("Jev request failed; unchecked candidates are skipped.") from None
+                raise RelevanceUnavailable("Jev request failed; classification unavailable.") from None
             self.cache[cache_key] = answers
             if len(self.cache) > 512:
                 self.cache.popitem(last=False)
