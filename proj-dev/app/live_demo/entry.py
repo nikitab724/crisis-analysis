@@ -12,7 +12,8 @@ from pipeline_status import read_status, save_csv, write_status
 from us_scope import is_us_location, us_records
 from retention import live_retention_enabled, recent_posts
 from jev_relevance import JevRelevance, get_relevance_client, RelevanceUnavailable
-from crisis_classification import classification_mode
+from crisis_classification import classification_mode, semantic_candidate
+from post_context import candidate_text, context_for_post, extraction_text
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
@@ -135,7 +136,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
         'location_status', 'location_detail', 'location_mentions', 'location_review',
         'geonameid', 'location_model', 'location_probability', 'location_context_probability',
         'relevance_status', 'relevance_model', 'relevance_probability',
-        'classification_mode', 'classification_taxonomy'
+        'classification_mode', 'classification_taxonomy', 'context_sources'
     ]
 
     relevance = get_relevance_client()
@@ -150,6 +151,25 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
             for _, row in rows]
     pending = [i for i, key in enumerate(keys) if key not in completed]
     candidates = dict(zip(pending, screen_candidates([rows[i][1]['text'] for i in pending]))) if prefilter and pending and not classify else {}
+    if prefilter and pending and classify:
+        if os.environ.get('CRISIS_CANDIDATE_FILTER', 'expanded') == 'expanded':
+            candidates = {i: semantic_candidate(candidate_text(rows[i][1])) for i in pending}
+        elif os.environ.get('CRISIS_CANDIDATE_FILTER') != 'all':
+            raise ValueError('CRISIS_CANDIDATE_FILTER must be expanded or all.')
+        if os.environ.get('JEV_BATCH_SCREEN', 'off') == 'on':
+            selected = [i for i in pending if candidates.get(i) is not False]
+            batch, characters = [], 0
+            for position in selected + [None]:
+                text = candidate_text(rows[position][1]) if position is not None else ''
+                if batch and (position is None or len(batch) == 16 or characters + len(text) > 12000):
+                    flags = relevance.event_candidates([candidate_text(rows[i][1]) for i in batch])
+                    if len(flags) != len(batch) or any(type(flag) is not bool for flag in flags):
+                        raise ValueError('Invalid event screening decisions')
+                    candidates.update(zip(batch, flags))
+                    batch, characters = [], 0
+                if position is not None:
+                    batch.append(position)
+                    characters += len(text)
     results, finished, errors, last_progress = {}, 0, 0, 0
 
     def consume(position, result, reused=False):
@@ -191,8 +211,10 @@ def analyze_post(idx, row, relevance, *, classify=False):
     """A worker returns data only; progress, CSV writes, and acknowledgement stay serial."""
     processed_rows, relevance_stats, errors = [], {}, 0
     try:
-        # Extract entities with error handling
-        entity_result = extract_entities(row['text'], rule_gate=False) if classify else extract_entities(row['text'])
+        context = context_for_post(row) if classify else []
+        context_args = {'context': context} if context else {}
+        entity_result = (extract_entities(extraction_text(row['text'], context), rule_gate=False)
+                         if classify else extract_entities(row['text']))
 
         if not entity_result or not isinstance(entity_result, dict):
             raise ValueError('The model returned no valid entity data')
@@ -213,7 +235,7 @@ def analyze_post(idx, row, relevance, *, classify=False):
         choices = entity_result.get('location_choices', [])
         if relevance and choices:
             try:
-                chosen_locations = relevance.choose_locations(row['text'], choices)
+                chosen_locations = relevance.choose_locations(row['text'], choices, **context_args)
                 relevance_stats['location_checked'] = relevance_stats.get('location_checked', 0) + len(choices)
                 relevance_stats['location_resolved'] = relevance_stats.get('location_resolved', 0) + len(chosen_locations)
             except RelevanceUnavailable as exc:
@@ -300,10 +322,12 @@ def analyze_post(idx, row, relevance, *, classify=False):
 
         if relevance and location_rows:
             decide = relevance.classify if classify else relevance.screen
-            screened = decide(row['text'], row.get('created_at', ''), location_rows)
+            screened = decide(row['text'], row.get('created_at', ''), location_rows, **context_args)
             relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
             relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
             location_rows = screened
+        for location in location_rows:
+            location['context_sources'] = '; '.join(item.get('uri', 'attached headline') for item in context)
         processed_rows.extend(location_rows)
 
     except RelevanceUnavailable as exc:
@@ -583,7 +607,9 @@ def main(post_limit=20, output_dir=DATA_DIR):
             write_status(output_dir, **{key: value for key, value in relevance_stats.items() if key.startswith('jev_')})
     except Exception as e:
         print(f"Error filtering posts: {e}")
-        write_status(output_dir, phase="error", last_error="This batch could not be analyzed. Retrying.")
+        reviewer = get_relevance_client()
+        diagnostics = reviewer.diagnostics() if isinstance(reviewer, JevRelevance) else {}
+        write_status(output_dir, phase="error", last_error="This batch could not be analyzed. Retrying.", **diagnostics)
         return
 
     if receipt and any(relevance_stats.get(key, 0) for key in ('model_errors', 'location_errors', 'relevance_errors')):

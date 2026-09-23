@@ -103,6 +103,28 @@ class JevRelevanceTests(unittest.TestCase):
             with self.subTest(limit=limit), self.assertRaises(ValueError):
                 JevRelevance('fixture-secret', max_calls=limit)
 
+    def test_transient_retry_backoff_grows_and_success_resets_it(self):
+        self.session.post.side_effect = [requests.Timeout(), requests.Timeout(), response(.9), requests.Timeout()]
+        with patch('jev_relevance.time.monotonic', return_value=100):
+            for expected in (2, 4):
+                self.client.retry_after = 0
+                with self.assertRaises(RelevanceUnavailable):
+                    self.client.screen('post', '', [record()])
+                self.assertEqual(self.client.retry_after, 100 + expected)
+            self.client.retry_after = 0
+            self.client.screen('recovered', '', [record()])
+            with self.assertRaises(RelevanceUnavailable):
+                self.client.screen('next', '', [record()])
+            self.assertEqual(self.client.retry_after, 102)
+            self.assertEqual(self.client.diagnostics()['jev_last_failure'], 'timeout')
+
+    def test_rate_limits_honor_provider_delay_without_exposing_response(self):
+        self.session.post.return_value = Mock(status_code=429, headers={'Retry-After': '90'})
+        with patch('jev_relevance.time.monotonic', return_value=100), self.assertRaises(RelevanceUnavailable):
+            self.client.screen('post', '', [record()])
+        self.assertEqual(self.client.retry_after, 190)
+        self.assertEqual(self.client.diagnostics()['jev_last_failure'], 'http_429')
+
     def test_malformed_missing_and_nonfinite_probabilities_are_rejected(self):
         for probability in (None, "0.9", True, float("nan"), float("inf"), -0.1, 1.1):
             with self.subTest(probability=probability):

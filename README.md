@@ -25,6 +25,8 @@ flowchart LR
     M --> N[spaCy transformer + disaster rules + sentiment]
     M --> G[Supabase gazetteer]
     M --> E
+    E --> J[Jev classification · Vercel Gateway]
+    J --> E
     E --> C[Local CSV files]
     C --> D[Dash dashboard · 8051]
 ```
@@ -40,11 +42,14 @@ The processes run on one host (or in one development container). The model servi
 | NLP | spaCy 3.8.4, `en_core_web_trf`, EntityRuler disaster patterns |
 | Sentiment | spaCyTextBlob / TextBlob polarity |
 | Location lookup | Supabase/PostgreSQL gazetteer |
+| Semantic decisions | Jev through Vercel AI Gateway; optional reply context |
 | Processing/storage | pandas, local CSV files |
 | Dashboard | Dash 2.18.2, Plotly |
 | Serving/development | Waitress, Gunicorn, Docker, Jupyter |
 
 The disaster pipeline is assembled from a pretrained English transformer and the rules in `proj-dev/data/disasters/disaster_types.json`. It is not a disaster classifier trained from scratch.
+
+The live demo now uses [Jev semantic classification](docs/JEV_CLASSIFICATION.md), including Drowning and Power Outage, after a broad candidate filter. It reads bounded reply/headline context while the original transformer and gazetteer still resolve places. The original rules and offline fixture remain available. A classified emergency still needs a supported US location before it can appear on the map.
 
 ## Run the deterministic demo
 

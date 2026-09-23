@@ -65,6 +65,49 @@ class JevClassificationTests(unittest.TestCase):
         self.assertNotIn('locations', state)
         self.assertNotIn('Texas', str(state))
 
+    def test_batch_screen_only_excludes_confident_negatives(self):
+        self.session.post.return_value = Mock(status_code=200, json=lambda: {'answers': {
+            f'post_{i}': {'type': 'boolean', 'probability': score}
+            for i, score in enumerate([.01, .2, .5, .99])}})
+        self.assertEqual(self.client.event_candidates(['joke', 'uncertain', 'reply', TEXT]),
+                         [False, True, True, True])
+        self.session.post.assert_called_once()
+        with self.assertRaises(RelevanceUnavailable):
+            self.client.event_candidates(['x'] * 17)
+
+    def test_batch_screen_saves_nlp_work_but_retains_uncertain_posts(self):
+        rows = pd.DataFrame([{'text': 'A flood of compliments.'}, {'text': TEXT}])
+        with patch.dict(os.environ, {**ENV, 'JEV_BATCH_SCREEN': 'on'}), \
+                patch.object(entry, 'get_relevance_client', return_value=self.client), \
+                patch.object(self.client, 'event_candidates', return_value=[False, True]) as screen, \
+                patch.object(entry, 'extract_entities', return_value={**place(), 'locations': ['Austin']}) as model:
+            self.session.post.return_value = decisions({'Flood': .96})
+            result = entry.filter_posts(rows, prefilter=True)
+        screen.assert_called_once_with(list(rows.text))
+        model.assert_called_once_with(TEXT, rule_gate=False)
+        self.assertEqual(list(result.text), [TEXT])
+
+    def test_batch_screen_chunks_requests_and_failure_keeps_receipt(self):
+        rows = pd.DataFrame([{'text': f'Flood of compliments {i}'} for i in range(33)])
+        with patch.dict(os.environ, {**ENV, 'JEV_BATCH_SCREEN': 'on'}), \
+                patch.object(entry, 'get_relevance_client', return_value=self.client), \
+                patch.object(self.client, 'event_candidates', side_effect=lambda texts: [False] * len(texts)) as screen, \
+                patch.object(entry, 'extract_entities') as model:
+            self.assertTrue(entry.filter_posts(rows, prefilter=True).empty)
+        self.assertEqual([len(call.args[0]) for call in screen.call_args_list], [16, 16, 1])
+        model.assert_not_called()
+        batch = entry.CollectedPosts([{'text': TEXT, 'created_at': pd.Timestamp.now(tz='UTC').isoformat()}], receipt='c'*32)
+        with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()), \
+                patch.dict(os.environ, {**ENV, 'JEV_BATCH_SCREEN': 'on', 'CRISIS_PIPELINE_MODE': 'live'}), \
+                patch.object(entry, 'get_scraped_posts', return_value=batch), \
+                patch.object(entry, 'get_relevance_client', return_value=self.client), \
+                patch.object(self.client, 'event_candidates', side_effect=RelevanceUnavailable('Retry later')), \
+                patch.object(entry, 'acknowledge_posts') as ack:
+            entry.main(output_dir=directory)
+            self.assertEqual(read_status(directory)['phase'], 'error')
+            self.assertFalse((Path(directory)/'filtered_posts.csv').exists())
+        ack.assert_not_called()
+
     def test_replaces_wrong_rule_label_and_keeps_tornado_separate(self):
         self.session.post.return_value = decisions({'Tornado': .95})
         kept = self.client.classify('A tornado touched down in Austin.', '', [place(disasters=['Hurricane'])])

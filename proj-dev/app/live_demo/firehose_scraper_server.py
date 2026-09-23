@@ -1,5 +1,6 @@
 """Continuous Bluesky collection; HTTP consumers drain an acknowledged disk queue."""
 import asyncio
+from datetime import datetime, timezone
 import fcntl
 import os
 from pathlib import Path
@@ -11,8 +12,20 @@ from atproto import AsyncFirehoseSubscribeReposClient, CAR, parse_subscribe_repo
 from flask import Flask, jsonify, request
 
 from ingest_queue import IngestQueue, QueueFull
+from post_context import record_metadata
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def event_timestamp(value):
+    """Use the relay's commit time, not a user's editable post publication time."""
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if parsed.tzinfo is None or parsed > datetime.now(timezone.utc):
+            return None
+        return parsed.timestamp()
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return None
 
 
 def commit_posts(commit):
@@ -27,7 +40,8 @@ def commit_posts(commit):
         if not isinstance(record, dict) or record.get('$type') != 'app.bsky.feed.post':
             raise ValueError('A post operation is missing its matching CAR record')
         posts.append({'text': record.get('text', ''), 'created_at': record.get('createdAt', ''),
-                      'author': commit.repo, 'uri': f'at://{commit.repo}/{op.path}'})
+                      'author': commit.repo, 'uri': f'at://{commit.repo}/{op.path}',
+                      **record_metadata(record)})
     return posts
 
 
@@ -75,7 +89,7 @@ class ContinuousCollector:
             too_big = getattr(event, 'too_big', False)
             posts = commit_posts(event) if hasattr(event, 'ops') and not too_big else []
             gap = 'A repository commit was too large to include its post records.' if too_big else None
-            self.queue.append(seq, posts, gap)
+            self.queue.append(seq, posts, gap, source_time=event_timestamp(getattr(event, 'time', None)))
             if self.client:
                 self.client.update_params({'cursor': self.queue.cursor})
         self.last_event = time.time()

@@ -65,6 +65,7 @@ def health_check():
         status = activity_snapshot()
         collector = status.get('collector', {})
         if (activity_is_stale(status) or status.get("phase") == "error"
+                or (collector.get('source_lag_seconds') or 0) > 60
                 or (collector and collector.get('state') != 'connected')):
             return {"status": "unavailable", "component": "collector"}, 503
     return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
@@ -244,6 +245,8 @@ def update_activity(n_intervals):
         message = "Analysis is catching up. New reports may be delayed."
     elif collector and collector.get('state') != 'connected':
         message = "Live feed disconnected. Reconnecting."
+    elif (collector.get('source_lag_seconds') or 0) > 60:
+        message = "Live feed is catching up. New reports may be delayed."
     elif collector.get('oldest_pending_seconds', 0) >= 30:
         message = "Analysis is catching up. New reports may be delayed."
     elif collector.get('gap_events', 0):

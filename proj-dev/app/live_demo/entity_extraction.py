@@ -13,7 +13,7 @@ pattern = re.compile(
     r"(?P<hashtag>\#[A-Za-z0-9_]+)"           # e.g. #RockIsland
     r"|(?P<mention>@[A-Za-z0-9_]+)"           # remove entire @-mention
     r"|(?P<url>\w+://\S+)"                    # remove entire url
-    r"|(?P<remove>[^\w\s,])"                  # remove any other char that's not word char, whitespace, or comma
+    r"|(?P<remove>[^\w\s,.!?])"              # retain sentence boundaries for named entities
 )
 
 def split_camel_case(text: str) -> str:
@@ -46,7 +46,7 @@ def clean_text(text: str) -> str:
     Cleans the text by:
     - Removing or transforming selected tokens (@mentions, URLs, certain punctuation)
     - Normalizing extra spaces.
-    - Preserving commas and splitting camel case only in hashtags.
+    - Preserving commas and sentence boundaries; splitting camel case only in hashtags.
     """
     cleaned = pattern.sub(replace_func, text)
     # Normalize spaces

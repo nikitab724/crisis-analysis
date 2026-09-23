@@ -58,6 +58,16 @@ class PipelineActivityTests(unittest.TestCase):
             self.assertEqual(status["batches_completed"], 2)
             self.assertFalse((Path(directory) / "filtered_posts.csv").exists())
 
+    def test_old_source_stream_is_visible_even_when_local_queue_is_empty(self):
+        status = {'phase': 'waiting', 'collector': {'state': 'connected', 'queue_depth': 0,
+                  'oldest_pending_seconds': 0, 'source_lag_seconds': 13*3600}}
+        with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                patch.object(dashboard, 'activity_snapshot', return_value=status), \
+                patch.object(dashboard, 'activity_is_stale', return_value=False):
+            self.assertIn('Live feed is catching up', str(dashboard.update_activity(0)))
+            status['collector']['source_lag_seconds'] = 1
+            self.assertIsNone(dashboard.update_activity(0))
+
     def test_failed_model_requests_are_not_counted_as_analyzed(self):
         with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
             with patch.object(entry, "get_scraped_posts", return_value=[{"text": "Flood"}]):

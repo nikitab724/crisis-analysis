@@ -1,11 +1,13 @@
 """Continuous collection, cursor recovery, and acknowledged HTTP delivery."""
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
+import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'proj-dev/app/live_demo'))
 try:
@@ -69,6 +71,14 @@ class IngestQueueTests(unittest.TestCase):
         self.queue.acknowledge(batch['receipt'])
         self.assertEqual(self.queue.take(3)['posts'], [post(2), post(3)])
 
+    def test_source_delay_survives_an_empty_queue_and_restart(self):
+        self.queue.append(1, [post(1)], source_time=time.time()-13*3600)
+        self.queue.acknowledge(self.queue.take(1)['receipt'])
+        self.queue.close()
+        self.queue = IngestQueue(self.path)
+        self.assertEqual(self.queue.status()['queue_depth'], 0)
+        self.assertGreaterEqual(self.queue.status()['source_lag_seconds'], 13*3600)
+
 
 @unittest.skipIf(firehose is None, 'Requires live collector dependencies')
 class FirehoseTests(unittest.TestCase):
@@ -124,6 +134,15 @@ class FirehoseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             client._handle_frame_decoding_error(ValueError('bad frame'))
         self.assertIsNone(self.queue.cursor)
+
+    def test_relay_time_is_tracked_and_invalid_or_future_times_are_ignored(self):
+        event = SimpleNamespace(seq=10, time='2026-01-01T00:00:00Z')
+        with patch.object(firehose, 'parse_subscribe_repos_message', return_value=event):
+            asyncio.run(self.collector.handle_message(SimpleNamespace(body={})))
+        self.assertGreater(self.queue.status()['source_lag_seconds'], 60)
+        for value in [None, 'invalid', '2026-01-01', '2999-01-01T00:00:00Z']:
+            self.assertIsNone(firehose.event_timestamp(value))
+        self.assertIsNotNone(firehose.event_timestamp(datetime.now(timezone.utc).isoformat()))
 
     def test_outdated_cursor_and_oversized_commit_are_visible(self):
         for event in [SimpleNamespace(name='OutdatedCursor'), SimpleNamespace(seq=10, too_big=True, ops=[])]:

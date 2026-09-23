@@ -40,6 +40,11 @@ class DisasterPrefilterTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(self.extractor.has_disaster_candidate(text))
 
+    def test_sentence_boundaries_cannot_merge_places_or_multiword_disasters(self):
+        self.assertEqual(self.extractor.clean_text('Flood in Portland. Streets underwater!'),
+                         'Flood in Portland. Streets underwater!')
+        self.assertFalse(self.extractor.has_disaster_candidate('Tidal. Waves at the beach.'))
+
     def test_trained_disaster_label_disables_shortcut(self):
         self.nlp.get_pipe('ner').add_label('DISASTER')
         self.assertTrue(self.extractor.has_disaster_candidate('Novel wording'))

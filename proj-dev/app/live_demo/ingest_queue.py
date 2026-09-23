@@ -45,7 +45,7 @@ class IngestQueue:
             self._set('gap_events', self._get('gap_events', 0) + 1)
             self._set('last_gap', reason)
 
-    def append(self, seq, posts, gap=None):
+    def append(self, seq, posts, gap=None, source_time=None):
         """A checkpoint never advances beyond posts not yet committed to disk."""
         with self.lock, self.db:
             previous = self._get('cursor')
@@ -65,6 +65,8 @@ class IngestQueue:
                                 (uri, json.dumps(post), time.time()))
                 added += 1
             self._set('cursor', seq)
+            if source_time is not None:
+                self._set('source_time', source_time)
             self._set('captured', self._get('captured', 0) + added)
             self._set('duplicate_posts', self._get('duplicate_posts', 0) + duplicates)
             if gap:
@@ -110,6 +112,8 @@ class IngestQueue:
             pending, oldest = self.db.execute('SELECT COUNT(*),MIN(received) FROM posts').fetchone()
             return {'queue_depth': pending, 'queue_capacity': self.capacity,
                     'oldest_pending_seconds': round(max(0, time.time() - oldest), 1) if oldest else 0,
+                    'source_lag_seconds': (round(max(0, time.time() - self._get('source_time')), 1)
+                                           if self._get('source_time') is not None else None),
                     **{key: self._get(key, 0) for key in
                        ('captured', 'acknowledged', 'duplicate_posts', 'gap_events')},
                     'cursor': self._get('cursor'), 'last_gap': self._get('last_gap')}
