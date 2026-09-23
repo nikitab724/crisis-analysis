@@ -101,6 +101,29 @@ class DashboardProxyTests(unittest.TestCase):
         self.assertEqual(self.client.get('/_proxy/health').json, {'status': 'healthy', 'mode': 'proxy'})
         self.send.assert_not_called()
 
+    def test_reuses_worker_connection_but_clears_cookies_between_visitors(self):
+        session = Mock()
+        session.request.return_value = self.upstream
+        with patch('dashboard_proxy.requests.Session', return_value=session) as factory:
+            client = create_app('https://example.trycloudflare.com').test_client()
+            self.assertEqual(client.get('/activity').status_code, 200)
+            self.assertEqual(client.get('/activity').status_code, 200)
+        factory.assert_called_once()
+        self.assertFalse(session.trust_env)
+        self.assertEqual(session.cookies.clear.call_count, 4)
+        session.close.assert_not_called()
+
+    def test_transport_failure_discards_connection_before_next_request(self):
+        failing, healthy = Mock(), Mock()
+        failing.request.side_effect = requests.ConnectionError()
+        healthy.request.return_value = self.upstream
+        with patch('dashboard_proxy.requests.Session', side_effect=[failing, healthy]) as factory:
+            client = create_app('https://example.trycloudflare.com').test_client()
+            self.assertEqual(client.get('/activity').status_code, 503)
+            self.assertEqual(client.get('/activity').status_code, 200)
+        self.assertEqual(factory.call_count, 2)
+        failing.close.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()

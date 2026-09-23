@@ -108,7 +108,7 @@ The launcher first processes the known synthetic post using **real NLP and Supab
 
 For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once. Only records with an explicit US country match and one of the 50 states or DC are saved or displayed; foreign and unresolved locations are skipped. Mixed-country posts can contribute their resolved US locations. Each result explains its matching basis.
 
-The real model used about 2.6 GiB by itself locally, so the separate Render setup requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing free fixture deployment is unchanged.
+The real model used about 2.6 GiB by itself locally, so hosting the model on Render requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing Free service instead forwards the Mac's live dashboard using the gateway setup above.
 
 ## Rebuild and verify the original NLP pipeline
 
@@ -186,7 +186,7 @@ python proj-dev/app/live_demo/entry.py
 python proj-dev/app/live_demo/dash_client.py
 ```
 
-Each processor run requests 100 posts. Default live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
+Each processor run requests up to 20 posts, with a two-second collection window and a 0.1-second pause between batches. The dashboard refreshes every two seconds. A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. This improves latency for collected posts, but does not provide complete firehose coverage. Default live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
 
 ## Docker
 

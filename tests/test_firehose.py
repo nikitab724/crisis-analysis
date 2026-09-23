@@ -52,6 +52,17 @@ class FirehoseTests(unittest.TestCase):
             self.assertEqual(firehose.app.test_client().get("/scrape?limit=101").status_code, 400)
         fetch.assert_not_called()
 
+    def test_collection_has_two_second_deadline(self):
+        observed = []
+        original_wait_for = asyncio.wait_for
+        async def capture(awaitable, timeout):
+            observed.append(timeout)
+            return await original_wait_for(awaitable, timeout)
+        with patch.object(firehose, 'AsyncFirehoseSubscribeReposClient', return_value=SimpleNamespace(stop=AsyncMock())):
+            with patch.object(firehose, 'listen_firehose', new=AsyncMock()), patch.object(firehose.asyncio, 'wait_for', side_effect=capture):
+                asyncio.run(firehose.FirehoseAPI().fetch_posts(20))
+        self.assertEqual(observed, [2])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ from typing import Dict, Any, List
 from functools import lru_cache
 from flask import Flask, request, jsonify
 
-from entity_extraction import extract_ent_sent, load_nlp
+from entity_extraction import extract_ent_sent, has_disaster_candidate, load_nlp
 from gazetteer import MAX_LOCATION_CANDIDATES, US_STATE_NAMES
 from location_context import explicit_us_context, location_candidates, state_code
 
@@ -281,10 +281,12 @@ def extract_entities():
     if not text:
         return jsonify({'error': 'No text provided'}), 400
 
-    logger.info(f"extract_entities called, text length={len(text)}")
-
     if nlp is None:
         return jsonify({'error': 'Custom NLP model unavailable; check /health and README.md.'}), 503
+    if not has_disaster_candidate(text):
+        return jsonify({'disasters': [], 'locations': [], 'sentiment': 'Neutral', 'polarity': 0.0,
+                        'skipped_non_crisis': True})
+    logger.info(f"extract_entities called, text length={len(text)}")
     ent_sent = convert_sets_to_lists(extract_ent_sent(text))
 
     # Attempt location standardization if gazetteer is loaded

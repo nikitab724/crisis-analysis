@@ -2,7 +2,21 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
-## Current Jev location selection validation
+## Latency and Render gateway checkpoint
+
+On September 22, 2026, the existing Free Render service was connected to the live Mac dashboard through its public tunnel. NLP, Jev, ingestion, and CSV storage remain on the Mac. The public gateway passed live readiness, all 11 browser assets, all six dashboard callbacks, Jev activity, and rejection of public model API calls. No paid instance was created.
+
+The next performance update retains the original model, disaster patterns, location checks, Jev thresholds, and request cap. Collection now requests 20 posts with a two-second window; the processor pauses 0.1 seconds between batches, and the dashboard refreshes every two seconds. An exact surface-rule precheck skips heavy NLP only when the saved rules cannot match. Render forwarding reuses per-thread HTTP connections, clears cookies between requests, and uses four request threads.
+
+- **102 regression tests passed** in the full environment. The lightweight Render environment passed 65 and skipped 37 optional live checks. Targeted lint and whitespace checks passed.
+- The real-model gate comparison covered **138 authored case/plural probes across 46 saved rules plus 20 ordinary negative posts**, with **zero dropped original candidates**. Three gamma-ray-burst probes already failed in the original pipeline because of its existing text/rule behavior. On the 20 ordinary posts, median full NLP time was **29.165 ms**, versus **0.155 ms** for the gate. This is a bounded synthetic comparison, not general accuracy or whole-pipeline throughput.
+- **6/6 real NLP → hosted gazetteer → Jev → processor examples passed** after the gate change. No evaluation posts were saved. Real backend runtime checks also passed callback behavior, database outage/recovery, stalled database reads, and child-process cleanup.
+- The optimized live pipeline resumed all **16 archived reports** and existing counters without adding a duplicate startup example. In eight activity samples over 14 seconds, median collection time was **1,040.65 ms** and median reported processing time was **124.4 ms per batch**; 174 more posts were processed, with zero accumulated model, location-classifier, or relevance errors. These samples are workload-dependent and can repeat a completed stage's timing.
+- The exact updated Render launcher passed a local forwarding rehearsal against the live tunnel: 11 assets, all six callbacks, live/Jev status, and a blocked model route. Before connection reuse, six sequential public activity requests had a warm median of **1,920.9 ms** through Render, versus **45.9 ms** directly through the tunnel; network latency is variable. Deployment verification should repeat `tests/check_render_gateway.py --url https://crisis-analysis-interview-demo.onrender.com`.
+
+Collection remains sampled rather than continuous, so posts between windows can be missed. Jev interprets claims rather than verifying real events; passing authored examples does not establish 100% live accuracy. The Mac and tunnel must stay online. CSV history is temporary unless explicitly archived and restored with `--resume-from`. Earlier checkpoints below describe their own revisions, including the former fixture-only Render deployment.
+
+## Jev location selection checkpoint
 
 On September 22, 2026, added bounded choice classification for ambiguous US city names. The model service returns complete gazetteer candidate lists (up to 50 cities per mention); the processor asks Jev to choose a candidate or abstain, alongside an independent geographic-evidence question. Both scores must reach 0.9. Same-name places within the same state, truncated lists, and uncertain results remain unresolved. A chosen city still passes the separate crisis-relevance check; both steps share the existing 200-call cap. Names and coordinates come only from the database. Explicit unique matches retain the existing path, and no transformer/disaster-rule changes were made.
 
@@ -13,7 +27,7 @@ On September 22, 2026, added bounded choice classification for ambiguous US city
 - The live Mac pipeline was restarted with both Jev stages enabled. Previous runs and their logs were archived locally outside Git before restart; counters start fresh with the labeled Austin example. The expired tunnel was replaced with a new temporary URL, saved locally in ignored `.demo-hosted/active-tunnel.json`.
 - Public readiness, layout/CSS, all six dashboard callbacks, map sizing, and live collection passed after the final restart. At that check, 500 posts had been received and there were zero model, location-classifier, or relevance errors. Targeted lint and whitespace checks passed. Browser visual inspection remains unavailable because the browser security-policy check is blocked.
 
-Run the bounded provider checks with `tests/check_jev_locations.py` and `tests/check_jev_location_pipeline.py --url http://127.0.0.1:5002`; see [Jev setup and limitations](JEV.md). Real collection remains Bluesky, and the Render Free deployment remains the independent fixture demo. Existing saved reports are not retroactively reclassified. Historical validation checkpoints below describe their own revisions.
+Run the bounded provider checks with `tests/check_jev_locations.py` and `tests/check_jev_location_pipeline.py --url http://127.0.0.1:5002`; see [Jev setup and limitations](JEV.md). Real collection remains Bluesky. At this checkpoint, Render still served the independent fixture demo; the later gateway checkpoint above supersedes that deployment state. Existing saved reports are not retroactively reclassified.
 
 ## US scope and relevance checkpoint
 

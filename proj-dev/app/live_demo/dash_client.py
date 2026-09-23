@@ -220,7 +220,7 @@ app.layout = html.Main(className="app-shell", children=[
             html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Repeated posts across batches can count again."),
         ]),
     ]),
-    dcc.Interval(id="interval-component", interval=5000, n_intervals=0),
+    dcc.Interval(id="interval-component", interval=2000, n_intervals=0),
 ])
 
 

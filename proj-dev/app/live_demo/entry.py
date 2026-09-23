@@ -43,7 +43,7 @@ def default_entity_data():
         'all_locations': None
     }
 
-def get_scraped_posts(limit=50):
+def get_scraped_posts(limit=20):
     url = f"{SCRAPER_SERVER_URL}/scrape"
     params = {"limit": limit}
     try:
@@ -95,6 +95,8 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
             if not entity_result or not isinstance(entity_result, dict):
                 # If there's no valid entity data, skip
                 continue
+            if entity_result.get('skipped_non_crisis') is True:
+                relevance_stats['rule_skipped'] = relevance_stats.get('rule_skipped', 0) + 1
 
             disasters = entity_result.get('disasters', [])
             locations = entity_result.get('locations', [])
@@ -371,7 +373,7 @@ def reset_csv_files(output_dir=DATA_DIR):
                 os.remove(file_path)
                 print(f"Removed corrupted file: {file_path}")
 
-def main(post_limit=50, output_dir=DATA_DIR):
+def main(post_limit=20, output_dir=DATA_DIR):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     reset_csv_files(output_dir)
@@ -379,6 +381,7 @@ def main(post_limit=50, output_dir=DATA_DIR):
     relevance_stats = {}
     write_status(output_dir, phase="collecting", last_error=None,
                  relevance_mode=os.environ.get("CRISIS_RELEVANCE_MODE", "off"))
+    collect_started = time.perf_counter()
     try:
         posts = get_scraped_posts(post_limit)
     except requests.RequestException:
@@ -398,7 +401,9 @@ def main(post_limit=50, output_dir=DATA_DIR):
         return
 
     print(f'Scraped {len(df)} posts')
+    processing_started = time.perf_counter()
     write_status(output_dir, phase="processing", batch_received=len(df), batch_processed=0,
+                 collection_ms=round((processing_started - collect_started) * 1000, 1),
                  posts_received=previous.get("posts_received", 0) + len(df))
 
     def progress(processed, errors):
@@ -407,10 +412,11 @@ def main(post_limit=50, output_dir=DATA_DIR):
                      model_errors=previous.get("model_errors", 0) + errors,
                      **{key: previous.get(key, 0) + relevance_stats.get(key, 0)
                         for key in ('relevance_checked', 'relevance_excluded', 'relevance_errors',
-                                    'location_checked', 'location_resolved', 'location_errors')})
+                                    'location_checked', 'location_resolved', 'location_errors', 'rule_skipped')})
 
     def finish(matches=0):
         write_status(output_dir, phase="waiting", batch_matches=matches,
+                     processing_ms=round((time.perf_counter() - processing_started) * 1000, 1),
                      batches_completed=previous.get("batches_completed", 0) + 1,
                      matched_records=previous.get("matched_records", 0) + matches)
 
@@ -495,12 +501,13 @@ def main(post_limit=50, output_dir=DATA_DIR):
         traceback.print_exc()
 
 if __name__ == '__main__':
-    post_limit = 100
+    post_limit = 20
     while True:
         try:
             main(post_limit)
-            time.sleep(1)
+            time.sleep(0.1)
         except KeyboardInterrupt:
             break
         except Exception as e:
             print(f"Error: {e}")
+            time.sleep(1)

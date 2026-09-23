@@ -60,6 +60,37 @@ def load_nlp():
     return spacy.load(model_path)
 
 
+@lru_cache(maxsize=1)
+def surface_disaster_ruler(nlp):
+    """Only shortcut the notebook's surface rules, never a trained disaster label."""
+    safe_factories = {'transformer', 'curated_transformer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer',
+                      'entity_ruler', 'ner', 'spacytextblob'}
+    if (not nlp.has_pipe('entity_ruler') or not nlp.has_pipe('ner')
+            or 'DISASTER' in nlp.get_pipe('ner').labels
+            or any(nlp.get_pipe_meta(name).factory not in safe_factories for name in nlp.pipe_names)):
+        return None
+    ruler = nlp.get_pipe('entity_ruler')
+    patterns = ruler.patterns
+    if not patterns or any(
+        item.get('label') != 'DISASTER' or not isinstance(item.get('pattern'), list)
+        or not item['pattern'] or any(set(token) != {'TEXT'} for token in item['pattern'])
+        for item in patterns
+    ):
+        return None
+    return ruler
+
+
+def has_disaster_candidate(text):
+    """Use identical cleaning/tokenization/rules before paying for the transformer.
+
+    A match still requires the complete original pipeline and all later checks.
+    Unknown model/rule shapes bypass this shortcut so they cannot lose candidates.
+    """
+    nlp = load_nlp()
+    ruler = surface_disaster_ruler(nlp)
+    return ruler is None or bool(ruler.matcher(nlp.make_doc(clean_text(text))))
+
+
 def test_model(text):
     doc = load_nlp()(text)
     for ent in doc.ents:

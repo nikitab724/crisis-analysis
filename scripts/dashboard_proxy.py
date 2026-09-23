@@ -5,6 +5,7 @@ the original host. This is not a general-purpose URL or model API proxy.
 """
 
 import os
+import threading
 from urllib.parse import urlsplit
 
 from flask import Flask, Response, jsonify, request
@@ -35,6 +36,7 @@ def create_app(backend_url=None, http_request=None):
     backend_url = backend_url.rstrip('/')
     app = Flask(__name__)
     app.config['MAX_CONTENT_LENGTH'] = 256 * 1024
+    connections = threading.local()
 
     def unavailable():
         if request.path == '/':
@@ -80,8 +82,12 @@ def create_app(backend_url=None, http_request=None):
         try:
             send = http_request
             if send is None:
-                session = requests.Session()
-                session.trust_env = False  # Avoid macOS proxy discovery in a forked worker.
+                session = getattr(connections, 'session', None)
+                if session is None:
+                    session = requests.Session()
+                    session.trust_env = False  # Avoid macOS proxy discovery in a forked worker.
+                    connections.session = session
+                session.cookies.clear()  # Reuse transport, never cross-visitor cookies.
                 send = session.request
             upstream = send(request.method, backend_url + route, params=list(request.args.items(multi=True)),
                             data=request.get_data() if request.method == 'POST' else None,
@@ -100,11 +106,14 @@ def create_app(backend_url=None, http_request=None):
             return Response(bytes(content), status=upstream.status_code, headers=response_headers)
         except requests.RequestException:
             # Never include provider bodies, URLs, request headers, or secrets in errors.
+            if session is not None:
+                session.close()
+                connections.session = None
             return unavailable()
         finally:
             if upstream is not None:
                 upstream.close()
             if session is not None:
-                session.close()
+                session.cookies.clear()
 
     return app

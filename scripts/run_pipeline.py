@@ -3,9 +3,11 @@
 
 import argparse
 import csv
+import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -71,10 +73,33 @@ def verify_startup_data(directory):
         raise RuntimeError("Startup post did not resolve to Flood in Austin, Texas. Check gazetteer data/ambiguity.")
 
 
+def restore_run(source, destination):
+    """Copy an explicit saved run into this launcher's disposable data directory."""
+    source, destination = Path(source), Path(destination)
+    required = {
+        'filtered_posts.csv': {'text', 'country', 'state', 'city', 'disasters'},
+        'crisis_counts.csv': {'country', 'state', 'disasters', 'count'},
+    }
+    for name, columns in required.items():
+        with (source / name).open(newline='') as stream:
+            reader = csv.DictReader(stream)
+            if not columns.issubset(reader.fieldnames or []) or next(reader, None) is None:
+                raise ValueError(f'Cannot resume: {name} is empty or has missing columns.')
+    names = list(required)
+    status = source / 'pipeline_status.json'
+    if status.is_file():
+        if not isinstance(json.loads(status.read_text()), dict):
+            raise ValueError('Cannot resume: invalid pipeline status.')
+        names.append(status.name)
+    for name in names:
+        shutil.copy2(source / name, destination / name)
+
+
 def main():
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("demo", "live"), default=os.environ.get("CRISIS_PIPELINE_MODE", "demo"))
+    parser.add_argument('--resume-from', type=Path, help='Copy CSVs and counters from an archived run; preserve the source.')
     args = parser.parse_args()
     if args.mode not in ("demo", "live"):
         parser.error("CRISIS_PIPELINE_MODE must be demo or live.")
@@ -106,15 +131,21 @@ def main():
 
     with TemporaryDirectory(prefix="crisis-pipeline-") as temporary:
         try:
+            if args.resume_from:
+                restore_run(args.resume_from, temporary)
             start("Model service", sys.executable, str(APP / "model_server.py"))
             wait_ready(env["MODEL_SERVER_URL"] + "/ready", children)
-            print("Real NLP and Supabase are ready. Processing the synthetic startup post.", flush=True)
-            seed = start("Startup post", sys.executable, str(APP / "process_test_tweet.py"), "--output-dir", temporary)
-            seed.wait(timeout=60)
-            if seed.returncode:
-                raise RuntimeError("Real model processing did not produce usable startup data; see service logs.")
-            children.remove(("Startup post", seed))
-            verify_startup_data(temporary)
+            if args.resume_from:
+                print(f'Dashboard data saved to {temporary}', flush=True)
+                print('Resumed saved reports and counters; no duplicate startup example added.', flush=True)
+            else:
+                print("Real NLP and Supabase are ready. Processing the synthetic startup post.", flush=True)
+                seed = start("Startup post", sys.executable, str(APP / "process_test_tweet.py"), "--output-dir", temporary)
+                seed.wait(timeout=60)
+                if seed.returncode:
+                    raise RuntimeError("Real model processing did not produce usable startup data; see service logs.")
+                children.remove(("Startup post", seed))
+                verify_startup_data(temporary)
             env["CRISIS_DATA_DIR"] = temporary
 
             if args.mode == "live":
@@ -132,7 +163,7 @@ def main():
                 time.sleep(1)
         except ShutdownRequested:
             return 0
-        except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
             print(f"Pipeline startup/runtime failure: {exc}", file=sys.stderr, flush=True)
             return 1
         finally:

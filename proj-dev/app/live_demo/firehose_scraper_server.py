@@ -5,6 +5,7 @@ from atproto import AsyncFirehoseSubscribeReposClient, AsyncIdResolver, AsyncDid
 import time
 
 app = Flask(__name__)
+COLLECTION_WINDOW_SECONDS = 2
 
 async def process_post(commit, op, resolver):
     """Process a single post from the Firehose."""
@@ -33,7 +34,7 @@ async def resolve_author_handle(repo, resolver):
 
 async def listen_firehose(client: AsyncFirehoseSubscribeReposClient,
                           resolver: AsyncIdResolver,
-                          post_limit=50,
+                          post_limit=20,
                           post_list=None):
     """Listen to the Firehose and process each received post."""
     if post_list is None:
@@ -70,7 +71,7 @@ class FirehoseAPI:
         post_list = []
         try:
             await asyncio.wait_for(
-                listen_firehose(self.client, self.resolver, post_limit, post_list), timeout=40
+                listen_firehose(self.client, self.resolver, post_limit, post_list), timeout=COLLECTION_WINDOW_SECONDS
             )
         except asyncio.TimeoutError:
             pass  # Return the collected portion of a slow batch.
@@ -85,7 +86,7 @@ asyncio.set_event_loop(loop)
 @app.route("/scrape", methods=["GET"])
 def scrape():
     try:
-        post_limit = int(request.args.get("limit", 50))  # Default to 50 posts
+        post_limit = int(request.args.get("limit", 20))
         if not 1 <= post_limit <= 100:
             return jsonify({"error": "limit must be between 1 and 100"}), 400
         startTime = time.time()

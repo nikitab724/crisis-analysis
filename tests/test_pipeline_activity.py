@@ -44,6 +44,18 @@ class PipelineActivityTests(unittest.TestCase):
             self.assertEqual(status["posts_processed"], 0)
             self.assertEqual(status["model_errors"], 1)
 
+    def test_fast_rejections_and_stage_timings_are_visible(self):
+        with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            with patch.object(entry, 'get_scraped_posts', return_value=[{'text': 'Hello Austin'}]) as collect:
+                with patch.object(entry, 'extract_entities', return_value={
+                        'disasters': [], 'locations': [], 'skipped_non_crisis': True}):
+                    entry.main(output_dir=directory)
+            status = read_status(directory)
+            collect.assert_called_once_with(20)
+            self.assertEqual(status['rule_skipped'], 1)
+            self.assertGreaterEqual(status['collection_ms'], 0)
+            self.assertGreaterEqual(status['processing_ms'], 0)
+
     def test_feed_outage_is_visible_and_recovers(self):
         with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
             with patch.dict(os.environ, {"CRISIS_PIPELINE_MODE": "live"}):
