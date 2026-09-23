@@ -300,21 +300,16 @@ def style_figure(fig):
     return fig
 
 
-def parse_cities_list(cities_str):
-    """Safely parse a string representation of a list of cities."""
-    if not cities_str or pd.isna(cities_str):
+def parse_cities_list(value):
+    """Accept city lists from live aggregates or their CSV representation."""
+    if isinstance(value, str):
+        try:
+            value = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return []
+    if not isinstance(value, list):
         return []
-
-    try:
-        if isinstance(cities_str, str):
-            cities_list = ast.literal_eval(cities_str)
-            if isinstance(cities_list, list):
-                return cities_list
-    except (ValueError, SyntaxError):
-        # If there's an error, just return empty list
-        pass
-
-    return []
+    return [city for city in value if isinstance(city, str)]
 
 @app.callback(
     Output('state-dropdown', 'options'),
