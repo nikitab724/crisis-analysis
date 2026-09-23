@@ -39,9 +39,8 @@ class DemoPipelineTests(unittest.TestCase):
             with patch.object(dashboard, "DATA_DIR", destination):
                 self.assertEqual(dashboard.update_dropdown_options(0), [{"label": "Texas", "value": "Texas"}])
                 self.assertEqual(dashboard.update_crisis_map(0).data[0].name, "Flood")
-                self.assertEqual(dashboard.update_state_chart(0).data[0].y[0], 1)
+                self.assertEqual(dashboard.load_dashboard_counts()["count"].sum(), 1)
                 self.assertIn(demo.DEFAULT_TEXT, str(dashboard.update_table("Texas", 0)))
-                self.assertIn("Location records", str(dashboard.update_stats(0)))
                 self.assertIn(demo.DEFAULT_TEXT, str(dashboard.update_table(None, 0)))
                 self.assertIn("Example", str(dashboard.update_table(None, 0)))
                 with dashboard.server.test_client() as client:
@@ -151,7 +150,8 @@ class DemoPipelineTests(unittest.TestCase):
                 table = str(dashboard.update_table(None, 0))
                 self.assertNotIn("Needs context", table)
                 self.assertNotIn("Portland", table)
-                self.assertIn("City + state in text", table)
+                self.assertIn("Austin, Texas", table)
+                self.assertNotIn("City + state in text", table)
                 self.assertNotIn("Portland", str(dashboard.update_crisis_map(0)))
                 self.assertEqual(dashboard.update_dropdown_options(0), [{"label": "Texas", "value": "Texas"}])
 

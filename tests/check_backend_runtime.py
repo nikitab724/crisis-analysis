@@ -111,7 +111,7 @@ def main():
                     descendants = psutil.Process(process.pid).children(recursive=True)
                     layout = requests.get(base + "/_dash-layout", timeout=10)
                     layout.raise_for_status()
-                    assert "Real NLP and Supabase" in layout.text
+                    assert "Sample data" in layout.text
                     assert "FIXTURE DEMO" not in layout.text
                     model_base = f"http://127.0.0.1:{env['MODEL_PORT']}"
                     texts = ['Flood in Austin Texas.', 'A quiet afternoon in Austin Texas.']
@@ -132,21 +132,19 @@ def main():
                     assert options == [{"label": "Texas", "value": "Texas"}]
                     crisis_map = callback(base, "crisis-map.figure", interval)
                     assert crisis_map["data"][0]["name"] == "Flood"
-                    chart = callback(base, "state-chart.figure", interval)
-                    assert chart["data"][0]["name"] == "Flood"
                     table = callback(base, "posts-table.children", [
                         {"id": "state-dropdown", "property": "value", "value": "Texas"}, *interval])
                     assert "Flood in Austin Texas." in json.dumps(table)
-                    stats = callback(base, "stats-table.children", interval)
-                    assert "Location records" in json.dumps(stats)
-                    assert stats["props"]["children"][0]["props"]["children"][1]["props"]["children"] == 1
-                    assert "City + state in text" in json.dumps(table)
+                    assert crisis_map["data"][0]["customdata"][0][0] == 1
+                    assert "Austin, Texas" in json.dumps(table)
+                    assert "Example" in json.dumps(table)
+                    assert callback(base, "pipeline-activity.children", interval) is None
                     assert any(q.get("name") == ["ilike.austin"] and q.get("stateCode") == ["eq.TX"]
                                and q.get("countryCode") == ["eq.US"] for q in queries)
                     assert any(q.get("featureCode") == ["eq.ADM1"] for q in queries)
                     assert (sentinel / "filtered_posts.csv").read_text() == "preserve existing data\n"
                     assert len(list(sentinel.iterdir())) == 1
-                    print("PASS: real model → real Supabase SDK/local HTTP response → CSV → all five Dash callbacks.")
+                    print("PASS: real model → real Supabase SDK/local HTTP response → CSV → all four Dash callbacks.")
                     database_unavailable.set()
                     assert requests.get(base + "/health", timeout=10).status_code == 503
                     database_unavailable.clear()

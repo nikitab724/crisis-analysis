@@ -76,7 +76,7 @@ class MapSizingTests(unittest.TestCase):
         self.assertEqual(dashboard.map_points_from_posts(pd.DataFrame(rows)), [])
         fig = self.figure(rows)
         self.assertEqual(len(fig.data), 0)
-        self.assertIn("No resolved locations", fig.layout.annotations[0].text)
+        self.assertIn("No reports yet", fig.layout.annotations[0].text)
 
     def test_same_count_means_same_size_across_disaster_types(self):
         fig = self.figure([post(disaster="Flood", polarity=-1)] * 4 +

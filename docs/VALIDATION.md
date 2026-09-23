@@ -2,6 +2,16 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Simplified dashboard and connection recovery checkpoint
+
+On September 23, 2026, simplified the dashboard to a full-width report map and a readable recent-post feed with a state filter. Removed the state chart, overview statistics, sentiment column, repeated matching notes, and data-explanation footer. Source links, timestamps, circle-size legend, sample-data labels, US scope, and the rolling 24-hour window remain. Collection and analysis behavior are unchanged. Detailed diagnostics remain available through `/activity` rather than repeated in the interface.
+
+- All **139 regression tests passed**. After the final warning refinement, all nine activity tests passed again. Targeted lint, whitespace checks, the UI mechanical detector, and foreground-text contrast calculations passed.
+- Reloaded only the dashboard worker, preserving the live processor and durable queue. Warnings remain hidden during healthy operation; an exhausted Jev allowance now has a concise usage-limit warning rather than a misleading catching-up message.
+- Verification found that the previous temporary Cloudflare tunnel had expired. Replaced it, updated the existing Free Render service's `LIVE_DASHBOARD_URL`, and redeployed its existing gateway build. Render reported the replacement deployment live at **2026-09-23 21:34 UTC**. No paid service or API-budget increase was applied.
+- Public Render checks passed the simplified layout, **11 assets**, exact stylesheet match, all **four remaining callbacks**, real post links, state filtering, and the empty state. Analysis readiness still returns **503** because the existing **200-call Jev allowance is exhausted**; the page correctly shows that warning. Restoring the page's connection does not resume analysis or guarantee recovery beyond the provider's replay window.
+- Browser visual inspection remains blocked by an unavailable admin-enforced security check. No alternate browser bypass was used; HTTP verification does not establish visual rendering or keyboard behavior.
+
 ## Concurrent processing checkpoint
 
 On September 23, 2026, added bounded concurrent post processing, grouped screening with the existing token rules, pooled HTTP connections, reuse of completed posts during receipt retries, and removal of the pause after full batches. Live batches contain up to 100 posts, four post workers overlap network waits, and two Jev slots share the original request cap and cooldown. One lock protects the single loaded transformer. Output order, classification prompts, thresholds, source deduplication, and the single CSV writer remain unchanged. A failed location lookup now keeps the receipt pending instead of being mistaken for a completed nonmatch.

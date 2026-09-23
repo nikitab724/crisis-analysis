@@ -31,7 +31,7 @@ To verify an already deployed service:
 python tests/check_render_gateway.py --url https://crisis-analysis-interview-demo.onrender.com
 ```
 
-The rehearsal starts an isolated temporary gateway, checks the real browser assets, layout, all six callbacks, live health/activity, and refusal to forward the model API, then stops only that gateway. It neither restarts the Mac pipeline nor writes test posts.
+The rehearsal starts an isolated temporary gateway, checks the real browser assets, layout, all four callbacks, live health/activity, and refusal to forward the model API, then stops only that gateway. It neither restarts the Mac pipeline nor writes test posts.
 
 ## Availability and boundaries
 

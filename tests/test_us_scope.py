@@ -88,8 +88,8 @@ class USScopeTests(unittest.TestCase):
                 for text in ("Foreign event", "Unresolved event", "Conflicting country"):
                     self.assertNotIn(text, table)
                 self.assertEqual(dashboard.update_dropdown_options(0), [{"label": "Texas", "value": "Texas"}])
-                self.assertEqual(list(dashboard.update_state_chart(0).data[0].x), ["Texas"])
-                self.assertEqual(dashboard.update_stats(0).children[0].children[1].children, 1)
+                self.assertEqual(list(dashboard.load_dashboard_counts()["state"]), ["Texas"])
+                self.assertEqual(dashboard.load_dashboard_counts()["count"].sum(), 1)
                 self.assertEqual(list(dashboard.update_crisis_map(0).data[0].text), ["Austin, Texas"])
             new_posts = pd.DataFrame([result(), result(country="CA", state="Ontario")])
             counts = entry.calculate_crisis_counts(new_posts, path / "crisis_counts.csv")

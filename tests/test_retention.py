@@ -94,21 +94,16 @@ class RetentionTests(unittest.TestCase):
                 self.assertIn('current-report', str(dashboard.update_table(None, 0)))
                 points = dashboard.update_crisis_map(0).data
                 self.assertEqual(sum(int(row[0]) for trace in points for row in trace.customdata), 1)
-                chart = dashboard.update_state_chart(0)
-                self.assertEqual(list(chart.data[0].x), ['Texas'])
-                self.assertEqual(list(chart.data[0].y), [1])
+                self.assertEqual(list(dashboard.load_dashboard_counts()['state']), ['Texas'])
                 self.assertEqual(dashboard.load_dashboard_counts()['count'].sum(), 1)
-                self.assertIn('Location records', str(dashboard.update_stats(0)))
                 # A stopped writer leaves old CSVs behind; every callback still expires them.
                 with patch.object(dashboard, 'recent_posts', side_effect=lambda frame: recent_posts(frame, now+pd.Timedelta(days=2))):
                     self.assertEqual(dashboard.update_dropdown_options(0), [])
                     self.assertEqual(len(dashboard.update_crisis_map(0).data), 0)
-                    self.assertTrue(all(trace.y is None or len(trace.y) == 0
-                                        for trace in dashboard.update_state_chart(0).data))
-                    self.assertIn('No US crisis reports', str(dashboard.update_table(None, 0)))
-                    self.assertIn('No statistics available', str(dashboard.update_stats(0)))
+                    self.assertIn('No reports yet', str(dashboard.update_table(None, 0)))
+                    self.assertTrue(dashboard.load_dashboard_counts().empty)
 
-    def test_summary_counts_multiple_cities_in_live_and_saved_aggregates(self):
+    def test_counts_include_multiple_cities_in_live_and_saved_aggregates(self):
         now = pd.Timestamp.now(tz='UTC')
         with TemporaryDirectory() as directory:
             austin = record('austin', (now-pd.Timedelta(hours=1)).isoformat())
@@ -118,12 +113,11 @@ class RetentionTests(unittest.TestCase):
             for mode, reports, cities, states in [('live', 2, 2, 1), ('fixture', 3, 3, 2)]:
                 with self.subTest(mode=mode), patch.object(dashboard, 'DATA_DIR', Path(directory)), \
                         patch.object(dashboard, 'PIPELINE_MODE', mode):
-                    summary = dashboard.update_stats(0)
-                    self.assertEqual(summary.className, 'stats-table')
-                    values = {row.children[0].children: row.children[1].children for row in summary.children}
-                    self.assertEqual(values['Location records'], reports)
-                    self.assertEqual(values['Cities'], cities)
-                    self.assertEqual(values['States'], states)
+                    counts = dashboard.load_dashboard_counts()
+                    self.assertEqual(counts['count'].sum(), reports)
+                    city_names = {city for value in counts['cities'] for city in entry.parse_cities(value)}
+                    self.assertEqual(len(city_names), cities)
+                    self.assertEqual(counts['state'].nunique(), states)
 
     def test_fixed_fixture_stays_repeatable_even_with_live_environment(self):
         with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()), \

@@ -55,7 +55,7 @@ Only proceed after accepting the paid instance cost.
 5. Create the Blueprint. The build installs CPU dependencies, downloads `en_core_web_trf` 3.8.0, reproduces the notebook's disaster pipeline, and checks its entity output. The first build includes a large model download.
 6. Wait for the service to become live, then open its assigned URL. Its `/health` endpoint must return `{"status":"healthy","mode":"demo"}`.
 
-Startup loads the real model, verifies a readable gazetteer, and processes **“Flood in Austin Texas.”** through the real model API and Supabase. The dashboard starts only after usable CSV output exists. Open **About the data** to confirm **“Real NLP and Supabase”**, and look for Flood/Texas results and the original post in the table. When both Austin and Texas resolve, the supporting state is folded into the city match: **one location record from one synthetic post**. Standalone state reports and genuinely different cities remain separate.
+Startup loads the real model, verifies a readable gazetteer, and processes **“Flood in Austin Texas.”** through the real model API and Supabase. The dashboard starts only after usable CSV output exists. Confirm `{"status": "healthy", "mode": "demo"}` at `/health`, then look for Flood/Austin, Texas and the **Example** post in the dashboard. The header says **Sample data** because the startup post is synthetic, even though it uses the real model. When both Austin and Texas resolve, the supporting state is folded into the city match: **one location record from one synthetic post**. Standalone state reports and genuinely different cities remain separate.
 
 This `demo` mode uses a known synthetic input but **does not replay the saved model response**. It is the repeatable real-backend interview path.
 

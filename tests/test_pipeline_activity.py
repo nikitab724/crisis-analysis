@@ -35,8 +35,14 @@ class PipelineActivityTests(unittest.TestCase):
             status['phase'] = 'error'
             status['last_error'] = 'Analysis unavailable. Keeping this batch queued for retry.'
             warning = str(dashboard.update_activity(0))
-            self.assertIn('Analysis unavailable', warning)
+            self.assertIn('Live updates are temporarily paused', warning)
+            self.assertNotIn(status['last_error'], warning)
             self.assertNotIn('10000', warning)
+            status.update(jev_calls=200, jev_max_calls=200)
+            status['collector']['state'] = 'backpressure'
+            warning = str(dashboard.update_activity(0))
+            self.assertIn('usage limit has been reached', warning)
+            self.assertNotIn('catching up', warning)
 
     def test_nonmatching_batches_still_show_collection_and_analysis(self):
         post = {"text": "A quiet afternoon", "uri": "at://did:plc:sample/app.bsky.feed.post/1"}

@@ -1,7 +1,6 @@
 from dash import Dash, dcc, html, Input, Output
 import pandas as pd
 import requests
-import plotly.express as px
 import plotly.graph_objects as go
 import os
 import ast
@@ -175,16 +174,11 @@ def marker_diameter(count):
     return MAP_BASE_DIAMETER_PX * math.sqrt(min(count, MAP_SIZE_CAP_RECORDS))
 
 
-MODE_LABELS = {"fixture": "Fixture demo", "demo": "Model demo", "live": "Live Bluesky"}
-MODE_NOTES = {
-    "fixture": "Synthetic post and predefined model response. Live NLP is not running.",
-    "demo": "Real NLP and Supabase. Showing a synthetic example for rehearsal.",
-    "live": "Real NLP and Supabase. A continuous Bluesky connection queues new posts while analysis runs. The live feed and its totals include only posts from the last 24 hours, based on their original posting time. Recovery depends on the provider's replay window.",
-}
+MODE_LABELS = {"fixture": "Sample data", "demo": "Sample data", "live": "Bluesky"}
 MODE_SUMMARIES = {
-    "fixture": "Synthetic example · Live NLP is not running",
-    "demo": "Synthetic example · Processed by the real model",
-    "live": "Last 24 hours · Unverified reports",
+    "fixture": "United States · Demo",
+    "demo": "United States · Demo",
+    "live": "United States · Past 24 hours",
 }
 
 app.title = "Crisis Analysis"
@@ -192,62 +186,36 @@ app.layout = html.Main(className="app-shell", children=[
     html.Header(className="page-header", children=[
         html.Div([
             html.H1("Crisis Analysis"),
-            html.P("Potential US crisis reports from public social posts.", className="subtitle"),
+            html.P(MODE_SUMMARIES.get(PIPELINE_MODE, "United States"), className="subtitle"),
         ]),
         html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
     ]),
-    html.Section(className="activity-section", children=[
-        html.Div(id="pipeline-activity", role="status", **{"aria-live": "polite"}),
-        html.P(MODE_SUMMARIES.get(PIPELINE_MODE, "Showing the latest saved reports."), className="mode-note"),
-    ]),
-    html.Div(className="workspace", children=[
-        html.Section(className="map-section", children=[
-            html.Div(className="section-heading", children=[
-                html.H2("Report locations"),
-                html.Span("United States", className="secondary-label"),
-            ]),
-            dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
-                      config={"displayModeBar": False, "scrollZoom": False}),
+    html.Div(id="pipeline-activity", role="status", **{"aria-live": "polite"}),
+    html.Section(className="map-section", **{"aria-labelledby": "map-heading"}, children=[
+        html.Div(className="section-heading", children=[
+            html.H2("Report locations", id="map-heading"),
             html.Div(className="map-size-key", children=[
-                html.Span("Report records", className="section-note"),
+                html.Span("Reports"),
                 *[html.Span(className="size-key-item", children=[
                     html.Span(className="size-key-circle", style={
                         "width": f"{marker_diameter(count):g}px", "height": f"{marker_diameter(count):g}px",
                     }, **{"aria-hidden": "true"}),
                     html.Span(str(count)),
                 ]) for count in (1, 4, 16)],
-            ], **{"aria-label": "Circle size examples: 1, 4, and 16 report records"}),
-            html.P("Circle area shows report counts, not affected area. Sizes cap at 64 records; hover for exact counts.", className="section-note"),
+            ], **{"aria-label": "Circle sizes: 1, 4, and 16 reports"}),
         ]),
-        html.Aside(className="summary-section", children=[
-            html.H2("Reports by state"),
-            dcc.Graph(id="state-chart", className="state-graph", responsive=True,
-                      config={"displayModeBar": False}),
-            html.H2("Overview", className="overview-title"),
-            html.Div(id="stats-table"),
-            html.P("Resolved locations only. A city and its state count once.", className="section-note"),
-        ]),
+        dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
+                  config={"displayModeBar": False, "scrollZoom": False}),
     ]),
     html.Section(className="posts-section", children=[
         html.Div(className="posts-toolbar", children=[
-            html.Div([html.H2("Recent posts"),
-                      html.P("Latest 30 US location records", className="section-note")]),
-            html.Div(className="state-filter", children=[
-                html.Label("Filter by state", htmlFor="state-dropdown"),
+            html.H2("Recent posts", id="posts-heading"),
+            html.Div(className="state-filter", role="group", **{"aria-labelledby": "state-filter-label"}, children=[
+                html.Label("Filter posts by state", id="state-filter-label", htmlFor="state-dropdown", className="sr-only"),
                 dcc.Dropdown(id="state-dropdown", placeholder="All states", clearable=True),
             ]),
         ]),
-        html.Div(id="posts-table", className="table-scroll", tabIndex=0,
-                 **{"aria-label": "Recent crisis posts"}),
-    ]),
-    html.Footer([
-        html.Span("Research prototype · Human review required"),
-        html.Details([
-            html.Summary("About the data"),
-            html.P(MODE_NOTES.get(PIPELINE_MODE, "Showing the latest saved reports.")),
-            html.P("Only locations resolved to the 50 US states or DC are shown. Foreign and unresolved locations are skipped. Counts are not verified incidents. Match labels explain the evidence, not statistical confidence. The dashboard refreshes every 2 seconds."),
-            html.P("Circles count saved post/location records on a fixed scale. State-only points use approximate centroids. Retries of the same source post and location do not add another count; different posts can describe the same event."),
-        ]),
+        html.Div(id="posts-table"),
     ]),
     dcc.Interval(id="interval-component", interval=2000, n_intervals=0),
 ])
@@ -268,12 +236,14 @@ def update_activity(n_intervals):
     message = None
     if activity_is_stale(status):
         message = "Live updates are delayed."
+    elif phase == 'error':
+        message = ("Analysis is paused. The usage limit has been reached."
+                   if status.get('jev_max_calls') and status.get('jev_calls', 0) >= status['jev_max_calls']
+                   else "Live updates are temporarily paused.")
     elif collector and collector.get('state') == 'backpressure':
         message = "Analysis is catching up. New reports may be delayed."
     elif collector and collector.get('state') != 'connected':
         message = "Live feed disconnected. Reconnecting."
-    elif phase == 'error':
-        message = "Live updates need attention. " + (status.get('last_error') or "Retrying automatically.")
     elif collector.get('oldest_pending_seconds', 0) >= 30:
         message = "Analysis is catching up. New reports may be delayed."
     elif collector.get('gap_events', 0):
@@ -299,17 +269,6 @@ def style_figure(fig):
                       uirevision="constant")
     return fig
 
-
-def parse_cities_list(value):
-    """Accept city lists from live aggregates or their CSV representation."""
-    if isinstance(value, str):
-        try:
-            value = ast.literal_eval(value)
-        except (ValueError, SyntaxError):
-            return []
-    if not isinstance(value, list):
-        return []
-    return [city for city in value if isinstance(city, str)]
 
 @app.callback(
     Output('state-dropdown', 'options'),
@@ -392,15 +351,15 @@ def update_crisis_map(n_intervals):
                     "color": CHART_COLORS.get(disaster, "#526277"), "opacity": 0.75,
                     "line": {"color": "white", "width": 1},
                 },
-                hovertemplate=("<b>%{text}</b><br>%{customdata[0]:,d} report records"
+                hovertemplate=("<b>%{text}</b><br>%{customdata[0]:,d} reports"
                                "<br>%{customdata[1]}<br>%{customdata[2]}<extra>%{fullData.name}</extra>"),
             ))
         if not points:
-            fig.add_annotation(text="No resolved locations yet", x=0.5, y=0.5,
+            fig.add_annotation(text="No reports yet", x=0.5, y=0.5,
                                xref="paper", yref="paper", showarrow=False)
     except (OSError, ValueError, KeyError, pd.errors.ParserError):
         server.logger.exception("Could not load map locations")
-        fig.add_annotation(text="Map unavailable. Retrying on the next refresh.", x=0.5, y=0.5,
+        fig.add_annotation(text="Map unavailable. Retrying automatically.", x=0.5, y=0.5,
                            xref="paper", yref="paper", showarrow=False)
     fig.update_layout(
         geo=dict(scope="usa", projection_type="albers usa", showland=True,
@@ -412,42 +371,6 @@ def update_crisis_map(n_intervals):
     return style_figure(fig)
 
 @app.callback(
-    Output('state-chart', 'figure'),
-    Input('interval-component', 'n_intervals')
-)
-def update_state_chart(n_intervals):
-    try:
-        df = load_dashboard_counts()
-        # Convert numeric columns
-        df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
-
-        if df.empty:
-            return px.bar(title="No data available")
-
-        # Group by state and disaster type
-        state_disaster_counts = df.groupby(['state', 'disasters']).agg(
-            count=('count', 'sum')
-        ).reset_index()
-
-        # Create the bar chart
-        fig = px.bar(
-            state_disaster_counts,
-            x='state',
-            y='count',
-            color='disasters',
-            color_discrete_map=CHART_COLORS,
-            title="Disaster Reports by State",
-            labels={'count': 'Location records', 'state': 'State', 'disasters': 'Disaster type'}
-        )
-        fig.update_layout(showlegend=False)
-        fig.update_xaxes(title=None)
-        fig.update_yaxes(rangemode="tozero", gridcolor="#eef2f7", tickformat="d")
-        return style_figure(fig)
-    except Exception as e:
-        print(f"Error updating state chart: {e}")
-        return px.bar(title="Error loading data")
-
-@app.callback(
     Output('posts-table', 'children'),
     [Input('state-dropdown', 'value'), Input('interval-component', 'n_intervals')]
 )
@@ -457,8 +380,8 @@ def update_table(selected_state, n_intervals):
         if selected_state:
             posts = posts[posts["state"] == selected_state]
         if posts.empty:
-            message = ("No matching posts for this state yet. Try another state or clear the filter."
-                       if selected_state else "No US crisis reports have resolved to a location yet.")
+            message = ("No posts for this state yet. Choose another state."
+                       if selected_state else "No reports yet. New posts will appear here.")
             return html.P(message,
                           className="empty-state")
         posts = posts.assign(_posted=pd.to_datetime(posts["created_at"], format="mixed", errors="coerce", utc=True))
@@ -485,74 +408,22 @@ def update_table(selected_state, n_intervals):
             except (ValueError, SyntaxError):
                 pass
             location = ", ".join(value for value in (clean(row.get("city")), clean(row.get("state"))) if value)
-            location_detail = clean(row.get("location_detail"))
-            if not location:
-                location = clean(row.get("location_mentions")) or "Unresolved"
-                location_detail = location_detail or "No supported US match"
-            location_content = [html.Div(location)]
-            if location_detail:
-                location_content.append(html.Div(location_detail, className="section-note"))
-            review = clean(row.get("location_review"))
-            if review:
-                location_content.append(html.Div(review, className="section-note"))
+            location = location or "Unknown location"
             posted = row["_posted"].strftime("%b %d, %H:%M UTC") if pd.notna(row["_posted"]) else "Unknown date"
             metadata = [html.Span("Example")] if synthetic else [html.Span(posted), source]
-            rows.append(html.Tr([
-                html.Td([html.P(clean(row.get("text")), className="post-text"),
-                         html.Div(metadata, className="post-meta")], className="post-cell"),
-                html.Td(location_content),
-                html.Td([labels, html.Div("Relevance screened · Unverified", className="section-note")]
-                        if clean(row.get("relevance_status")) == "passed" else labels),
-                html.Td(clean(row.get("sentiment"))),
-            ], className="example-row" if synthetic else ""))
-        return html.Table([
-            html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Post", "Location", "Disaster", "Sentiment")])),
-            html.Tbody(rows),
-        ], className="posts-table")
+            rows.append(html.Li(html.Article(className="report", children=[
+                html.Div(className="report-context", children=[
+                    html.H3(location, className="report-location"),
+                    html.P(labels, className="report-type"),
+                ]),
+                html.Div(className="report-content", children=[
+                    html.P(clean(row.get("text")), className="post-text"),
+                    html.Div(metadata, className="post-meta"),
+                ]),
+            ])))
+        return html.Ul(rows, className="reports-list", **{"aria-labelledby": "posts-heading"})
     except (OSError, ValueError, KeyError):
-        return html.P("Posts are temporarily unavailable. Retrying on the next refresh.", className="empty-state")
-
-@app.callback(
-    Output('stats-table', 'children'),
-    Input('interval-component', 'n_intervals')
-)
-def update_stats(n_intervals):
-    try:
-        df = load_dashboard_counts()
-        # Convert numeric columns
-        df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
-        df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)
-
-        if df.empty:
-            return html.Div("No statistics available.")
-
-        # Calculate statistics
-        total_disasters = len(df['disasters'].unique())
-        total_states = len(df['state'].unique())
-
-        # Count cities - safely parse the cities column
-        total_cities = 0
-        all_cities = set()
-
-        for cities_str in df['cities']:
-            cities = parse_cities_list(cities_str)
-            all_cities.update(cities)
-
-        total_cities = len(all_cities)
-
-        avg_sentiment = df['avg_sentiment'].mean()
-        total_reports = df['count'].sum()
-
-        return html.Table([
-            html.Tr([html.Th("Location records", scope="row"), html.Td(total_reports)]),
-            html.Tr([html.Th("Disaster types", scope="row"), html.Td(total_disasters)]),
-            html.Tr([html.Th("States", scope="row"), html.Td(total_states)]),
-            html.Tr([html.Th("Cities", scope="row"), html.Td(total_cities)]),
-            html.Tr([html.Th("Average sentiment", scope="row"), html.Td(f"{avg_sentiment:.2f}")])
-        ], className="stats-table")
-    except Exception as e:
-        print(f"Error updating stats: {e}")
-        return html.P("Statistics are temporarily unavailable. Retrying on the next refresh.", className="empty-state")
+        return html.P("Posts are unavailable. Retrying automatically.", className="empty-state")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=False, port=8051)

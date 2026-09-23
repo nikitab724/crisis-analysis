@@ -37,11 +37,11 @@ def check(base):
         list(executor.map(check_asset, assets))
     layout = session.get(base + '/_dash-layout', timeout=20)
     layout.raise_for_status()
-    assert 'Real NLP and Supabase' in layout.text and 'FIXTURE DEMO' not in layout.text
+    assert 'Past 24 hours' in layout.text and 'Sample data' not in layout.text
     session.get(base + '/_dash-dependencies', timeout=20).raise_for_status()
     interval = {'id': 'interval-component', 'property': 'n_intervals', 'value': 0}
-    outputs = ['state-dropdown.options', 'crisis-map.figure', 'state-chart.figure',
-               'posts-table.children', 'stats-table.children', 'pipeline-activity.children']
+    outputs = ['state-dropdown.options', 'crisis-map.figure',
+               'posts-table.children', 'pipeline-activity.children']
     for output in outputs:
         component, prop = output.split('.')
         inputs = ([{'id': 'state-dropdown', 'property': 'value', 'value': None}]
@@ -55,7 +55,7 @@ def check(base):
     activity = session.get(base + '/activity', timeout=20).json()
     assert activity['mode'] == 'live' and activity['relevance_mode'] == 'jev'
     assert session.post(base + '/extract_entities', json={'text': 'test'}, timeout=20).status_code == 404
-    print(f'PASS: live health, {len(assets)} browser assets, layout, six callbacks, Jev activity, and blocked model route.')
+    print(f'PASS: live health, {len(assets)} browser assets, layout, four callbacks, Jev activity, and blocked model route.')
     return {'url': base, 'assets_checked': len(assets), 'callbacks': outputs, 'activity': activity}
 
 
