@@ -22,10 +22,11 @@ h2 { font-size: 17px; font-weight: 600; line-height: 1.4; }
 .subtitle { color: var(--muted); margin-top: 6px; }
 .mode-label { color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .activity-section { padding: 16px 0 20px; border-top: 1px solid var(--line); }
-#pipeline-activity { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; min-height: 24px; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+#pipeline-activity { color: var(--muted); font-size: 13px; }
+#pipeline-activity:empty { display: none; }
+#pipeline-activity:empty + .mode-note { margin-top: 0; }
 .activity-label { color: var(--ink); font-weight: 600; }
 .activity-label::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 1px; }
-.activity-time { margin-left: auto; }
 .warning { color: #964319; }
 .activity-label.warning::before { background: #964319; }
 .mode-note { font-size: 12px; color: var(--muted); margin-top: 7px; }

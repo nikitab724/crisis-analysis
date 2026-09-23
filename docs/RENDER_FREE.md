@@ -36,10 +36,10 @@ The rehearsal starts an isolated temporary gateway, checks the real browser asse
 ## Availability and boundaries
 
 - Keep the Mac plugged in, awake, and online, with the pipeline and tunnel running. When the tunnel URL changes, update `LIVE_DASHBOARD_URL` in Render and redeploy.
-- If the backend is unavailable, the entry page returns a clear 503 message and callbacks return an unavailable response. Previously loaded browser content may remain until refresh; check the activity timestamp. Render readiness depends on being able to retrieve the actual dashboard layout.
+- If the backend is unavailable, the entry page returns a clear 503 message and callbacks return an unavailable response. Previously loaded browser content may remain until refresh; check `/activity` for the latest update time. Render readiness depends on being able to retrieve the actual dashboard layout.
 - The gateway only forwards dashboard routes to one configured origin. It rejects model/ingestion routes, arbitrary destinations, unsupported methods, and redirects. It does not forward browser credentials or cookies, or copy provider cookies into the response.
 - Callback bodies are limited to 256 KiB and responses to 16 MiB, with connect/read timeouts of 3/15 seconds. Live data responses are not cached; static assets keep their cache headers.
 - Forwarding mode uses four request threads and reuses a separate backend HTTP connection pool in each thread to avoid repeating TLS setup for every callback. Cookies are cleared before and after each request; a transport failure discards that thread's connection. The Mac dashboard refreshes every two seconds.
-- The Mac collector now keeps a continuous connection and a persistent local retry queue; backlog and coverage warnings appear through the same Render URL.
+- The Mac collector now keeps a continuous connection and a persistent local retry queue; only current interruptions, substantial delays, and coverage gaps produce a short warning through the same Render URL.
 - Mac CSV history is temporary unless explicitly archived and restored with `--resume-from`; see [backend startup](BACKEND.md). This setup does not make the model run on Render or provide independent, always-on processing.
 - A Render management API key, if used for deployment, belongs only in an ignored local configuration. It is not a runtime dependency and must never be committed or placed in browser code.

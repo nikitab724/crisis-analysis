@@ -20,6 +20,24 @@ from pipeline_status import read_status, save_csv, write_status  # noqa: E402
 
 
 class PipelineActivityTests(unittest.TestCase):
+    def test_activity_is_silent_when_healthy_even_with_past_errors(self):
+        status = {'phase': 'processing', 'posts_received': 10000, 'posts_processed': 9990,
+                  'model_errors': 3, 'relevance_errors': 40, 'location_errors': 14,
+                  'relevance_mode': 'jev', 'collector': {
+                      'state': 'connected', 'queue_depth': 10, 'oldest_pending_seconds': 2}}
+        with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                patch.object(dashboard, 'activity_snapshot', return_value=status), \
+                patch.object(dashboard, 'activity_is_stale', return_value=False):
+            self.assertIsNone(dashboard.update_activity(0))
+            status['collector']['oldest_pending_seconds'] = 31
+            self.assertIn('Analysis is catching up', str(dashboard.update_activity(0)))
+            status['collector']['oldest_pending_seconds'] = 0
+            status['phase'] = 'error'
+            status['last_error'] = 'Analysis unavailable. Keeping this batch queued for retry.'
+            warning = str(dashboard.update_activity(0))
+            self.assertIn('Analysis unavailable', warning)
+            self.assertNotIn('10000', warning)
+
     def test_nonmatching_batches_still_show_collection_and_analysis(self):
         post = {"text": "A quiet afternoon", "uri": "at://did:plc:sample/app.bsky.feed.post/1"}
         with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
@@ -78,7 +96,7 @@ class PipelineActivityTests(unittest.TestCase):
             with patch.object(dashboard, "DATA_DIR", Path(directory)), patch.object(dashboard, "PIPELINE_MODE", "live"):
                 with patch.object(dashboard.backend_http, "get", return_value=response):
                     self.assertEqual(dashboard.server.test_client().get("/health").status_code, 503)
-                    self.assertIn("Updates delayed", str(dashboard.update_activity(0)))
+                    self.assertIn("Live updates are delayed", str(dashboard.update_activity(0)))
                     write_status(directory, phase="collecting")
                     self.assertEqual(dashboard.server.test_client().get("/health").status_code, 200)
 
@@ -102,9 +120,9 @@ class PipelineActivityTests(unittest.TestCase):
             with patch.object(dashboard, 'DATA_DIR', Path(directory)), patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
                     patch.dict(os.environ, {'SCRAPER_SERVER_URL': ''}):
                 rendered = str(dashboard.update_activity(0))
-                self.assertIn('42 queued', rendered)
-                self.assertIn('Stream connected', rendered)
-                self.assertIn('history could not be recovered', rendered)
+                self.assertNotIn('42 queued', rendered)
+                self.assertNotIn('Stream connected', rendered)
+                self.assertIn('Some earlier posts could not be recovered', rendered)
 
     def test_collector_outage_is_visible_with_a_fresh_processor_snapshot(self):
         with TemporaryDirectory() as directory:
@@ -115,7 +133,7 @@ class PipelineActivityTests(unittest.TestCase):
                 snapshot = dashboard.activity_snapshot()
                 self.assertEqual(snapshot['collector']['state'], 'unavailable')
                 self.assertEqual(snapshot['collector']['queue_depth'], 3)
-                self.assertIn('Stream reconnecting / paused', str(dashboard.update_activity(0)))
+                self.assertIn('Live feed disconnected. Reconnecting.', str(dashboard.update_activity(0)))
 
 
 if __name__ == "__main__":

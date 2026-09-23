@@ -247,49 +247,25 @@ def activity():
 @app.callback(Output("pipeline-activity", "children"), Input("interval-component", "n_intervals"))
 def update_activity(n_intervals):
     if PIPELINE_MODE != "live":
-        return html.Span("Example ready" if PIPELINE_MODE in ("fixture", "demo") else "Saved reports",
-                         className="activity-label")
+        return None
     status = activity_snapshot()
-    phase = status.get("phase", "starting")
-    labels = {"starting": "Starting collection", "collecting": "Collecting posts",
-              "processing": "Analyzing posts", "waiting": "Waiting for the next batch",
-              "error": "Collection needs attention"}
-    updated = status.get("updated_at")
-    try:
-        last_update = datetime.fromisoformat(updated)
-        if activity_is_stale(status):
-            phase = "stalled"
-        time_label = last_update.strftime("%H:%M:%S UTC")
-    except (TypeError, ValueError):
-        time_label = "Waiting for first update"
-    parts = [
-        html.Span(labels.get(phase, "Updates delayed"),
-                  className="activity-label warning" if phase in ("error", "stalled") else "activity-label"),
-        html.Span(f"{status.get('posts_received', 0):,} posts sent to analysis"),
-        html.Span(f"{status.get('posts_processed', 0):,} analyzed"),
-        html.Span(f"Updated {time_label}" if updated else time_label, className="activity-time"),
-    ]
     collector = status.get('collector', {})
-    if collector:
-        state = collector.get('state')
-        parts.append(html.Span('Stream connected' if state == 'connected' else 'Stream reconnecting / paused',
-                               className='' if state == 'connected' else 'warning'))
-        parts.append(html.Span(f"{collector.get('queue_depth', 0):,} queued · oldest {collector.get('oldest_pending_seconds', 0):.0f}s"))
-        if collector.get('gap_events'):
-            parts.append(html.Span('Some stream history could not be recovered', className='warning'))
-    if status.get("model_errors", 0):
-        parts.append(html.Span(f"{status['model_errors']:,} analysis errors", className="warning"))
-    if status.get("relevance_mode") == "jev":
-        parts.append(html.Span(f"{status.get('relevance_excluded', 0):,} records filtered for relevance"))
-        if status.get("location_checked", 0):
-            parts.append(html.Span(f"{status.get('location_resolved', 0):,} of {status['location_checked']:,} ambiguous locations resolved"))
-        if status.get("location_errors", 0):
-            parts.append(html.Span(f"{status['location_errors']:,} location checks unavailable", className="warning"))
-        if status.get("relevance_errors", 0):
-            parts.append(html.Span(f"{status['relevance_errors']:,} relevance checks unavailable", className="warning"))
-    if phase == "error" and status.get("last_error"):
-        parts.append(html.Span(status["last_error"], className="warning"))
-    return parts
+    phase = status.get('phase', 'starting')
+    message = None
+    if activity_is_stale(status):
+        message = "Live updates are delayed."
+    elif collector and collector.get('state') == 'backpressure':
+        message = "Analysis is catching up. New reports may be delayed."
+    elif collector and collector.get('state') != 'connected':
+        message = "Live feed disconnected. Reconnecting."
+    elif phase == 'error':
+        message = "Live updates need attention. " + (status.get('last_error') or "Retrying automatically.")
+    elif collector.get('oldest_pending_seconds', 0) >= 30:
+        message = "Analysis is catching up. New reports may be delayed."
+    elif collector.get('gap_events', 0):
+        message = "Some earlier posts could not be recovered."
+    # Past error totals and normal queue movement are diagnostics, not current alerts.
+    return html.Span(message, className="activity-label warning") if message else None
 
 
 CHART_COLORS = {
