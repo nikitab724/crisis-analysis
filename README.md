@@ -134,6 +134,10 @@ The script resolves paths relative to the repository, so it can run from another
 
 The integration check loads the saved pipeline through `live_demo/entity_extraction.py` and asserts that the example produces canonical disaster `Flood` and locations `Austin` and `Texas` (separate `GPE` entities, preserving the notebook's behavior). No Supabase account is required for this NLP-only check.
 
+## Optional semantic crisis classification
+
+[Jev can assign crisis types from the post’s meaning](docs/JEV_CLASSIFICATION.md), including the exact example “The streets in Houston are underwater and people are trapped in their homes.” A real request returned **Flood (0.93)** even though the original token rules found no disaster keyword. This mode is opt-in; the original demo remains the default. The linked guide includes a one-post command, a bounded comparison, and the accuracy/throughput limits.
+
 ## Optional location selection and relevance screening with Jev
 
 [Configure Jev through Vercel AI Gateway](docs/JEV.md) to screen candidate US reports for literal, current disaster mentions, including distinguishing an infectious-disease outbreak from a figurative “pandemic.” This optional step is off by default; it needs a server-side Gateway key, uses a provisional threshold, and does not verify that a claimed event is true. The original NLP and gazetteer remain in place.
@@ -255,7 +259,7 @@ The regression suite covers HTTP fixture injection, deterministic CSV output, da
 - **U.S.-focused location handling:** exact names/aliases must resolve uniquely within the available context. Ambiguous names and unsupported foreign places remain unresolved and are excluded from the dashboard and saved reports. “Georgia” needs a resolved US city, a state abbreviation, or explicit US context. A unique US database match is still not proof of the intended real-world location; counties, indirect references, and missing context remain limitations. Match labels describe rules, not calibrated confidence.
 - **Counts represent resolved locations:** a city and its supporting state count once per post; different cities or states can still create several rows. Only the first disaster label is aggregated, and deduplication is within a batch, not across all runs.
 - **Heuristic statistics:** “severity” is a relative report-count z-score, not physical impact. Accumulated sentiment currently averages batch means without weighting by batch size.
-- **Taxonomy is inherited:** for example, tornado synonyms map to `Hurricane`. The cleanup preserves the notebook's rules rather than changing classification behavior.
+- **Default taxonomy is inherited:** tornado synonyms still map to `Hurricane` in the original rule mode. The optional Jev classifier uses explicit definitions and separates `Tornado`; it needs evaluation before replacing the default.
 - **Prototype storage and services:** individual CSVs are replaced atomically, but the posts/counts pair is not a transaction. There is no user authentication or durable hosted report history. A local acknowledged queue and saved cursor provide retry/reconnect recovery; the launcher is not a production orchestration system. Coverage begins when the collector first starts and is limited by provider replay availability, oversized commits, disk capacity, and network outages. It does not provide complete historical backfill.
 - **Reproducibility limits:** primary versions are pinned, but not all transitive dependencies. A full cross-platform lockfile and CI are future work.
 - **Legacy experiments:** `proj-dev/app/main.py`, `live_demo/scraper_server.py`, `gazetteer_db.py`, and the notebook are not the supported demo startup path. The old scraper references an absent `blueskyapi_copy` module.

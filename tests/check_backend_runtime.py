@@ -100,7 +100,7 @@ def main():
             env = dict(os.environ, SUPABASE_URL=f"http://127.0.0.1:{database.server_port}",
                        SUPABASE_KEY="sb_secret_local_test_only", PORT=str(free_port()),
                        MODEL_PORT=str(free_port()), CRISIS_DATA_DIR=str(sentinel),
-                       CRISIS_RELEVANCE_MODE="off", AI_GATEWAY_API_KEY="")
+                       CRISIS_RELEVANCE_MODE="off", CRISIS_CLASSIFICATION_MODE="rules", AI_GATEWAY_API_KEY="")
             base = f"http://127.0.0.1:{env['PORT']}"
             descendants = []
             with (temporary / "runtime.log").open("w+") as log:
@@ -127,6 +127,14 @@ def main():
                     with ThreadPoolExecutor(max_workers=4) as pool:
                         assert list(pool.map(extract, texts * 4)) == originals * 4
                     print('PASS: real-model batch screening and concurrent requests preserve serial outputs.')
+                    novel = 'The streets in Austin Texas are underwater and residents are evacuating now.'
+                    semantic = requests.post(model_base + '/extract_entities',
+                                             json={'text': novel, 'rule_gate': False}, timeout=15)
+                    semantic.raise_for_status()
+                    assert semantic.json()['rule_gate_applied'] is False
+                    assert semantic.json()['city'] == 'Austin' and semantic.json()['state'] == 'Texas'
+                    assert semantic.json()['disasters'] == []
+                    print('PASS: real NLP + gazetteer retain locations for Jev even without a keyword disaster match.')
                     interval = [{"id": "interval-component", "property": "n_intervals", "value": 0}]
                     options = callback(base, "state-dropdown.options", interval)
                     assert options == [{"label": "Texas", "value": "Texas"}]

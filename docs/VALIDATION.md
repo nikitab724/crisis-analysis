@@ -2,6 +2,17 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Optional semantic classifier checkpoint
+
+On September 23, 2026, added opt-in Jev crisis classification and retained the original rules as the default. The owner explicitly chose comparison before live activation. No live environment setting, processing budget, model weights, database schema, or pipeline process was changed.
+
+- The exact requested sentence, **“The streets in Houston are underwater and people are trapped in their homes.”**, returned **Flood, score 0.93** from a real Jev request. The original token rules returned no label. The first isolated call took 2,088 ms.
+- All **154 regression tests passed** in the full environment; the lightweight environment passed 110 and skipped 44 optional live checks. Added coverage includes independent category assignment, multiple hazards and locations, bounded question chunks, cache/cap sharing, malformed output, no partial publication on failure, durable retry, old-server compatibility, no-keyword location extraction, and offline-fixture isolation.
+- The real-backend runtime check passed NLP, SDK/local HTTP gazetteer responses, the new gate-bypass path for a non-keyword Austin post, all four dashboard callbacks, outage recovery, bounded lookup timeouts, and cleanup. The first attempt encountered a NumPy worker-start error; an unchanged rerun passed. That transient startup issue is recorded, not treated as a classifier accuracy failure.
+- A bounded provider comparison completed 12/12 expected label sets after retrying one provider error (13 attempted comparison calls). The rule-only baseline matched 2/12; it excludes the existing Jev relevance screen. Successful comparison requests had a 307.5 ms median. These deliberately selected synthetic examples do not establish overall accuracy, calibration, or sustained throughput. The prompts and [recorded results](jev-classification-results.json) remain reviewable.
+- Both keyword gates are bypassed only in the opt-in mode, allowing non-keyword descriptions to reach semantic classification. A typical one-location post uses classification in place of the relevance call; extra locations are bounded and chunked. US geocoding still controls which records can appear on the map. Text-only classification can identify a crisis while its place is unresolved.
+- The original live feed remains paused at its configured 200-call limit. A broader semantic path may increase transformer work and API usage; it has not been enabled to process the live backlog. See [Jev classification and demo commands](JEV_CLASSIFICATION.md).
+
 ## Simplified dashboard and connection recovery checkpoint
 
 On September 23, 2026, simplified the dashboard to a full-width report map and a readable recent-post feed with a state filter. Removed the state chart, overview statistics, sentiment column, repeated matching notes, and data-explanation footer. Source links, timestamps, circle-size legend, sample-data labels, US scope, and the rolling 24-hour window remain. Collection and analysis behavior are unchanged. Detailed diagnostics remain available through `/activity` rather than repeated in the interface.

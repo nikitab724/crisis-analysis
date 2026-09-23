@@ -12,6 +12,7 @@ from pipeline_status import read_status, save_csv, write_status
 from us_scope import is_us_location, us_records
 from retention import live_retention_enabled, recent_posts
 from jev_relevance import JevRelevance, get_relevance_client, RelevanceUnavailable
+from crisis_classification import classification_mode
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
 MODEL_SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:5000").rstrip("/")
@@ -44,7 +45,7 @@ def processing_pool(workers):
     return ThreadPoolExecutor(max_workers=workers, thread_name_prefix='crisis-post')
 
 
-def extract_entities(text):
+def extract_entities(text, *, rule_gate=True):
     """
     A direct call to the model_server's /extract_entities endpoint.
     Raises an exception if there's any HTTP/network error or if
@@ -52,11 +53,14 @@ def extract_entities(text):
     """
     response = model_session().post(
         f"{MODEL_SERVER_URL}/extract_entities",
-        json={'text': text},
+        json={'text': text, **({'rule_gate': False} if not rule_gate else {})},
         timeout=10
     )
     response.raise_for_status()  # Will raise a requests.HTTPError if status not 200
-    return response.json()
+    result = response.json()
+    if not rule_gate and result.get('rule_gate_applied') is not False:
+        raise ValueError('The model service needs updating before Jev classification can run.')
+    return result
 
 def default_entity_data():
     """Return default entity data when extraction fails"""
@@ -130,10 +134,14 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
         'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location',
         'location_status', 'location_detail', 'location_mentions', 'location_review',
         'geonameid', 'location_model', 'location_probability', 'location_context_probability',
-        'relevance_status', 'relevance_model', 'relevance_probability'
+        'relevance_status', 'relevance_model', 'relevance_probability',
+        'classification_mode', 'classification_taxonomy'
     ]
 
     relevance = get_relevance_client()
+    classify = classification_mode() == 'jev'
+    if classify and relevance is None:
+        raise ValueError('Jev classification requires an enabled Jev client.')
     if relevance_stats is None:
         relevance_stats = {}
     completed = {} if completed is None else completed
@@ -141,7 +149,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
     keys = [(str(row.get('uri', '')), row['text'], str(row.get('created_at', '')))
             for _, row in rows]
     pending = [i for i, key in enumerate(keys) if key not in completed]
-    candidates = dict(zip(pending, screen_candidates([rows[i][1]['text'] for i in pending]))) if prefilter and pending else {}
+    candidates = dict(zip(pending, screen_candidates([rows[i][1]['text'] for i in pending]))) if prefilter and pending and not classify else {}
     results, finished, errors, last_progress = {}, 0, 0, 0
 
     def consume(position, result, reused=False):
@@ -169,9 +177,9 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
             jobs.append(position)
     if workers == 1:
         for position in jobs:
-            consume(position, analyze_post(*rows[position], relevance))
+            consume(position, analyze_post(*rows[position], relevance, classify=classify))
     else:
-        futures = {processing_pool(workers).submit(analyze_post, *rows[position], relevance): position
+        futures = {processing_pool(workers).submit(analyze_post, *rows[position], relevance, classify=classify): position
                    for position in jobs}
         for future in as_completed(futures):
             consume(futures[future], future.result())
@@ -179,12 +187,12 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
     return pd.DataFrame(records, columns=required_columns)
 
 
-def analyze_post(idx, row, relevance):
+def analyze_post(idx, row, relevance, *, classify=False):
     """A worker returns data only; progress, CSV writes, and acknowledgement stay serial."""
     processed_rows, relevance_stats, errors = [], {}, 0
     try:
         # Extract entities with error handling
-        entity_result = extract_entities(row['text'])
+        entity_result = extract_entities(row['text'], rule_gate=False) if classify else extract_entities(row['text'])
 
         if not entity_result or not isinstance(entity_result, dict):
             raise ValueError('The model returned no valid entity data')
@@ -198,8 +206,8 @@ def analyze_post(idx, row, relevance):
         sentiment = entity_result.get('sentiment', 'Neutral')
         polarity = entity_result.get('polarity', 0.0)
 
-        # Require both a disaster mention and a location.
-        if not disasters or not locations:
+        # Semantic classification must also see posts the original disaster rules missed.
+        if not locations or (not disasters and not classify):
             return [], relevance_stats, errors
         chosen_locations = []
         choices = entity_result.get('location_choices', [])
@@ -291,7 +299,8 @@ def analyze_post(idx, row, relevance):
         location_rows = list(unique_locations.values())
 
         if relevance and location_rows:
-            screened = relevance.screen(row['text'], row.get('created_at', ''), location_rows)
+            decide = relevance.classify if classify else relevance.screen
+            screened = decide(row['text'], row.get('created_at', ''), location_rows)
             relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
             relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
             location_rows = screened
@@ -501,7 +510,8 @@ def main(post_limit=20, output_dir=DATA_DIR):
     previous = read_status(output_dir)
     relevance_stats = {}
     write_status(output_dir, phase="collecting", last_error=None,
-                 relevance_mode=os.environ.get("CRISIS_RELEVANCE_MODE", "off"))
+                 relevance_mode=os.environ.get("CRISIS_RELEVANCE_MODE", "off"),
+                 classification_mode=os.environ.get("CRISIS_CLASSIFICATION_MODE", "rules"))
     collect_started = time.perf_counter()
     try:
         posts = get_scraped_posts(post_limit)

@@ -290,21 +290,25 @@ def extract_entities():
     """
     start_time = time.time()
 
-    data = request.json or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error='Supply a JSON object.'), 400
     text = data.get('text', '')
-    if not text:
-        return jsonify({'error': 'No text provided'}), 400
+    rule_gate = data.get('rule_gate', True)
+    if not isinstance(text, str) or not text.strip() or len(text) > 10000 or type(rule_gate) is not bool:
+        return jsonify(error='Supply text of 1–10000 characters and a Boolean rule_gate.'), 400
 
     if nlp is None:
         return jsonify({'error': 'Custom NLP model unavailable; check /health and README.md.'}), 503
-    if not has_disaster_candidate(text):
+    if rule_gate and not has_disaster_candidate(text):
         return jsonify({'disasters': [], 'locations': [], 'sentiment': 'Neutral', 'polarity': 0.0,
                         'skipped_non_crisis': True})
     logger.info(f"extract_entities called, text length={len(text)}")
     ent_sent = convert_sets_to_lists(extract_ent_sent(text))
+    ent_sent['rule_gate_applied'] = rule_gate
 
     # Attempt location standardization if gazetteer is loaded
-    if ent_sent['disasters'] and ent_sent['locations']:
+    if ent_sent['locations'] and (ent_sent['disasters'] or not rule_gate):
         try:
             loc_series = standardize_row({'locations': ent_sent['locations'], 'text': text})
             # Update ent_sent with the standardization keys
