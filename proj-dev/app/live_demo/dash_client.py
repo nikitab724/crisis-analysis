@@ -243,13 +243,13 @@ def update_activity(n_intervals):
                    if status.get('jev_max_calls') and status.get('jev_calls', 0) >= status['jev_max_calls']
                    else "Live updates are temporarily paused.")
     elif collector and collector.get('state') == 'backpressure':
-        message = "Analysis is catching up. New reports may be delayed."
+        message = "Analysis is behind. New reports are delayed."
     elif collector and collector.get('state') != 'connected':
         message = "Live feed disconnected. Reconnecting."
     elif (collector.get('source_lag_seconds') or 0) > 60:
         message = "Live feed is catching up. New reports may be delayed."
     elif collector.get('oldest_pending_seconds', 0) >= 30:
-        message = "Analysis is catching up. New reports may be delayed."
+        message = "Analysis is behind. New reports are delayed."
     elif collector.get('gap_events', 0):
         message = "Some earlier posts could not be recovered."
     def count(value):
@@ -258,6 +258,9 @@ def update_activity(n_intervals):
     # Queue depth includes the leased batch until its save/acknowledgement succeeds.
     # Never present a stale collector snapshot as a current count.
     queued = count(collector.get('queue_depth')) if collector.get('state') != 'unavailable' else None
+    # Acknowledgement is persistent and advances once per finished batch. The
+    # processor's attempt counters can include retries and unfinished work.
+    processed = count(collector.get('acknowledged')) if collector.get('state') != 'unavailable' else None
     total, checked = count(status.get('batch_received')), count(status.get('batch_processed'))
     batch_label, batch_value = 'Batch', '—'
     if not stale:
@@ -270,6 +273,8 @@ def update_activity(n_intervals):
             batch_value = 'Starting'
     return html.Div(className='activity-content', children=[
         html.Div(className='activity-counts', children=[
+            html.Span(['Processed ', html.Strong(f'{processed:,}' if processed is not None else '—')],
+                      title='Total completed since collection began, including posts filtered out.'),
             html.Span(['Queued ', html.Strong(f'{queued:,}' if queued is not None else '—')],
                       title='Posts awaiting completion, including the current batch.'),
             html.Span([f'{batch_label} ', html.Strong(batch_value)],

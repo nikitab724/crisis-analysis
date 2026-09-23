@@ -36,7 +36,7 @@ class PipelineActivityTests(unittest.TestCase):
             self.assertNotIn('warning', rendered)
             self.assertNotIn('10000', rendered)
             status['collector']['oldest_pending_seconds'] = 31
-            self.assertIn('Analysis is catching up', str(dashboard.update_activity(0)))
+            self.assertIn('Analysis is behind', str(dashboard.update_activity(0)))
             status['collector']['oldest_pending_seconds'] = 0
             status['phase'] = 'error'
             status['last_error'] = 'Analysis unavailable. Keeping this batch queued for retry.'
@@ -185,6 +185,26 @@ class PipelineActivityTests(unittest.TestCase):
         for mode in ('fixture', 'demo', ''):
             with self.subTest(mode=mode), patch.object(dashboard, 'PIPELINE_MODE', mode):
                 self.assertIsNone(dashboard.update_activity(0))
+
+    def test_processed_total_uses_completed_queue_posts_not_attempts_or_matches(self):
+        status = {'phase': 'processing', 'posts_processed': 999999, 'matched_records': 665,
+                  'batch_received': 100, 'batch_processed': 76,
+                  'collector': {'state': 'connected', 'acknowledged': 815703, 'queue_depth': 57154}}
+        with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                patch.object(dashboard, 'activity_snapshot', return_value=status), \
+                patch.object(dashboard, 'activity_is_stale', return_value=False):
+            rendered = str(dashboard.update_activity(0))
+            self.assertIn('Processed ', rendered)
+            self.assertIn('815,703', rendered)
+            self.assertIn('57,154', rendered)
+            self.assertIn('76 / 100', rendered)
+            self.assertNotIn('999,999', rendered)
+            status.update(phase='error', batch_processed=0)
+            self.assertIn('815,703', str(dashboard.update_activity(0)))
+            status['collector']['acknowledged'] += 100
+            self.assertIn('815,803', str(dashboard.update_activity(0)))
+            status['collector']['state'] = 'unavailable'
+            self.assertNotIn('815,803', str(dashboard.update_activity(0)))
 
 
 if __name__ == "__main__":
