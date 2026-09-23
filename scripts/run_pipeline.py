@@ -105,8 +105,8 @@ def restore_run(source, destination):
     for name, columns in required.items():
         with (source / name).open(newline='') as stream:
             reader = csv.DictReader(stream)
-            if not columns.issubset(reader.fieldnames or []) or next(reader, None) is None:
-                raise ValueError(f'Cannot resume: {name} is empty or has missing columns.')
+            if not columns.issubset(reader.fieldnames or []):
+                raise ValueError(f'Cannot resume: {name} has missing columns.')
     names = list(required)
     status = source / 'pipeline_status.json'
     if status.is_file():

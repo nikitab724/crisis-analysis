@@ -45,6 +45,16 @@ class ResumeRunTests(unittest.TestCase):
                 restore_run(source, destination)
             self.assertEqual(list(Path(destination).iterdir()), [])
 
+    def test_empty_but_valid_expired_run_can_be_resumed(self):
+        from run_pipeline import restore_run
+        with TemporaryDirectory() as source, TemporaryDirectory() as destination:
+            root = Path(source)
+            (root/'filtered_posts.csv').write_text('text,country,state,city,disasters\n')
+            (root/'crisis_counts.csv').write_text('country,state,disasters,count\n')
+            restore_run(root, destination)
+            self.assertEqual((Path(destination)/'filtered_posts.csv').read_bytes(),
+                             (root/'filtered_posts.csv').read_bytes())
+
 
 if __name__ == '__main__':
     unittest.main()

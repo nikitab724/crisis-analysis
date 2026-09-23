@@ -107,7 +107,7 @@ The real backend uses a Supabase `gazetteer` table. The original backup has been
 
 The launcher first processes the known synthetic post using **real NLP and Supabase**, then serves the result. An optional `live` mode also collects Bluesky posts. For a public interview link with no additional hosting charge, [share the working local dashboard through a temporary Cloudflare tunnel](docs/BACKEND.md#share-the-real-local-demo-for-free). The Mac must remain awake and online.
 
-For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows collection/analysis totals and update time even when a batch contains no crisis matches. Recent posts appear newest first, with state filtering and links to their Bluesky originals; the startup example is labeled separately. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once. Only records with an explicit US country match and one of the 50 states or DC are saved or displayed; foreign and unresolved locations are skipped. Mixed-country posts can contribute their resolved US locations. Each result explains its matching basis.
+For live collection, run `PORT=8052 MODEL_PORT=5002 SCRAPER_PORT=5004 python scripts/run_pipeline.py --mode live` in the prepared live environment after stopping an existing pipeline. The dashboard shows a short notice only when something needs attention; diagnostic counters remain at `/activity`. The live feed shows only the last 24 hours, newest first, with state filtering and links to Bluesky originals. Expiry uses each post's original UTC posting time; maps and totals use the same window. The fixed startup example expires from live mode but remains available in the separate deterministic demo. Counts represent resolved location records, not verified incidents or unique posts. A city and its supporting state count once. Only records with an explicit US country match and one of the 50 states or DC are saved or displayed; foreign and unresolved locations are skipped. Mixed-country posts can contribute their resolved US locations. Each result explains its matching basis.
 
 The real model used about 2.6 GiB by itself locally, so hosting the model on Render requires a **paid instance with at least 4 GB RAM**; review pricing before creating it. The existing Free service instead forwards the Mac's live dashboard using the gateway setup above.
 
@@ -183,13 +183,13 @@ For continuous live collection, run these four processes in separate terminals:
 ```sh
 python proj-dev/app/live_demo/model_server.py
 python proj-dev/app/live_demo/firehose_scraper_server.py
-python proj-dev/app/live_demo/entry.py
-python proj-dev/app/live_demo/dash_client.py
+CRISIS_PIPELINE_MODE=live python proj-dev/app/live_demo/entry.py
+CRISIS_PIPELINE_MODE=live python proj-dev/app/live_demo/dash_client.py
 ```
 
 The collector keeps one Bluesky connection open while the processor drains batches of up to 20 posts from a local SQLite queue. Each stream position is committed with its posts; reconnects request replay from that saved position. Batches remain queued until analysis and CSV writes succeed. A retry of the same source post/location cannot add another count. The dashboard refreshes every two seconds and shows a short notice only for an interruption, a queue delayed by at least 30 seconds, or known coverage gaps. Routine diagnostics remain available through `/activity`. See [continuous ingestion and its limits](docs/BACKEND.md#continuous-ingestion).
 
-A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. Default standalone live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts; the supervisor uses a temporary run directory. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
+A conservative precheck uses the loaded notebook's exact token rules to skip transformer inference on non-candidates; candidate posts still run the original NLP, geocoding, and Jev checks. Saved live reports are pruned between batches on a 30-second cleanup cadence, even when collection returns no matches or fails. Dashboard reads also apply the cutoff immediately, so stale files cannot keep old reports visible. Default standalone live outputs are `filtered_posts.csv` and `crisis_counts.csv` beside the live-demo scripts; the supervisor uses a temporary run directory. If changing `CRISIS_DATA_DIR`, use the same absolute path for the processor and dashboard. Do not run multiple CSV-writing processors against the same directory.
 
 ## Docker
 

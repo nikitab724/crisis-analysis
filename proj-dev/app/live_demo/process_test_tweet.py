@@ -5,6 +5,7 @@ import argparse
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+import os
 from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
@@ -75,7 +76,8 @@ def process_test_tweet(text=DEFAULT_TEXT, *, fixture=False, output_dir=None):
         raise ValueError("Fixture mode only supports the bundled Flood/Austin Texas post.")
 
     with TemporaryDirectory(prefix="crisis-demo-") as temporary:
-        with patch.object(entry, "get_scraped_posts", return_value=create_mock_post(text)):
+        with patch.object(entry, "get_scraped_posts", return_value=create_mock_post(text)), \
+                patch.dict(os.environ, {"CRISIS_PIPELINE_MODE": "demo"}):
             if fixture:
                 print("FIXTURE DEMO: predefined model response; no live NLP or Supabase lookup.")
                 with fixture_model_server(), patch.object(entry, "get_relevance_client", return_value=None):

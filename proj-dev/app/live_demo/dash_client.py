@@ -11,6 +11,7 @@ from urllib.parse import quote
 from pipeline_status import read_status
 from gazetteer import US_STATE_NAMES
 from us_scope import us_records
+from retention import recent_posts
 import math
 from pathlib import Path
 
@@ -68,6 +69,19 @@ def health_check():
                 or (collector and collector.get('state') != 'connected')):
             return {"status": "unavailable", "component": "collector"}, 503
     return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
+
+def load_dashboard_posts():
+    posts = us_records(pd.read_csv(DATA_DIR / 'filtered_posts.csv'))
+    return recent_posts(posts) if PIPELINE_MODE == 'live' else posts
+
+
+def load_dashboard_counts():
+    if PIPELINE_MODE == 'live':
+        # Recompute from the current window even when the writer is unavailable.
+        from entry import calculate_crisis_counts
+        return calculate_crisis_counts(load_dashboard_posts())
+    return us_records(pd.read_csv(DATA_DIR / 'crisis_counts.csv'))
+
 
 # Load initial data if available
 try:
@@ -165,12 +179,12 @@ MODE_LABELS = {"fixture": "Fixture demo", "demo": "Model demo", "live": "Live Bl
 MODE_NOTES = {
     "fixture": "Synthetic post and predefined model response. Live NLP is not running.",
     "demo": "Real NLP and Supabase. Showing a synthetic example for rehearsal.",
-    "live": "Real NLP and Supabase. A continuous Bluesky connection queues new posts while analysis runs; counts include the startup example. Recovery depends on the provider's replay window.",
+    "live": "Real NLP and Supabase. A continuous Bluesky connection queues new posts while analysis runs. The live feed and its totals include only posts from the last 24 hours, based on their original posting time. Recovery depends on the provider's replay window.",
 }
 MODE_SUMMARIES = {
     "fixture": "Synthetic example · Live NLP is not running",
     "demo": "Synthetic example · Processed by the real model",
-    "live": "Live posts and one labeled startup example · Unverified reports",
+    "live": "Last 24 hours · Unverified reports",
 }
 
 app.title = "Crisis Analysis"
@@ -308,30 +322,7 @@ def parse_cities_list(cities_str):
 )
 def update_dropdown_options(n_intervals):
     try:
-        # Load crisis data with explicit column names
-        try:
-            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
-                           quotechar='"',  # Use double quotes for quoted fields
-                           escapechar='\\', # Use backslash as escape character
-                           names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
-                           header=0)  # First row is header
-        except Exception as e:
-            print(f"Error with standard CSV reader, trying alternative: {e}")
-            # Try alternative reading approach with Python's csv module
-            import csv
-
-            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
-                reader = csv.reader(f, quotechar='"', escapechar='\\')
-                headers = next(reader)  # Get header row
-                data = []
-                for row in reader:
-                    if len(row) >= 7:  # Ensure we have at least 7 columns
-                        data.append(row[:7])  # Take only the first 7 columns
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-
-        df = us_records(df)
+        df = load_dashboard_counts()
         return [{'label': state, 'value': state} for state in sorted(df['state'].dropna().unique()) if state]
     except Exception as e:
         print(f"Error updating dropdown: {e}")
@@ -390,7 +381,7 @@ def update_crisis_map(n_intervals):
     fig = go.Figure()
     try:
         # One atomic CSV snapshot gives actual counts for each city/state location.
-        points = map_points_from_posts(pd.read_csv(DATA_DIR / "filtered_posts.csv"))
+        points = map_points_from_posts(load_dashboard_posts())
         for disaster in sorted({point["disaster"] for point in points}):
             group = [point for point in points if point["disaster"] == disaster]
             fig.add_trace(go.Scattergeo(
@@ -431,30 +422,7 @@ def update_crisis_map(n_intervals):
 )
 def update_state_chart(n_intervals):
     try:
-        # Load crisis data with explicit column names
-        try:
-            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
-                            quotechar='"',  # Use double quotes for quoted fields
-                            escapechar='\\', # Use backslash as escape character
-                            names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
-                            header=0)  # First row is header
-        except Exception as e:
-            print(f"Error with standard CSV reader, trying alternative: {e}")
-            # Try alternative reading approach with Python's csv module
-            import csv
-
-            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
-                reader = csv.reader(f, quotechar='"', escapechar='\\')
-                headers = next(reader)  # Get header row
-                data = []
-                for row in reader:
-                    if len(row) >= 7:  # Ensure we have at least 7 columns
-                        data.append(row[:7])  # Take only the first 7 columns
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-
-        df = us_records(df)
+        df = load_dashboard_counts()
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
 
@@ -490,7 +458,7 @@ def update_state_chart(n_intervals):
 )
 def update_table(selected_state, n_intervals):
     try:
-        posts = us_records(pd.read_csv(DATA_DIR / "filtered_posts.csv"))
+        posts = load_dashboard_posts()
         if selected_state:
             posts = posts[posts["state"] == selected_state]
         if posts.empty:
@@ -555,30 +523,7 @@ def update_table(selected_state, n_intervals):
 )
 def update_stats(n_intervals):
     try:
-        # Load crisis data with explicit column names
-        try:
-            df = pd.read_csv(DATA_DIR / 'crisis_counts.csv',
-                            quotechar='"',  # Use double quotes for quoted fields
-                            escapechar='\\', # Use backslash as escape character
-                            names=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'],
-                            header=0)  # First row is header
-        except Exception as e:
-            print(f"Error with standard CSV reader, trying alternative: {e}")
-            # Try alternative reading approach with Python's csv module
-            import csv
-
-            with open(DATA_DIR / 'crisis_counts.csv', 'r') as f:
-                reader = csv.reader(f, quotechar='"', escapechar='\\')
-                headers = next(reader)  # Get header row
-                data = []
-                for row in reader:
-                    if len(row) >= 7:  # Ensure we have at least 7 columns
-                        data.append(row[:7])  # Take only the first 7 columns
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data, columns=['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity'])
-
-        df = us_records(df)
+        df = load_dashboard_counts()
         # Convert numeric columns
         df['count'] = pd.to_numeric(df['count'], errors='coerce').fillna(1).astype(int)
         df['avg_sentiment'] = pd.to_numeric(df['avg_sentiment'], errors='coerce').fillna(0)

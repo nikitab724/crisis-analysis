@@ -2,6 +2,16 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Rolling 24-hour window checkpoint
+
+On September 23, 2026, live reports began expiring by their original posting time. The processor removes expired reports from active CSVs and rebuilds counts; dashboard callbacks independently filter the same window. The fixed interview demos remain repeatable. Earlier checkpoints below describe behavior at their respective dates.
+
+- **126 regression tests passed** in the full environment. The lightweight environment passed 86 and skipped 40 optional live checks. Coverage includes the exact expiry boundary, timezone offsets, invalid/future dates, cleanup during collection outages, empty reports/counts, stale saved totals, expired queue acknowledgements without model calls, repair after an interrupted write, and resuming an empty run.
+- The real-model runtime check passed NLP, the database SDK with controlled local HTTP responses, all five data callbacks, database outage/recovery and timeouts, and child-process cleanup. Targeted lint and whitespace checks passed.
+- The Mac upgrade preserved all **159 unexpired location records** from the prior 160-record snapshot and removed its historical synthetic example. Active CSV counts matched the remaining reports. The persistent ingest queue resumed from its saved position; the collector reported a connected stream and no known gaps at verification. A backlog was still present, so this is not a throughput claim.
+- Local readiness and the replacement public tunnel returned healthy live status. The original temporary tunnel had failed independently; Render's existing Free gateway was pointed at the verified replacement, and its deployment reached `live`. The public Render edge returned an HTTP 429 challenge to automated requests, so a full public callback recheck remained unverified at this checkpoint.
+- The exact gateway launcher, run locally against the replacement HTTPS tunnel, passed live readiness, 11 browser assets, layout, all six dashboard callbacks, Jev activity, and denial of the private model route. This verifies the application path without claiming the rate-limited Render edge passed.
+
 ## Continuous collection checkpoint
 
 On September 22, 2026, replaced per-batch firehose connections with one independent continuous collector and a local SQLite queue. Stream positions and incoming posts commit together. The processor acknowledges work only after successful analysis and saves; failed batches are redelivered, source URIs prevent replay duplication, and totals rebuild from the complete saved records. The existing transformer, disaster rules, location/relevance decisions, Jev thresholds, and request cap are unchanged. The Mac still runs the backend behind the Free Render gateway.

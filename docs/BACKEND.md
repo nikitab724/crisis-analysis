@@ -59,7 +59,7 @@ Startup loads the real model, verifies a readable gazetteer, and processes **“
 
 This `demo` mode uses a known synthetic input but **does not replay the saved model response**. It is the repeatable real-backend interview path.
 
-For continuous collection after rehearsal works, change `CRISIS_PIPELINE_MODE` to `live` in this Blueprint and deploy the update. That also starts the continuous Bluesky collector and batch processor. The startup post remains present and labeled. Live traffic may contain no qualifying crisis posts and depends on external availability.
+For continuous collection after rehearsal works, change `CRISIS_PIPELINE_MODE` to `live` in this Blueprint and deploy the update. That also starts the continuous Bluesky collector and batch processor. The old fixed startup example is excluded by the live 24-hour window; use `demo` mode to keep that rehearsal example visible. Live traffic may contain no qualifying crisis posts and depends on external availability.
 
 Render supplies the public `PORT`. Model/scraper ports default to `5000`/`5001`, bind only to `127.0.0.1`, and are not public. Only one model process and one CSV writer run. Automatic deployments are disabled; deploy later code updates manually. Blueprint synchronization can still apply configuration changes, including instance plans—review changes before syncing.
 
@@ -84,7 +84,15 @@ The recovery machine is now running **live mode**, with the collector on interna
 .venv-live-check/bin/python scripts/run_pipeline.py --mode live
 ```
 
-Use `--mode demo` to return to the repeatable example instead. By default, restarting the pipeline resets this run's collected data. To retain a previously archived run, add `--resume-from /absolute/path/to/archive`; the launcher validates and copies its two CSVs and optional counters into the new temporary directory, leaves the archive untouched, and does not add another startup example. The separately running tunnel does not need to restart, so its address can stay the same.
+Use `--mode demo` to return to the repeatable example instead. By default, restarting the pipeline resets this run's collected data. To retain a previously archived run, add `--resume-from /absolute/path/to/archive`; the launcher validates and copies its two CSVs and optional counters into the new temporary directory, leaves the archive untouched, and does not add another startup example. Restored reports are immediately subject to the live 24-hour cutoff; an empty run with valid CSV headers can also be resumed. The separately running tunnel does not need to restart, so its address can stay the same.
+
+## Rolling 24-hour report window
+
+Live mode retains reports whose original `created_at` falls strictly after `now - 24 hours` and no later than `now`, with all timestamps normalized to UTC. A post expires at the 24-hour boundary. Invalid, absent, and future timestamps are excluded rather than retained indefinitely. Replay and restart do not reset a post's age.
+
+The single CSV-writing processor prunes saved reports between batches on a 30-second cadence and rebuilds the state/disaster totals, including valid empty CSVs when everything expires. Cleanup runs before fetching the next batch, so empty batches or feed errors do not prevent it. Long in-flight processing can defer the disk sweep; every live dashboard callback independently applies the cutoff on read, keeping posts, map markers, state options, chart, and summary within the same window even if the writer stalls. The UI refreshes every two seconds. Expired queued posts are acknowledged without NLP or Jev calls when the processor reaches them.
+
+The fixed fixture and real-model `demo` modes keep their repeatable example. Its historical timestamp is not exempt in `live` mode, so the old startup example disappears there. This policy applies to active report CSVs and the live dashboard; it does not erase manually saved archives, operational counters, or the queue's limited URI deduplication history. Queue entries are removed when acknowledged, rather than by a separate background deletion service.
 
 ## Continuous ingestion
 
@@ -119,7 +127,7 @@ Before transformer inference, the model service runs the saved EntityRuler's exa
 | No complete startup crisis output | Austin/Texas gazetteer coverage and model-service logs |
 | Missing custom model | Build must finish `build_disaster_model.py` successfully |
 | Process killed / out of memory | Inspect memory metrics; Free and 2 GB instances are too small for the local measurement |
-| Live mode shows only startup post | Check ingestion logs; random traffic need not contain a qualifying report |
+| Live mode has no reports | Check ingestion and analysis; only qualifying posts from the last 24 hours are displayed |
 
 Every start uses a fresh temporary data directory and, unless `--resume-from` is supplied, regenerates the known post. CSV history is **not automatically durable** across restarts/deploys; make an archive before stopping the old process if it must be restored. Existing local data directories and explicit resume sources are preserved. If a child service exits, the launcher stops its other processes and exits nonzero. `/health` checks model/database readiness and both CSVs. Live mode also requires a processor update within three minutes, no current processing error, and a connected collector with recent stream activity. Known historical gaps remain visible even after the connection recovers. This does not establish complete stream coverage, recent matching posts, or incident accuracy.
 

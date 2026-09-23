@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 from pipeline_status import read_status, save_csv, write_status
 from us_scope import is_us_location, us_records
+from retention import live_retention_enabled, recent_posts
 from jev_relevance import get_relevance_client, RelevanceUnavailable
 
 DATA_DIR = Path(os.environ.get("CRISIS_DATA_DIR", Path(__file__).parent)).resolve()
@@ -248,6 +249,9 @@ def parse_cities(value):
     return [city for city in value if isinstance(city, str)]
 
 
+COUNT_COLUMNS = ['country', 'state', 'disasters', 'count', 'avg_sentiment', 'cities', 'severity']
+
+
 def calculate_crisis_counts(df, existing_counts_file=None):
     df = us_records(df)
 
@@ -257,9 +261,9 @@ def calculate_crisis_counts(df, existing_counts_file=None):
             try:
                 return us_records(pd.read_csv(existing_counts_file))
             except (OSError, ValueError):
-                return pd.DataFrame()
+                return pd.DataFrame(columns=COUNT_COLUMNS)
         else:
-            return pd.DataFrame()
+            return pd.DataFrame(columns=COUNT_COLUMNS)
 
     # Make a copy to avoid modifying the original dataframe
     df_copy = df.copy()
@@ -396,9 +400,31 @@ def reset_csv_files(output_dir=DATA_DIR):
                 os.remove(file_path)
                 print(f"Removed corrupted file: {file_path}")
 
+_next_retention_sweep = {}
+
+
+def prune_saved_reports(output_dir, now=None):
+    """The single CSV writer expires reports and regenerates totals, including zero."""
+    output_dir = Path(output_dir)
+    path = output_dir / 'filtered_posts.csv'
+    if not path.is_file():
+        return
+    remaining = recent_posts(us_records(pd.read_csv(path)), now=now)
+    save_csv(remaining, path)
+    save_csv(calculate_crisis_counts(remaining), output_dir / 'crisis_counts.csv')
+
+
 def main(post_limit=20, output_dir=DATA_DIR):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    retention = live_retention_enabled(output_dir)
+    if retention and time.monotonic() >= _next_retention_sweep.get(output_dir, 0):
+        try:
+            prune_saved_reports(output_dir)
+            _next_retention_sweep[output_dir] = time.monotonic() + 30
+        except (OSError, ValueError, KeyError):
+            write_status(output_dir, phase="error", last_error="Could not refresh the latest reports. Retrying.")
+            return
     previous = read_status(output_dir)
     relevance_stats = {}
     write_status(output_dir, phase="collecting", last_error=None,
@@ -427,15 +453,17 @@ def main(post_limit=20, output_dir=DATA_DIR):
     # Load collected posts
     try:
         df = pd.DataFrame(posts)
+        if retention:
+            df = recent_posts(df)
     except Exception as e:
         print(f"Error creating DataFrame: {e}")
         return
 
     print(f'Scraped {len(df)} posts')
     processing_started = time.perf_counter()
-    write_status(output_dir, phase="processing", batch_received=len(df), batch_processed=0,
+    write_status(output_dir, phase="processing", batch_received=len(posts), batch_processed=0,
                  collection_ms=round((processing_started - collect_started) * 1000, 1),
-                 posts_received=previous.get("posts_received", 0) + (0 if replay else len(df)),
+                 posts_received=previous.get("posts_received", 0) + (0 if replay else len(posts)),
                  batch_receipt=receipt, batch_processed_base=processed_base)
 
     def progress(processed, errors):
@@ -478,6 +506,9 @@ def main(post_limit=20, output_dir=DATA_DIR):
     try:
         destination = output_dir / 'filtered_posts.csv'
         existing = us_records(pd.read_csv(destination)) if destination.is_file() else pd.DataFrame()
+        if retention:
+            existing = recent_posts(existing)
+            filtered_df = recent_posts(filtered_df)
         combined = pd.concat([existing, filtered_df], ignore_index=True)
         keys = combined[['uri', 'country', 'state', 'city']].fillna('')
         repeated = keys['uri'].ne('') & keys.duplicated(keep='first')
@@ -485,8 +516,7 @@ def main(post_limit=20, output_dir=DATA_DIR):
         added = max(0, len(combined) - len(existing))
         save_csv(combined, destination)
         counts = calculate_crisis_counts(combined)
-        if not counts.empty:
-            save_csv(counts, output_dir / 'crisis_counts.csv')
+        save_csv(counts, output_dir / 'crisis_counts.csv')
         finish(added)
     except Exception as exc:
         print(f"Could not save this batch: {exc}")
