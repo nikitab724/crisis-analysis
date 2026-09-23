@@ -18,7 +18,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'proj-dev/app/live_demo'))
 import entry  # noqa: E402
 from jev_relevance import JevRelevance, RelevanceUnavailable  # noqa: E402
-from pipeline_status import read_status  # noqa: E402
+from pipeline_status import read_status, write_status  # noqa: E402
 
 
 def post(i):
@@ -177,6 +177,41 @@ class ParallelProcessingTests(unittest.TestCase):
             results = [future.result() for future in futures]
         self.assertEqual(session.post.call_count, 1)
         self.assertTrue(all(result == results[0] for result in results))
+
+    def test_request_start_pacing_is_shared_by_all_workers(self):
+        starts, lock = [], threading.Lock()
+        def send(*args, **kwargs):
+            with lock:
+                starts.append(time.monotonic())
+            return approved()
+        client = JevRelevance('fixture-key', session=Mock(post=Mock(side_effect=send)), min_interval=.04)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda i: evaluate(client, f'post-{i}'), range(6)))
+        self.assertTrue(all(len(result) == 1 for result in results))
+        self.assertEqual(len(starts), 6)
+        self.assertTrue(all(b - a >= .035 for a, b in zip(starts, starts[1:])))
+
+    def test_cooldown_does_not_repeat_context_or_model_work_and_resumes_afterward(self):
+        client = JevRelevance('fixture-key', session=Mock())
+        with TemporaryDirectory() as directory, \
+                patch.object(entry, 'get_relevance_client', return_value=client), \
+                patch.object(entry, 'get_scraped_posts', return_value=[]) as collect, \
+                patch.object(entry, 'filter_posts') as analyze, \
+                patch.object(entry, 'acknowledge_posts') as ack, \
+                patch('jev_relevance.time.monotonic', return_value=100), redirect_stdout(io.StringIO()):
+            write_status(directory, phase='error', last_error='Retrying.', batch_receipt='pending')
+            client.retry_after = 130
+            entry.main(output_dir=directory)
+            entry.main(output_dir=directory)
+            collect.assert_not_called()
+            analyze.assert_not_called()
+            ack.assert_not_called()
+            self.assertEqual(read_status(directory)['batch_receipt'], 'pending')
+            self.assertEqual(read_status(directory)['phase'], 'error')
+            client.retry_after = 0
+            entry.main(output_dir=directory)
+            collect.assert_called_once()
+            self.assertEqual(read_status(directory)['phase'], 'waiting')
 
     def test_failure_cooldown_applies_to_waiting_jev_workers(self):
         start = threading.Barrier(2)

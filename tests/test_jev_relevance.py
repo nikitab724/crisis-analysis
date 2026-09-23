@@ -125,6 +125,47 @@ class JevRelevanceTests(unittest.TestCase):
         self.assertEqual(self.client.retry_after, 190)
         self.assertEqual(self.client.diagnostics()['jev_last_failure'], 'http_429')
 
+    def test_pacing_configuration_rejects_invalid_intervals(self):
+        for interval in (-1, 31, True, None, '1', float('nan'), float('inf')):
+            with self.subTest(interval=interval), self.assertRaises(ValueError):
+                JevRelevance('fixture-key', min_interval=interval)
+        get_relevance_client.cache_clear()
+        self.addCleanup(get_relevance_client.cache_clear)
+        with patch.dict(os.environ, CRISIS_RELEVANCE_MODE='jev', AI_GATEWAY_API_KEY='fixture-key',
+                        JEV_MIN_REQUEST_INTERVAL='2.5'):
+            self.assertEqual(get_relevance_client().min_interval, 2.5)
+
+    def test_paced_wait_rechecks_new_cooldown_before_sending(self):
+        client = JevRelevance('fixture-key', session=self.session, min_interval=1)
+        self.session.post.return_value = response(.9)
+        with patch('jev_relevance.time.monotonic', return_value=100):
+            client.screen('first', '', [record()])
+            with patch('jev_relevance.time.sleep', side_effect=lambda _: setattr(client, 'retry_after', 130)), \
+                    self.assertRaises(RelevanceUnavailable):
+                client.screen('second', '', [record()])
+        self.assertEqual(self.session.post.call_count, 1)
+        self.assertEqual(client.calls, 1)
+
+    def test_throttling_slows_requests_and_only_sustained_recovery_speeds_up(self):
+        client = JevRelevance('fixture-key', session=self.session, min_interval=1)
+        now = [100.]
+        with patch('jev_relevance.time.monotonic', side_effect=lambda: now[0]):
+            for status, expected in ((429, 2), (503, 4), (429, 8), (503, 16), (429, 30)):
+                self.session.post.return_value = Mock(status_code=status, headers={})
+                with self.assertRaises(RelevanceUnavailable):
+                    client.screen('retry', '', [record()])
+                self.assertEqual(client.diagnostics()['jev_request_interval_seconds'], expected)
+                now[0] = max(client.retry_after, client._next_request_at) + 1
+            self.session.post.return_value = response(.9)
+            for i in range(19):
+                client.screen(f'success-{i}', '', [record()])
+                now[0] += 31
+            self.assertEqual(client.diagnostics()['jev_request_interval_seconds'], 30)
+            client.screen('success-19', '', [record()])
+            self.assertEqual(client.diagnostics()['jev_request_interval_seconds'], 24)
+        self.assertEqual(client.diagnostics()['jev_successful_calls'], 20)
+        self.assertEqual(client.diagnostics()['jev_throttled_calls'], 5)
+
     def test_malformed_missing_and_nonfinite_probabilities_are_rejected(self):
         for probability in (None, "0.9", True, float("nan"), float("inf"), -0.1, 1.1):
             with self.subTest(probability=probability):

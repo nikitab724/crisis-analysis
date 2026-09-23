@@ -532,6 +532,14 @@ def main(post_limit=20, output_dir=DATA_DIR):
             write_status(output_dir, phase="error", last_error="Could not refresh the latest reports. Retrying.")
             return
     previous = read_status(output_dir)
+    reviewer = get_relevance_client()
+    if isinstance(reviewer, JevRelevance) and previous.get('phase') == 'error':
+        diagnostics = reviewer.diagnostics()
+        if diagnostics['jev_cooldown_seconds'] > 0:
+            # The collector continues independently; don't repeat context/NLP work
+            # for this receipt while every uncached Jev request would be rejected.
+            write_status(output_dir, **diagnostics)
+            return
     relevance_stats = {}
     write_status(output_dir, phase="collecting", last_error=None,
                  relevance_mode=os.environ.get("CRISIS_RELEVANCE_MODE", "off"),

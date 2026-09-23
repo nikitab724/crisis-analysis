@@ -87,6 +87,32 @@ class JevClassificationTests(unittest.TestCase):
         model.assert_called_once_with(TEXT, rule_gate=False)
         self.assertEqual(list(result.text), [TEXT])
 
+    def test_batch_screen_reuses_individual_decisions_when_retry_batch_changes(self):
+        self.session.post.return_value = Mock(status_code=200, json=lambda: {'answers': {
+            'post_0': {'type': 'boolean', 'probability': .01},
+            'post_1': {'type': 'boolean', 'probability': .8}}})
+        self.assertEqual(self.client.event_candidates(['joke', TEXT]), [False, True])
+        self.assertEqual(self.client.event_candidates([TEXT, 'joke', TEXT]), [True, False, True])
+        self.assertEqual(self.session.post.call_count, 1)
+        self.session.post.return_value = Mock(status_code=200, json=lambda: {'answers': {
+            'post_0': {'type': 'boolean', 'probability': .5}}})
+        self.assertEqual(self.client.event_candidates([TEXT, 'new post', 'joke']), [True, True, False])
+        self.assertEqual(self.session.post.call_args.kwargs['json']['state']['posts'], ['new post'])
+
+    def test_failed_screen_does_not_cache_a_negative_and_cache_is_bounded(self):
+        self.session.post.side_effect = requests.Timeout()
+        with self.assertRaises(RelevanceUnavailable):
+            self.client.event_candidates([TEXT])
+        self.assertEqual(len(self.client._event_cache), 0)
+        self.client.retry_after = 0
+        self.session.post.side_effect = None
+        self.session.post.return_value = Mock(status_code=200, json=lambda: {'answers': {
+            'post_0': {'type': 'boolean', 'probability': .8}}})
+        self.client._event_cache.update((f'old-{i}', False) for i in range(2048))
+        self.assertEqual(self.client.event_candidates([TEXT]), [True])
+        self.assertEqual(len(self.client._event_cache), 2048)
+        self.assertNotIn('old-0', self.client._event_cache)
+
     def test_batch_screen_chunks_requests_and_failure_keeps_receipt(self):
         rows = pd.DataFrame([{'text': f'Flood of compliments {i}'} for i in range(33)])
         with patch.dict(os.environ, {**ENV, 'JEV_BATCH_SCREEN': 'on'}), \
