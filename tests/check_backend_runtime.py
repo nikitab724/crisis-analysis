@@ -22,6 +22,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 database_unavailable = Event()
+database_slow = Event()
 queries = []
 
 
@@ -30,6 +31,9 @@ class GazetteerHandler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         if parsed.path != "/rest/v1/gazetteer":
             self.send_error(404)
+            return
+        if database_slow.is_set():
+            time.sleep(6)
             return
         query = parse_qs(parsed.query)
         queries.append(query)
@@ -133,6 +137,14 @@ def main():
                     database_unavailable.clear()
                     assert requests.get(base + "/health", timeout=10).status_code == 200
                     print("PASS: database outage makes public readiness fail; recovery restores it.")
+                    database_slow.set()
+                    started = time.monotonic()
+                    assert requests.get(base + "/health", timeout=10).status_code == 503
+                    elapsed = time.monotonic() - started
+                    assert 2 <= elapsed < 4.5, f"Database timeout did not release the worker promptly: {elapsed:.1f}s"
+                    database_slow.clear()
+                    assert requests.get(base + "/health", timeout=10).status_code == 200
+                    print("PASS: stalled database reads release the model worker in about three seconds; recovery succeeds.")
                     model = next(child for child in descendants if any(
                         arg.endswith("/model_server.py") for arg in child.cmdline()))
                     model.send_signal(signal.SIGTERM)

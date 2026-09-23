@@ -76,6 +76,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
         'disasters', 'sentiment', 'polarity',
         'city', 'state', 'region', 'country', 'latitude', 'longitude', 'location',
         'location_status', 'location_detail', 'location_mentions', 'location_review',
+        'geonameid', 'location_model', 'location_probability', 'location_context_probability',
         'relevance_status', 'relevance_model', 'relevance_probability'
     ]
 
@@ -103,6 +104,22 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
             # Require both a disaster mention and a location.
             if not disasters or not locations:
                 continue
+            chosen_locations = []
+            choices = entity_result.get('location_choices', [])
+            if relevance and choices:
+                try:
+                    chosen_locations = relevance.choose_locations(row['text'], choices)
+                    relevance_stats['location_checked'] = relevance_stats.get('location_checked', 0) + len(choices)
+                    relevance_stats['location_resolved'] = relevance_stats.get('location_resolved', 0) + len(chosen_locations)
+                except RelevanceUnavailable as exc:
+                    relevance_stats['location_errors'] = relevance_stats.get('location_errors', 0) + 1
+                    print(str(exc))
+            resolved_mentions = {loc['location'] for loc in chosen_locations}
+            unresolved = [loc for loc in entity_result.get('unresolved_locations', [])
+                          if loc not in resolved_mentions]
+            location_review = entity_result.get('location_review', '')
+            if 'unresolved_locations' in entity_result:
+                location_review = 'Unresolved mentions: ' + '; '.join(dict.fromkeys(unresolved)) if unresolved else ''
             location_rows = []
             top_row = {
                         'author': row.get('author', ''),
@@ -123,12 +140,14 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
                         'location_status': entity_result.get('location_status', ''),
                         'location_detail': entity_result.get('location_detail', ''),
                         'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
-                        'location_review': entity_result.get('location_review', ''),
+                        'location_review': location_review,
+                        'geonameid': entity_result.get('geonameid'),
                     }
             if is_us_location(top_row):
                 location_rows.append(top_row)
             # Get standardized location info
             all_locations = entity_result.get('all_locations', [])
+            all_locations = (all_locations if isinstance(all_locations, list) else []) + chosen_locations
 
             # If we have location details, create rows for each location
             if isinstance(all_locations, list) and all_locations:
@@ -156,10 +175,23 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None):
                         'location_status': loc_info.get('location_status', ''),
                         'location_detail': loc_info.get('location_detail', ''),
                         'location_mentions': entity_result.get('location_mentions', '; '.join(locations)),
-                        'location_review': entity_result.get('location_review', ''),
+                        'location_review': location_review,
+                        **{key: loc_info.get(key) for key in (
+                            'geonameid', 'location_model', 'location_probability', 'location_context_probability')},
                     }
 
                     location_rows.append(new_row)
+
+            # A new context-selected city replaces its supporting state, and
+            # aliases for the same coordinates must not inflate report counts.
+            city_states = {loc['state'] for loc in location_rows if loc.get('city')}
+            unique_locations = {}
+            for loc in location_rows:
+                if not loc.get('city') and loc['state'] in city_states:
+                    continue
+                identity = tuple(loc.get(key) for key in ('city', 'state', 'latitude', 'longitude'))
+                unique_locations.setdefault(identity, loc)
+            location_rows = list(unique_locations.values())
 
             if relevance and location_rows:
                 screened = relevance.screen(row['text'], row.get('created_at', ''), location_rows)
@@ -374,7 +406,8 @@ def main(post_limit=50, output_dir=DATA_DIR):
                      posts_processed=previous.get("posts_processed", 0) + processed - errors,
                      model_errors=previous.get("model_errors", 0) + errors,
                      **{key: previous.get(key, 0) + relevance_stats.get(key, 0)
-                        for key in ('relevance_checked', 'relevance_excluded', 'relevance_errors')})
+                        for key in ('relevance_checked', 'relevance_excluded', 'relevance_errors',
+                                    'location_checked', 'location_resolved', 'location_errors')})
 
     def finish(matches=0):
         write_status(output_dir, phase="waiting", batch_matches=matches,

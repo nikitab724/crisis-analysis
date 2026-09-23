@@ -1,6 +1,7 @@
 import pandas as pd
 
-#load gazetteer
+# Larger or incomplete match sets remain unresolved rather than being truncated.
+MAX_LOCATION_CANDIDATES = 50
 
 US_STATE_NAMES = {
     "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",

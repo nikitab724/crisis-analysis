@@ -129,9 +129,11 @@ The script resolves paths relative to the repository, so it can run from another
 
 The integration check loads the saved pipeline through `live_demo/entity_extraction.py` and asserts that the example produces canonical disaster `Flood` and locations `Austin` and `Texas` (separate `GPE` entities, preserving the notebook's behavior). No Supabase account is required for this NLP-only check.
 
-## Optional relevance screening with Jev
+## Optional location selection and relevance screening with Jev
 
 [Configure Jev through Vercel AI Gateway](docs/JEV.md) to screen candidate US reports for literal, current disaster mentions, including distinguishing an infectious-disease outbreak from a figurative “pandemic.” This optional step is off by default; it needs a server-side Gateway key, uses a provisional threshold, and does not verify that a claimed event is true. The original NLP and gazetteer remain in place.
+
+The same integration can resolve an ambiguous city using context from the post: it chooses among real gazetteer entries or abstains. “Portland along the Willamette River” can select Oregon; “Portland” alone stays unresolved. It requires strong scores for both the choice and the presence of distinguishing context, then separately checks disaster relevance. Both stages share the configured request cap; coordinates always come from the database.
 
 ## Run with the real model service
 

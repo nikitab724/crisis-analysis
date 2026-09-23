@@ -258,6 +258,10 @@ def update_activity(n_intervals):
         parts.append(html.Span(f"{status['model_errors']:,} analysis errors", className="warning"))
     if status.get("relevance_mode") == "jev":
         parts.append(html.Span(f"{status.get('relevance_excluded', 0):,} records filtered for relevance"))
+        if status.get("location_checked", 0):
+            parts.append(html.Span(f"{status.get('location_resolved', 0):,} of {status['location_checked']:,} ambiguous locations resolved"))
+        if status.get("location_errors", 0):
+            parts.append(html.Span(f"{status['location_errors']:,} location checks unavailable", className="warning"))
         if status.get("relevance_errors", 0):
             parts.append(html.Span(f"{status['relevance_errors']:,} relevance checks unavailable", className="warning"))
     if phase == "error" and status.get("last_error"):

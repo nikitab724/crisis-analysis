@@ -5,14 +5,14 @@ import gc
 import time
 import logging
 import psutil
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 from dotenv import load_dotenv
 from typing import Dict, Any, List
 from functools import lru_cache
 from flask import Flask, request, jsonify
 
 from entity_extraction import extract_ent_sent, load_nlp
-from gazetteer import US_STATE_NAMES
+from gazetteer import MAX_LOCATION_CANDIDATES, US_STATE_NAMES
 from location_context import explicit_us_context, location_candidates, state_code
 
 ### Location standardization setup
@@ -22,11 +22,23 @@ url: str = os.environ.get('SUPABASE_URL')
 key: str = os.environ.get("SUPABASE_KEY")
 if not url or not key:
     raise RuntimeError("Set SUPABASE_URL and SUPABASE_KEY; see .env.example and README.md.")
-supabase: Client = create_client(url, key)
+# A stalled database read must release the single model worker before callers
+# time out and queue more work. This bounds each network operation, not a batch.
+supabase: Client = create_client(url, key, options=ClientOptions(postgrest_client_timeout=3))
 
 app = Flask(__name__)
 
 GAZETTEER_FIELDS = "geonameid, name, featureCode, stateCode, countryCode, latitude, longitude, alternate_list"
+
+
+def gazetteer_location(record):
+    """Coordinates and names always come from the gazetteer, never from Jev."""
+    return {
+        "geonameid": record.get("geonameid"),
+        "city": None if record.get("featureCode") == "ADM1" else record.get("name"),
+        "state": US_STATE_NAMES.get(record.get("stateCode")), "region": None, "country": "US",
+        "latitude": record.get("latitude"), "longitude": record.get("longitude"),
+    }
 
 
 def exact_aliases(value):
@@ -68,14 +80,22 @@ def lookup_city_state_country(loc_text: str, state_hint=None):
         records = query().eq("featureCode", "ADM1").eq("stateCode", code).limit(1).execute().data
     else:
         # ILIKE without wildcards preserves mixed-case names such as McAllen.
-        records = cities().ilike("name", norm).limit(2).execute().data
+        records = cities().ilike("name", norm).limit(MAX_LOCATION_CANDIDATES + 1).execute().data
+        incomplete = len(records) > MAX_LOCATION_CANDIDATES
         if not records and len(norm) > 2:
             candidates = cities().ilike("alternate_list", f"%{norm}%").limit(26).execute().data
             records = [record for record in candidates if norm.casefold() in exact_aliases(record.get("alternate_list"))]
             incomplete = len(candidates) == 26
             method = "Unique US alias match"
     if len(records) > 1 or incomplete:
-        return {**empty, "location_status": "ambiguous", "location_detail": "Needs context — no unique match"}
+        # Do not let a model choose from a silently truncated list or an alias scan
+        # that may have missed exact aliases beyond its bounded query window.
+        choices = [] if incomplete or len(records) > MAX_LOCATION_CANDIDATES else [
+            gazetteer_location(record) for record in records
+            if record.get("countryCode") == "US" and record.get("stateCode") in US_STATE_NAMES
+        ]
+        return {**empty, "location_status": "ambiguous", "location_detail": "Needs context — no unique match",
+                "candidate_locations": choices}
     if not records:
         return empty
     record = records[0]
@@ -83,9 +103,7 @@ def lookup_city_state_country(loc_text: str, state_hint=None):
     if not state or record.get("countryCode") != "US":
         return empty
     return {
-        "city": None if record.get("featureCode") == "ADM1" else record.get("name"),
-        "state": state, "region": None, "country": "US",
-        "latitude": record.get("latitude"), "longitude": record.get("longitude"),
+        **gazetteer_location(record),
         "location_status": "matched", "location_detail": method,
     }
 
@@ -126,6 +144,8 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
         mentioned.setdefault(loc.casefold(), loc)
     mentions = "; ".join(mentioned.values())
     review = "; ".join(dict.fromkeys(item["location"] for item in unresolved))
+    choices = [{"mention": item["location"], "candidates": item["candidate_locations"]}
+               for item in unresolved if len(item.get("candidate_locations", [])) > 1]
 
     if not results:
         ambiguous = any(item["location_status"] == "ambiguous" for item in unresolved)
@@ -141,10 +161,13 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
             "location_detail": "Needs context — no unique match" if ambiguous else "No supported US match",
             "location_mentions": mentions,
             "location_review": "",
+            "location_choices": choices,
+            "unresolved_locations": [item["location"] for item in unresolved],
         }
 
     first, *rest = results
     return {
+        "geonameid": first.get("geonameid"),
         "city": first.get("city"),
         "state": first.get("state"),
         "region": first.get("region"),
@@ -157,6 +180,8 @@ def standardize_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "location_detail": first["location_detail"],
         "location_mentions": mentions,
         "location_review": f"Unresolved mentions: {review}" if review else "",
+        "location_choices": choices,
+        "unresolved_locations": [item["location"] for item in unresolved],
     }
 
 

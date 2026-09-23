@@ -107,4 +107,6 @@ Original CSV concurrency, location ambiguity, counting, and live-feed limitation
 
 ## Optional semantic relevance filter
 
-The US scope filter is always active. A separate, optional Jev screen can reject figurative, historical, or unrelated disaster mentions before saving new records. See [Jev setup and limits](JEV.md) for the Vercel Gateway key, bounded evaluation, activation, and failure behavior. It is off by default and the deterministic fixture never calls the provider.
+The US scope filter is always active. Optional Jev classification can select among complete, bounded gazetteer candidate lists when post context distinguishes one city. It abstains on insufficient evidence, foreign places, or indistinguishable same-city/state entries. Coordinates remain database-supplied. A subsequent relevance screen rejects figurative, historical, or unrelated disaster mentions before saving new records. See [Jev setup and limits](JEV.md) for the Vercel Gateway key, bounded evaluations, shared request cap, activation, and failure behavior. It is off by default and the deterministic fixture never calls the provider.
+
+Supabase database network operations use a three-second timeout so a stalled read releases the model worker. Readiness reports an unavailable database as unhealthy; location lookup failures stay unresolved. This is a per-operation timeout, not a total batch deadline. `tests/check_backend_runtime.py` checks a stalled local database response and recovery as well as explicit database outages.

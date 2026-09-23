@@ -145,6 +145,13 @@ class LocationResolutionTests(unittest.TestCase):
         self.assertIsNone(result["latitude"])
         self.assertEqual(result["location_status"], "ambiguous")
         self.assertEqual(result["location_mentions"], "Portland")
+        self.assertEqual({c['state'] for c in result['location_choices'][0]['candidates']}, {'Maine', 'Oregon'})
+
+    def test_truncated_city_list_is_not_offered_to_classifier(self):
+        self.records.extend(place('Portland', 'TX', n) for n in range(self.model.MAX_LOCATION_CANDIDATES))
+        result = self.resolve('Flood in Portland', ['Portland'])
+        self.assertEqual(result['location_status'], 'ambiguous')
+        self.assertEqual(result['location_choices'], [])
 
     def test_ambiguity_inside_explicit_state_is_not_a_city_match(self):
         self.records.append(place("Austin", "TX", 1, latitude=40))
@@ -153,6 +160,7 @@ class LocationResolutionTests(unittest.TestCase):
         self.assertEqual(result["state"], "Texas")
         self.assertEqual(result["location_detail"], "State mention")
         self.assertIn("Austin", result["location_review"])
+        self.assertEqual({c['state'] for c in result['location_choices'][0]['candidates']}, {'Texas'})
 
     def test_state_only_report_is_retained(self):
         result = self.resolve("Flood in Texas.", ["Texas"])
@@ -180,6 +188,11 @@ class LocationResolutionTests(unittest.TestCase):
         self.records.append(place("Elsewhere", "ME", 1, "['NYC']"))
         result = self.resolve("Flood in NYC.", ["NYC"])
         self.assertEqual(result["location_status"], "ambiguous")
+
+    def test_truncated_alias_search_provides_no_classifier_choices(self):
+        self.records.extend(place(f'Other {n}', 'TX', n, "['NYC']") for n in range(30))
+        result = self.resolve('Flood in NYC', ['NYC'])
+        self.assertEqual(result['location_choices'], [])
         self.assertIsNone(result["state"])
 
     def test_truncated_alias_search_cannot_claim_unique_match(self):

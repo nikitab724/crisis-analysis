@@ -2,7 +2,20 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
-## Current US scope and Jev validation
+## Current Jev location selection validation
+
+On September 22, 2026, added bounded choice classification for ambiguous US city names. The model service returns complete gazetteer candidate lists (up to 50 cities per mention); the processor asks Jev to choose a candidate or abstain, alongside an independent geographic-evidence question. Both scores must reach 0.9. Same-name places within the same state, truncated lists, and uncertain results remain unresolved. A chosen city still passes the separate crisis-relevance check; both steps share the existing 200-call cap. Names and coordinates come only from the database. Explicit unique matches retain the existing path, and no transformer/disaster-rule changes were made.
+
+- **82 regression tests passed** in the full environment. The fixture environment passed 53 and skipped 29 optional live checks. New coverage includes complete candidate lists, shared caps/caches, malformed responses, abstention, same-state ambiguity, state-row folding, and preserving other resolved locations.
+- **8/8 real Gateway location examples passed** with all 27 Portland gazetteer entries. Willamette River selected Oregon; Casco Bay selected Maine. Bare names, foreign places, unrelated author context, multiple places, and embedded instructions abstained. Reversed options still selected Oregon. Median call latency was 262.1 ms, maximum 413.1 ms. This is a small authored smoke test, not general accuracy.
+- **6/6 combined real NLP → hosted gazetteer → Jev → processor examples passed**: the two contextual Portland cases and explicit Austin survived, while bare Portland, an Australian event, and a flood metaphor were excluded. No evaluation posts were saved to the dashboard.
+- **Real backend runtime checks passed**, including all five data callbacks, explicit database outage/recovery, model-process failure cleanup, and a new stalled-database test. Live validation initially exposed a roughly 75-second readiness read that blocked the single model worker. Supabase network operations now time out after three seconds; the stalled-response test confirms prompt worker release and recovery. This is a per-operation bound, not a whole-batch deadline.
+- The live Mac pipeline was restarted with both Jev stages enabled. Previous runs and their logs were archived locally outside Git before restart; counters start fresh with the labeled Austin example. The expired tunnel was replaced with a new temporary URL, saved locally in ignored `.demo-hosted/active-tunnel.json`.
+- Public readiness, layout/CSS, all six dashboard callbacks, map sizing, and live collection passed after the final restart. At that check, 500 posts had been received and there were zero model, location-classifier, or relevance errors. Targeted lint and whitespace checks passed. Browser visual inspection remains unavailable because the browser security-policy check is blocked.
+
+Run the bounded provider checks with `tests/check_jev_locations.py` and `tests/check_jev_location_pipeline.py --url http://127.0.0.1:5002`; see [Jev setup and limitations](JEV.md). Real collection remains Bluesky, and the Render Free deployment remains the independent fixture demo. Existing saved reports are not retroactively reclassified. Historical validation checkpoints below describe their own revisions.
+
+## US scope and relevance checkpoint
 
 Only records with an explicit `US` country, a supported state (50 states or DC), and no failed/ambiguous location status are now retained. The same rule applies to saved posts, existing CSVs read by the dashboard, map circles, dropdowns, state totals, and statistics. Missing countries are never defaulted to US. Mixed-country posts keep their resolved US locations. This supersedes the older behavior below that displayed unresolved posts in the table.
 
