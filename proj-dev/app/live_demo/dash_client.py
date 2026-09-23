@@ -191,7 +191,7 @@ app.layout = html.Main(className="app-shell", children=[
         ]),
         html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
     ]),
-    html.Div(id="pipeline-activity", role="status", **{"aria-live": "polite"}),
+    html.Div(id="pipeline-activity"),
     html.Section(className="map-section", **{"aria-labelledby": "map-heading"}, children=[
         html.Div(className="section-heading", children=[
             html.H2("Report locations", id="map-heading"),
@@ -234,8 +234,9 @@ def update_activity(n_intervals):
     status = activity_snapshot()
     collector = status.get('collector', {})
     phase = status.get('phase', 'starting')
+    stale = activity_is_stale(status)
     message = None
-    if activity_is_stale(status):
+    if stale:
         message = "Live updates are delayed."
     elif phase == 'error':
         message = ("Analysis is paused. The usage limit has been reached."
@@ -251,8 +252,32 @@ def update_activity(n_intervals):
         message = "Analysis is catching up. New reports may be delayed."
     elif collector.get('gap_events', 0):
         message = "Some earlier posts could not be recovered."
-    # Past error totals and normal queue movement are diagnostics, not current alerts.
-    return html.Span(message, className="activity-label warning") if message else None
+    def count(value):
+        return value if type(value) is int and value >= 0 else None
+
+    # Queue depth includes the leased batch until its save/acknowledgement succeeds.
+    # Never present a stale collector snapshot as a current count.
+    queued = count(collector.get('queue_depth')) if collector.get('state') != 'unavailable' else None
+    total, checked = count(status.get('batch_received')), count(status.get('batch_processed'))
+    batch_label, batch_value = 'Batch', '—'
+    if not stale:
+        if phase in ('processing', 'error') and total and checked is not None:
+            batch_label = 'Batch paused' if phase == 'error' else 'Processing batch'
+            batch_value = f'{min(checked, total):,} / {total:,}'
+        elif phase == 'waiting':
+            batch_value = 'Idle'
+        elif phase == 'collecting':
+            batch_value = 'Starting'
+    return html.Div(className='activity-content', children=[
+        html.Div(className='activity-counts', children=[
+            html.Span(['Queued ', html.Strong(f'{queued:,}' if queued is not None else '—')],
+                      title='Posts awaiting completion, including the current batch.'),
+            html.Span([f'{batch_label} ', html.Strong(batch_value)],
+                      title='Posts checked in the current batch. Failed reviews remain queued.'),
+        ], **{'aria-live': 'off'}),
+        html.Div(message, className='activity-label warning', role='status',
+                 **{'aria-live': 'polite'}) if message else None,
+    ])
 
 
 CHART_COLORS = {

@@ -225,7 +225,7 @@ class JevRelevanceTests(unittest.TestCase):
             self.assertEqual(status["matched_records"], 0)
             self.assertFalse((Path(directory) / "filtered_posts.csv").exists())
             with patch.object(dashboard, "DATA_DIR", Path(directory)), patch.object(dashboard, "PIPELINE_MODE", "live"):
-                self.assertIsNone(dashboard.update_activity(0))
+                self.assertNotIn('warning', str(dashboard.update_activity(0)))
 
 
 if __name__ == "__main__":

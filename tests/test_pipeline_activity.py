@@ -20,15 +20,21 @@ from pipeline_status import read_status, save_csv, write_status  # noqa: E402
 
 
 class PipelineActivityTests(unittest.TestCase):
-    def test_activity_is_silent_when_healthy_even_with_past_errors(self):
+    def test_activity_shows_counts_without_warning_for_past_errors(self):
         status = {'phase': 'processing', 'posts_received': 10000, 'posts_processed': 9990,
+                  'batch_received': 100, 'batch_processed': 76,
                   'model_errors': 3, 'relevance_errors': 40, 'location_errors': 14,
                   'relevance_mode': 'jev', 'collector': {
                       'state': 'connected', 'queue_depth': 10, 'oldest_pending_seconds': 2}}
         with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
                 patch.object(dashboard, 'activity_snapshot', return_value=status), \
                 patch.object(dashboard, 'activity_is_stale', return_value=False):
-            self.assertIsNone(dashboard.update_activity(0))
+            rendered = str(dashboard.update_activity(0))
+            self.assertIn("Strong('10')", rendered)
+            self.assertIn('Processing batch', rendered)
+            self.assertIn('76 / 100', rendered)
+            self.assertNotIn('warning', rendered)
+            self.assertNotIn('10000', rendered)
             status['collector']['oldest_pending_seconds'] = 31
             self.assertIn('Analysis is catching up', str(dashboard.update_activity(0)))
             status['collector']['oldest_pending_seconds'] = 0
@@ -36,6 +42,8 @@ class PipelineActivityTests(unittest.TestCase):
             status['last_error'] = 'Analysis unavailable. Keeping this batch queued for retry.'
             warning = str(dashboard.update_activity(0))
             self.assertIn('Live updates are temporarily paused', warning)
+            self.assertIn('Batch paused', warning)
+            self.assertNotIn('Processing batch', warning)
             self.assertNotIn(status['last_error'], warning)
             self.assertNotIn('10000', warning)
             status.update(jev_calls=200, jev_max_calls=200)
@@ -66,7 +74,7 @@ class PipelineActivityTests(unittest.TestCase):
                 patch.object(dashboard, 'activity_is_stale', return_value=False):
             self.assertIn('Live feed is catching up', str(dashboard.update_activity(0)))
             status['collector']['source_lag_seconds'] = 1
-            self.assertIsNone(dashboard.update_activity(0))
+            self.assertNotIn('warning', str(dashboard.update_activity(0)))
 
     def test_failed_model_requests_are_not_counted_as_analyzed(self):
         with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
@@ -136,7 +144,7 @@ class PipelineActivityTests(unittest.TestCase):
             with patch.object(dashboard, 'DATA_DIR', Path(directory)), patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
                     patch.dict(os.environ, {'SCRAPER_SERVER_URL': ''}):
                 rendered = str(dashboard.update_activity(0))
-                self.assertNotIn('42 queued', rendered)
+                self.assertIn("Strong('42')", rendered)
                 self.assertNotIn('Stream connected', rendered)
                 self.assertIn('Some earlier posts could not be recovered', rendered)
 
@@ -150,6 +158,33 @@ class PipelineActivityTests(unittest.TestCase):
                 self.assertEqual(snapshot['collector']['state'], 'unavailable')
                 self.assertEqual(snapshot['collector']['queue_depth'], 3)
                 self.assertIn('Live feed disconnected. Reconnecting.', str(dashboard.update_activity(0)))
+                self.assertNotIn("Strong('3')", str(dashboard.update_activity(0)))
+
+    def test_large_counts_and_unknown_stale_or_idle_batch_states(self):
+        status = {'phase': 'processing', 'batch_received': 100, 'batch_processed': 105,
+                  'collector': {'state': 'connected', 'queue_depth': 25432}}
+        with patch.object(dashboard, 'PIPELINE_MODE', 'live'), \
+                patch.object(dashboard, 'activity_snapshot', return_value=status), \
+                patch.object(dashboard, 'activity_is_stale', return_value=False) as stale:
+            rendered = str(dashboard.update_activity(0))
+            self.assertIn('25,432', rendered)
+            self.assertIn('100 / 100', rendered)
+            self.assertNotIn('105 / 100', rendered)
+            stale.return_value = True
+            rendered = str(dashboard.update_activity(0))
+            self.assertNotIn('Processing batch', rendered)
+            self.assertNotIn('100 / 100', rendered)
+            self.assertIn('delayed', rendered)
+            stale.return_value = False
+            status['phase'] = 'waiting'
+            self.assertIn('Idle', str(dashboard.update_activity(0)))
+            status['collector']['queue_depth'] = None
+            self.assertNotIn('25,432', str(dashboard.update_activity(0)))
+
+    def test_sample_modes_do_not_claim_to_have_a_live_queue(self):
+        for mode in ('fixture', 'demo', ''):
+            with self.subTest(mode=mode), patch.object(dashboard, 'PIPELINE_MODE', mode):
+                self.assertIsNone(dashboard.update_activity(0))
 
 
 if __name__ == "__main__":
