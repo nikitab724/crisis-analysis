@@ -2,7 +2,7 @@
 
 A college prototype that turns public social posts into a geographic view of potential crisis reports.
 
-**[Open the live interview demo](https://crisis-analysis-interview-demo.onrender.com)** — current US crisis reports from Bluesky, processed by the Mac backend through the Free Render gateway. The Mac and its temporary tunnel must stay online. The deterministic fixture walkthrough below remains available for rehearsal without live services.
+**[Open the interview demo](https://crisis-analysis-interview-demo.onrender.com)** — replay 24 synthetic posts mixed with sample weather alerts. The map and feed show predefined outcomes, without waiting on a live API. This mode runs directly on Render Free; it does not need the Mac backend. The original live pipeline remains available separately.
 
 ## The problem
 
@@ -49,9 +49,28 @@ The processes run on one host (or in one development container). The model servi
 
 The disaster pipeline is assembled from a pretrained English transformer and the rules in `proj-dev/data/disasters/disaster_types.json`. It is not a disaster classifier trained from scratch.
 
-The live demo now uses [Jev semantic classification](docs/JEV_CLASSIFICATION.md), including Drowning and Power Outage, after a broad candidate filter. It reads bounded reply/headline context while the original transformer and gazetteer still resolve places. The original rules and offline fixture remain available. A classified emergency still needs a supported US location before it can appear on the map.
+The live pipeline supports [Jev semantic classification](docs/JEV_CLASSIFICATION.md), including Drowning and Power Outage, after a broad candidate filter. It reads bounded reply/headline context while the original transformer and gazetteer still resolve places. The original rules and offline fixture remain available. A classified emergency still needs a supported US location before it can appear on the map.
 
-## Run the deterministic demo
+## Run the interview replay
+
+The recommended presentation mode uses **24 authored posts with predefined outcomes**, including ordinary conversation, weather alerts, implied flooding, figurative language, local emergencies, and an unresolved place name. Fourteen reports appear at twelve US locations. These are synthetic examples, not real alerts or measured Jev predictions.
+
+```sh
+git clone https://github.com/nikitab724/crisis-analysis.git
+cd crisis-analysis
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-demo.txt
+CRISIS_PIPELINE_MODE=sample python proj-dev/app/live_demo/dash_client.py
+```
+
+Open **http://localhost:8051**. The complete dataset appears immediately. **Replay demo** starts a three-second-per-post walkthrough; **Pause**, **Next post**, and **Show all** let you control it. Each browser has its own playback position. Refreshing restores the complete dataset. On PowerShell, set `$env:CRISIS_PIPELINE_MODE = "sample"` before running the dashboard.
+
+Replay makes no calls to Bluesky, Jev, Supabase, or the NLP service and writes no queue or report files. It reuses the dashboard's actual location aggregation and circle sizing. The displayed outcomes are authored in `proj-dev/app/live_demo/fixtures/interview_feed.json`; no live classifier is evaluated during playback.
+
+The separate **Try a test post** box can analyze arbitrary text through the real Mac backend. Its result appears as a diamond on the map, only in your browser, and is never posted to Bluesky or saved into the live reports. That optional feature requires the Mac/tunnel and Jev API; errors are shown explicitly. See the [two-minute walkthrough, test-box setup, and live-mode distinction](docs/INTERVIEW_DEMO.md).
+
+## Test one post through the processor
 
 This is the shortest rehearsal path. It injects a synthetic post, **“Flood in Austin Texas.”**, and replays a predefined model response over local HTTP. The real processor performs filtering, CSV writing, and aggregation; the real dashboard displays the results. **Fixture mode does not run NLP or query Supabase.** It is labeled in both the terminal and dashboard.
 
@@ -73,15 +92,15 @@ Open **http://localhost:8051**. Expect one Flood report in Texas, an Austin mark
 
 Map circles show **saved report records at each resolved location**, not a disaster radius. Circle area is proportional to the count through 64 records: diameters are 8 px for one record, 16 px for four, and 32 px for sixteen. Larger counts are capped at 64 px and labeled in the tooltip; exact counts remain visible. City points use their own gazetteer coordinates, while state-only or missing-city-coordinate records use a labeled approximate state centroid. Retries of the same source post/location are deduplicated; different posts may describe the same event. Counts are not verified incidents.
 
-The browser's geographic basemap may require internet access to Plotly's geographic assets. Rehearse on the presentation network beforehand; the table and bar chart do not depend on the map download.
+The browser's geographic basemap requires access to Plotly's geographic assets. Rehearse on the presentation network beforehand; the post list does not depend on the map download.
 
 ## Deploy to Render Free
 
-For the **live app at the existing Render URL**, [use the Free gateway setup](docs/RENDER_FREE.md): set `LIVE_DASHBOARD_URL` to the Mac's current public tunnel origin and deploy the latest commit. Render serves the real dashboard and forwards its callbacks; NLP, Jev, ingestion, and CSVs remain on the Mac. The Mac and tunnel must stay online. This mode requires no model weights or provider secrets on Render, and never silently substitutes fixture results when the backend is unavailable.
+The recommended interview deployment serves the sample replay directly. Set **`CRISIS_PIPELINE_MODE=sample`** in Render's Environment settings and deploy the latest commit. This explicit setting takes priority over a saved `LIVE_DASHBOARD_URL`, making the switch reversible without deleting the old tunnel configuration.
 
-With `LIVE_DASHBOARD_URL` unset, the same service starts the independent fixture described below.
+For the **live pipeline**, unset `CRISIS_PIPELINE_MODE` and [use the Free gateway setup](docs/RENDER_FREE.md): set `LIVE_DASHBOARD_URL` to the Mac's current public tunnel origin. The Mac and tunnel must stay online. An unavailable live backend never silently switches to sample data. With no `LIVE_DASHBOARD_URL`, the launcher defaults to the sample replay.
 
-[Deploy the fixture demo to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fnikitab724%2Fcrisis-analysis%2Ftree%2Fpolish%2Finterview-demo)
+[Deploy the sample demo to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fnikitab724%2Fcrisis-analysis%2Ftree%2Fpolish%2Finterview-demo)
 
 Sign in to Render, follow the link, and create the Blueprint from the `polish/interview-demo` branch. Review that the service uses the **Free** instance plan, then deploy it. The repository's `render.yaml` provides the settings:
 
@@ -93,9 +112,9 @@ Sign in to Render, follow the link, and create the Blueprint from the `polish/in
 | Health check | `/_dash-layout` |
 | Instance plan | Free |
 
-In fixture mode, the launcher regenerates the synthetic demo data at each start and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard explicitly labels its data as a fixture. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
+In sample mode, the launcher reads the bundled dataset and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard labels both the synthetic posts and predefined results. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
 
-Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the fixture label, Texas map/chart, and post table. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
+Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the sample label, map, and playback controls. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
 
 To rehearse the same server startup locally (stop any other app using port 8051 first):
 
@@ -104,7 +123,7 @@ python -m pip install -r requirements-hosted-demo.txt
 bash scripts/start_demo.sh
 ```
 
-For an alternate local port, run `PORT=8052 bash scripts/start_demo.sh`. The full live NLP/database deployment remains separate from this fixture deployment.
+For an alternate local port, run `PORT=8052 CRISIS_PIPELINE_MODE=sample bash scripts/start_demo.sh`. The full live NLP/database deployment remains separate from this sample deployment.
 
 ## Connect the real backend
 

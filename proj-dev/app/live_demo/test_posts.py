@@ -1,0 +1,121 @@
+"""Isolated, explicit real-analysis requests for the interview dashboard."""
+
+from datetime import datetime, timezone
+import hmac
+import math
+import os
+import threading
+from urllib.parse import urlsplit
+
+from flask import request
+import requests
+from us_scope import is_us_location
+
+
+MAX_TEXT_LENGTH = 1000
+_slot = threading.BoundedSemaphore(1)
+
+
+class AnalysisUnavailable(RuntimeError):
+    pass
+
+
+def validate_text(text):
+    if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT_LENGTH:
+        raise ValueError(f"Enter a post of 1–{MAX_TEXT_LENGTH} characters.")
+    return text.strip()
+
+
+def analyze_locally(text):
+    """Use the live analysis worker, without its writer, queue, or acknowledgement."""
+    from entry import analyze_post
+    from jev_relevance import get_relevance_client
+
+    text = validate_text(text)
+    client = get_relevance_client()
+    if client is None:
+        raise AnalysisUnavailable("Real analysis is not configured.")
+    published_at = datetime.now(timezone.utc).isoformat()
+    rows, stats, errors = analyze_post(0, {'text': text, 'created_at': published_at}, client, classify=True)
+    if errors or any(stats.get(key) for key in ('model_errors', 'location_errors', 'relevance_errors')):
+        raise AnalysisUnavailable("The analyzer is unavailable. Please try again shortly.")
+    records = []
+    for row in rows[:8]:
+        record = {key: row.get(key) for key in ('city', 'state', 'country', 'disasters')}
+        for key in ('latitude', 'longitude'):
+            value = row.get(key)
+            record[key] = float(value) if isinstance(value, (int, float)) and math.isfinite(value) else None
+        records.append(record)
+    if records:
+        return {'status': 'mapped', 'text': text, 'records': records, 'analysis': 'live'}
+    # Classification remains useful when a US location cannot be resolved.
+    classification = client.classify_text(text, published_at)
+    labels = classification['disasters']
+    return {'status': 'unmapped' if labels else 'skipped', 'text': text, 'records': [],
+            'disasters': labels, 'analysis': 'live',
+            'message': ('Crisis detected, but no supported US location could be confidently matched.'
+                        if labels else 'No current crisis detected in this post.')}
+
+
+def register_test_endpoint(server, analyzer=analyze_locally):
+    """Only the explicitly enabled Mac backend accepts authenticated test calls."""
+    @server.post('/demo/analyze')
+    def analyze_test_post():
+        token = os.environ.get('CRISIS_TEST_API_TOKEN', '')
+        supplied = request.headers.get('Authorization', '')
+        if len(token) < 32 or not hmac.compare_digest(supplied.encode(), f'Bearer {token}'.encode()):
+            return {'error': 'Unauthorized'}, 401
+        if request.content_length is None or request.content_length > 8192:
+            return {'error': 'Post is too large.'}, 413
+        body = request.get_json(silent=True)
+        try:
+            text = validate_text(body.get('text') if isinstance(body, dict) else None)
+        except ValueError as exc:
+            return {'error': str(exc)}, 400
+        if not _slot.acquire(blocking=False):
+            return {'error': 'Another test is running. Please try again shortly.'}, 429
+        try:
+            return analyzer(text)
+        except Exception:
+            # Never return provider bodies, credentials, or internal hostnames.
+            return {'error': 'The analyzer is unavailable. Please try again shortly.'}, 503
+        finally:
+            _slot.release()
+
+
+def analyze_remote(text):
+    text = validate_text(text)
+    origin = os.environ.get('LIVE_DASHBOARD_URL', '').rstrip('/')
+    token = os.environ.get('CRISIS_TEST_API_TOKEN', '')
+    url = urlsplit(origin)
+    if (url.scheme != 'https' or not url.hostname or url.username or url.password
+            or url.path or url.query or url.fragment or len(token) < 32):
+        raise AnalysisUnavailable('The test backend is offline. The sample replay still works.')
+    try:
+        with requests.Session() as session:
+            session.trust_env = False
+            response = session.post(origin + '/demo/analyze', json={'text': text},
+                                    headers={'Authorization': f'Bearer {token}'},
+                                    timeout=(3, 45), allow_redirects=False)
+        if response.status_code == 429:
+            raise AnalysisUnavailable('Another test is running. Please try again shortly.')
+        if response.status_code != 200:
+            raise AnalysisUnavailable('The test backend is unavailable. Please try again shortly.')
+        result = response.json()
+        if (not isinstance(result, dict) or result.get('analysis') != 'live'
+                or result.get('status') not in ('mapped', 'unmapped', 'skipped')
+                or not isinstance(result.get('records'), list) or len(result['records']) > 8):
+            raise ValueError('Invalid response')
+        if result['status'] == 'mapped':
+            if not result['records'] or any(
+                not isinstance(row, dict) or not is_us_location(row)
+                or not isinstance(row.get('disasters'), list) or not row['disasters']
+                or any(not isinstance(label, str) for label in row['disasters'])
+                for row in result['records']
+            ):
+                raise ValueError('Invalid map records')
+        elif result['records'] or not isinstance(result.get('message'), str):
+            raise ValueError('Invalid decision')
+        return result
+    except (requests.RequestException, ValueError):
+        raise AnalysisUnavailable('The test backend did not respond. Please try again shortly.') from None

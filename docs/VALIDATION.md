@@ -2,6 +2,15 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Independent replay and real test-post checkpoint
+
+On September 23, 2026, added a controlled interview mode with 24 synthetic posts and predefined outcomes. Fourteen mapped records aggregate into twelve points across nine states; nine unrelated/out-of-scope posts are skipped and an ambiguous Portland report remains unmapped. These authored decisions are not model predictions or an accuracy evaluation.
+
+- All **202 regression tests passed**, plus targeted lint, shell syntax, whitespace, and UI detector checks. New checks cover deterministic replay, per-browser cursor isolation, empty/reset states, map counts, no backend/file access during replay, authenticated and bounded test submissions, explicit analyzer failures, and preservation of live queue/report data by the test-analysis worker.
+- Browser checks at desktop and 375-pixel mobile widths verified playback, pause, next-post, show-all, disclosure labels, and no horizontal overflow. A custom post was submitted through the actual browser form and returned a real Flood result in Houston, Texas. The separate authenticated backend smoke test returned the same result in 2.48 seconds; this is one observation, not a latency guarantee.
+- Custom tests reuse the real analysis worker without its CSV writer or queue acknowledgement. They are separate diamond markers in the requesting browser. Missing model/API access produces an explicit error and does not substitute the authored sample result. Unauthenticated requests to the Mac test endpoint return 401.
+- The independent replay needs no Mac or API; custom real analysis still needs the Mac, tunnel, model, database, and Jev capacity. Render Free wake-up time and the browser's geographic asset download remain presentation dependencies. Live collection remains separately paused and saved work is preserved.
+
 ## Context, local emergencies, and source freshness checkpoint
 
 On September 23, 2026, the owner's examples exposed distinct ingestion and extraction issues. The local queue could be nearly empty while the relay replayed old commits, and removing sentence punctuation could merge “Portland. Streets” into the unsupported entity “Portland Streets”. Source freshness now uses the relay timestamp, independent of queue age. Sentence punctuation is retained before the existing transformer; the model weights and gazetteer schema are unchanged.
