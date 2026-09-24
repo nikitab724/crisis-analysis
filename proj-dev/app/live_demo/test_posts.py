@@ -23,7 +23,7 @@ ANALYSIS_SECONDS = 12
 TIMEOUT_MESSAGE = 'Analysis is taking too long. Please try again shortly.'
 ERROR_MESSAGES = {
     'jev_busy': 'Jev is temporarily unavailable. Please try again shortly.',
-    'jev_access': 'Jev access needs attention. The sample replay still works.',
+    'jev_access': 'Jev access needs attention. Saved posts are still available.',
     'location_unavailable': 'Location analysis is temporarily unavailable. Please try again shortly.',
 }
 _slot = threading.BoundedSemaphore(1)
@@ -172,7 +172,7 @@ def analyze_remote(text):
     url = urlsplit(origin)
     if (url.scheme != 'https' or not url.hostname or url.username or url.password
             or url.path or url.query or url.fragment or len(token) < 32):
-        raise AnalysisUnavailable('The test backend is offline. The sample replay still works.')
+        raise AnalysisUnavailable('The test backend is offline. Saved posts are still available.')
     # Cache only validated real decisions. Changes to the destination or credential
     # invalidate the key; text stays case-sensitive to preserve extraction behavior.
     cache_key = hashlib.sha256((origin + '\0' + token + '\0' + text).encode()).hexdigest()
