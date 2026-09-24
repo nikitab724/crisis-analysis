@@ -20,20 +20,16 @@ h1 { font-size: 28px; font-weight: 650; letter-spacing: -0.025em; line-height: 1
 h2 { font-size: 18px; font-weight: 600; line-height: 1.4; }
 .app-shell { max-width: 1120px; margin: 0 auto; padding: 32px 32px 48px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-bottom: 28px; }
-.subtitle { color: var(--muted); margin-top: 8px; font-size: 13px; }
 .mode-label { color: var(--muted); font-size: 13px; white-space: nowrap; }
 .replay-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-bottom: 24px; }
-.replay-disclosure { font-size: 13px; color: var(--muted); }
-.replay-progress { margin-top: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.replay-progress { font-size: 13px; font-variant-numeric: tabular-nums; }
 .replay-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .replay-buttons button { min-height: 44px; padding: 8px 14px; border: 1px solid #a5b2c3; border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .replay-buttons button:hover:not(:disabled) { background: #eef4fd; border-color: var(--accent); }
 .replay-buttons .primary-button { background: var(--accent); border-color: var(--accent); color: white; min-width: 112px; }
 .replay-buttons .primary-button:hover { background: #173e89; color: white; }
 .replay-buttons button:disabled { color: var(--muted); background: #f1f5f9; border-color: var(--line); cursor: default; }
-.sample-context { margin-top: 8px; color: var(--muted); font-size: 13px; max-width: 74ch; }
 .test-section { padding-top: 24px; }
-.test-description { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .test-text { display: block; width: 100%; min-height: 90px; resize: vertical; padding: 12px; margin: 12px 0; border: 1px solid #a5b2c3; border-radius: 6px; color: var(--ink); background: var(--surface); font: inherit; }
 .test-text::placeholder { color: var(--muted); opacity: 1; }
 .test-feedback { margin-top: 12px; font-size: 13px; }

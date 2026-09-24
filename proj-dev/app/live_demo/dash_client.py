@@ -189,27 +189,14 @@ def marker_diameter(count):
 
 
 MODE_LABELS = {"sample": "Sample data", "fixture": "Sample data", "demo": "Sample data", "live": "Bluesky"}
-MODE_SUMMARIES = {
-    "sample": "United States · Interview demo",
-    "fixture": "United States · Demo",
-    "demo": "United States · Demo",
-    "live": "United States · Past 24 hours",
-}
-
 app.title = "Crisis Analysis"
 app.layout = html.Main(className="app-shell", children=[
     html.Header(className="page-header", children=[
-        html.Div([
-            html.H1("Crisis Analysis"),
-            html.P(MODE_SUMMARIES.get(PIPELINE_MODE, "United States"), className="subtitle"),
-        ]),
+        html.H1("Crisis Analysis"),
         html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
     ]),
     *([html.Section(className="replay-toolbar", **{"aria-label": "Demo playback"}, children=[
-        html.Div([
-            html.P("Synthetic posts · Predefined results", className="replay-disclosure"),
-            html.P(id="replay-progress", className="replay-progress", role="status"),
-        ]),
+        html.P(id="replay-progress", className="replay-progress", role="status"),
         html.Div(className="replay-buttons", children=[
             html.Button("Replay demo", id="replay-play", n_clicks=0, className="primary-button"),
             html.Button("Next post", id="replay-next", n_clicks=0, disabled=True),
@@ -237,7 +224,6 @@ app.layout = html.Main(className="app-shell", children=[
     ]),
     *([html.Section(className="test-section", **{"aria-labelledby": "test-heading"}, children=[
         html.H2("Try a test post", id="test-heading"),
-        html.P("Real analysis · Not posted to Bluesky", className="test-description"),
         html.Label("Post text", htmlFor="test-text", className="sr-only"),
         dcc.Textarea(id="test-text", maxLength=1000, className="test-text",
                      placeholder="The streets in Houston, Texas are underwater and people are trapped in their homes."),
@@ -325,7 +311,7 @@ def run_test_post(text):
             places = [', '.join(str(row.get(key) or '') for key in ('city', 'state')).strip(', ')
                       for row in result['records']]
             labels = list(dict.fromkeys(label for row in result['records'] for label in row['disasters']))
-            message = f"{', '.join(labels)} · {'; '.join(places)}. Shown as a diamond on the map."
+            message = f"{', '.join(labels)} · {'; '.join(places)}"
         else:
             message = result['message']
         return result, html.P(message)
@@ -343,18 +329,14 @@ def render_sample_feed(selected_state, replay_state):
     rows = []
     for post in reversed(posts):
         mapped = post["outcome"] == "mapped"
-        label = f'{post["city"]}, {post["state"]}' if mapped else (
+        label = f'{post["city"]}, {post["state"]} · {post["disaster"]}' if mapped else (
             "Location unclear" if post["outcome"] == "unmapped" else "Skipped")
-        detail = post["disaster"] if mapped else post["reason"]
         rows.append(html.Li(html.Article(className="report", children=[
             html.Div(className="report-context", children=[
                 html.H3(label, className="report-location"),
-                html.P(detail, className="report-type"),
             ]),
             html.Div(className="report-content", children=[
                 html.P(post["text"], className="post-text"),
-                html.P(post["context"], className="sample-context") if post.get("context") else None,
-                html.Div(post["source"], className="post-meta"),
             ]),
         ])))
     return html.Ul(rows, className="reports-list", **{"aria-labelledby": "posts-heading"})

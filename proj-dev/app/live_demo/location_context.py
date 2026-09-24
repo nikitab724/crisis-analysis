@@ -9,8 +9,11 @@ from gazetteer import US_STATE_NAMES
 STATE_CODES = {name.casefold(): code for code, name in US_STATE_NAMES.items()}
 STATE_PATTERN = (
     "(?i:" + "|".join(re.escape(name) for name in sorted(STATE_CODES, key=len, reverse=True))
-    + ")|" + "|".join(US_STATE_NAMES)
+    + "|" + "|".join(code for code in US_STATE_NAMES if code not in {"IN", "OR", "ME"})
+    + ")|IN|OR|ME"
 )
+# Lowercase city/state pairs are common in posts. Keep ordinary words such as
+# "in", "or", and "me" case-sensitive, consistent with state_code below.
 STATE_SUFFIX = re.compile(rf"(?P<city>.+?)(?:,\s*|\s+)(?P<state>{STATE_PATTERN})$")
 
 # Country data only: this does not add or replace an NLP component.

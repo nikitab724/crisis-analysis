@@ -97,6 +97,21 @@ class LocationResolutionTests(unittest.TestCase):
         for code, name in (("ME", "Maine"), ("OR", "Oregon"), ("ME", "Maine")):
             self.assertEqual(self.resolve(f"Flood in Portland, {code}.", ["Portland"])["state"], name)
 
+    def test_lowercase_city_state_entity_uses_explicit_abbreviation(self):
+        self.records.extend([place('Houston', 'TX', 2000000), place('Houston', 'MS', 3000)])
+        for code in ('tx', 'Tx', 'tX', 'TX'):
+            for locations in ([f'houston {code}'], ['houston'], ['houston', code]):
+                with self.subTest(code=code, locations=locations):
+                    result = self.resolve(f'so much rain in houston {code} people are struggling...', locations)
+                    self.assertEqual((result['city'], result['state']), ('Houston', 'Texas'))
+                    self.assertEqual(result['location_status'], 'matched')
+                    self.assertEqual(result['all_locations'], [])
+
+    def test_lowercase_state_abbreviations_keep_word_boundaries(self):
+        from location_context import adjacent_states
+        self.assertEqual(adjacent_states('Houston', 'rain in houston tx...'), {'TX'})
+        self.assertEqual(adjacent_states('Houston', 'rain in houston txpeople are struggling'), set())
+
     def test_different_cities_get_their_own_state(self):
         result = self.resolve("Flood in Portland, ME and Perryville, AK.", ["Portland", "Perryville"])
         self.assertEqual(result["state"], "Maine")

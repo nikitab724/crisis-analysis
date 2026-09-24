@@ -112,7 +112,7 @@ Sign in to Render, follow the link, and create the Blueprint from the `polish/in
 | Health check | `/_dash-layout` |
 | Instance plan | Free |
 
-In sample mode, the launcher reads the bundled dataset and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard labels both the synthetic posts and predefined results. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
+In sample mode, the launcher reads the bundled dataset and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard carries a single “Sample data” label; this README and the walkthrough explain the predefined results. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
 
 Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the sample label, map, and playback controls. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
 

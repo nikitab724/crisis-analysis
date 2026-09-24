@@ -89,7 +89,7 @@ with patch.object(requests.Session, 'request', side_effect=AssertionError('Netwo
     import dash_client as d
     with d.server.test_client() as client:
         layout = client.get('/_dash-layout').get_data(as_text=True)
-        assert 'Synthetic posts' in layout and 'Predefined results' in layout
+        assert 'Sample data' in layout
         assert 'replay-state' in layout and 'replay-play' in layout
         assert client.get('/health').status_code == 200
         for cursor, count in [(0, 0), (4, 2), (24, 14), (0, 0)]:
