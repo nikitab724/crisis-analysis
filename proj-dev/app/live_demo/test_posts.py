@@ -18,11 +18,18 @@ from us_scope import is_us_location
 MAX_TEXT_LENGTH = 1000
 ANALYSIS_SECONDS = 12
 TIMEOUT_MESSAGE = 'Analysis is taking too long. Please try again shortly.'
+ERROR_MESSAGES = {
+    'jev_busy': 'Jev is temporarily unavailable. Please try again shortly.',
+    'jev_access': 'Jev access needs attention. The sample replay still works.',
+    'location_unavailable': 'Location analysis is temporarily unavailable. Please try again shortly.',
+}
 _slot = threading.BoundedSemaphore(1)
 
 
 class AnalysisUnavailable(RuntimeError):
-    pass
+    def __init__(self, message, *, code=None):
+        super().__init__(message)
+        self.code = code
 
 
 def validate_text(text):
@@ -54,8 +61,15 @@ def location_guidance(diagnostics):
 
 def analyze_locally(text):
     """Use the live analysis worker, without its writer, queue, or acknowledgement."""
+    from jev_relevance import RelevanceUnavailable
+
     with analysis_deadline(ANALYSIS_SECONDS):
-        return _analyze_locally(text)
+        try:
+            return _analyze_locally(text)
+        except RelevanceUnavailable as exc:
+            logging.getLogger(__name__).warning('Test analysis provider failure: %s', exc.kind)
+            code = 'jev_access' if exc.kind in ('usage_cap', 'http_401', 'http_402', 'http_403') else 'jev_busy'
+            raise AnalysisUnavailable(ERROR_MESSAGES[code], code=code) from None
 
 
 def _analyze_locally(text):
@@ -73,7 +87,8 @@ def _analyze_locally(text):
     if errors or any(stats.get(key) for key in ('model_errors', 'location_errors', 'relevance_errors')):
         logging.getLogger(__name__).warning('Test analysis unavailable: stages=%s provider=%s',
                                             stats, client.diagnostics())
-        raise AnalysisUnavailable("The analyzer is unavailable. Please try again shortly.")
+        code = 'location_unavailable' if errors or stats.get('model_errors') else 'jev_busy'
+        raise AnalysisUnavailable(ERROR_MESSAGES[code], code=code)
     records = []
     for row in rows[:8]:
         record = {key: row.get(key) for key in ('city', 'state', 'country', 'disasters')}
@@ -121,6 +136,11 @@ def register_test_endpoint(server, analyzer=analyze_locally):
         except AnalysisTimeout:
             outcome = 'timeout'
             return {'error': TIMEOUT_MESSAGE, 'code': 'analysis_timeout'}, 504
+        except AnalysisUnavailable as exc:
+            if exc.code not in ERROR_MESSAGES:
+                return {'error': 'The analyzer is unavailable. Please try again shortly.'}, 503
+            outcome = exc.code
+            return {'error': ERROR_MESSAGES[exc.code], 'code': exc.code}, 503
         except Exception:
             # Never return provider bodies, credentials, or internal hostnames.
             return {'error': 'The analyzer is unavailable. Please try again shortly.'}, 503
@@ -147,6 +167,14 @@ def analyze_remote(text):
             raise AnalysisUnavailable('Another test is running. Please try again shortly.')
         if response.status_code == 504:
             raise AnalysisUnavailable(TIMEOUT_MESSAGE)
+        if response.status_code == 503:
+            try:
+                body = response.json()
+            except ValueError:
+                body = None
+            code = body.get('code') if isinstance(body, dict) else None
+            if isinstance(code, str) and code in ERROR_MESSAGES:
+                raise AnalysisUnavailable(ERROR_MESSAGES[code], code=code)
         if response.status_code != 200:
             raise AnalysisUnavailable('The test backend is unavailable. Please try again shortly.')
         result = response.json()

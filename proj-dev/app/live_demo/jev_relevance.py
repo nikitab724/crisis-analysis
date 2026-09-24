@@ -11,6 +11,7 @@ from email.utils import parsedate_to_datetime
 from functools import lru_cache
 import hashlib
 import json
+import logging
 import math
 import os
 import time
@@ -78,6 +79,10 @@ CONTEXT_GUIDANCE = (
 
 class RelevanceUnavailable(RuntimeError):
     """No usable Jev decision; never substitute an automatic approval."""
+
+    def __init__(self, message, *, kind='unavailable'):
+        super().__init__(message)
+        self.kind = kind
 
 
 class JevRelevance:
@@ -298,10 +303,11 @@ class JevRelevance:
             remaining = remaining_time()
             with self._lock:
                 if self.max_calls > 0 and self.calls >= self.max_calls:
-                    raise RelevanceUnavailable('Jev request cap reached; classification unavailable.')
+                    raise RelevanceUnavailable('Jev request cap reached; classification unavailable.', kind='usage_cap')
                 now = time.monotonic()
                 if now < self.retry_after:
-                    raise RelevanceUnavailable('Jev temporarily unavailable; classification will need a retry.')
+                    raise RelevanceUnavailable('Jev temporarily unavailable; classification will need a retry.',
+                                               kind=self.last_failure or 'unavailable')
                 delay = self._next_request_at - now
                 if delay <= 0:
                     self.calls += 1
@@ -309,6 +315,23 @@ class JevRelevance:
                     return
                 if remaining is not None and delay >= remaining:
                     raise AnalysisTimeout('The next model request is outside the analysis time budget.')
+            time.sleep(min(delay, .25))
+
+    def _wait_for_interactive_retry(self, failure):
+        """Retry a brief gateway outage only when its cooldown fits the test budget."""
+        remaining = remaining_time()
+        if remaining is None or failure.kind not in ('http_502', 'http_503', 'http_504'):
+            return False
+        while True:
+            remaining = remaining_time()
+            with self._lock:
+                delay = max(self.retry_after, self._next_request_at) - time.monotonic()
+            # Leave two seconds for a useful attempt, and honor Retry-After in full.
+            if delay + 2 >= remaining:
+                return False
+            if delay <= 0:
+                logging.getLogger(__name__).warning('Retrying interactive Jev request after %s', failure.kind)
+                return True
             time.sleep(min(delay, .25))
 
     def _evaluate(self, state, questions):
@@ -334,8 +357,14 @@ class JevRelevance:
                 raise AnalysisTimeout('The shared model request is still busy.') from None
         try:
             with request_slot(self._slots):
-                self._wait_for_request_turn()
-                answers = self._request_answers(payload, questions)
+                for attempt in range(2):
+                    self._wait_for_request_turn()
+                    try:
+                        answers = self._request_answers(payload, questions)
+                        break
+                    except RelevanceUnavailable as exc:
+                        if attempt or not self._wait_for_interactive_retry(exc):
+                            raise
                 remaining_time()
                 with self._lock:
                     self.cache[cache_key] = answers
@@ -396,8 +425,9 @@ class JevRelevance:
                 self.retry_after = max(self.retry_after, time.monotonic() + delay)
                 self.last_failure = (f'http_{status}' if status and status != 200 else
                                      'timeout' if isinstance(exc, requests.Timeout) else 'invalid_response')
+                failure_kind = self.last_failure
             # Never log a response body, request headers, or provider exception with secrets.
-            raise RelevanceUnavailable("Jev request failed; classification unavailable.") from None
+            raise RelevanceUnavailable("Jev request failed; classification unavailable.", kind=failure_kind) from None
         with self._lock:
             self._failures = 0
             self._successful_calls += 1

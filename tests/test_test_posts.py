@@ -165,6 +165,50 @@ class TestPostTests(unittest.TestCase):
             with self.assertRaisesRegex(testing.AnalysisUnavailable, 'taking too long'):
                 testing.analyze_remote('Flood')
 
+    def test_provider_failure_is_identified_at_every_analysis_stage(self):
+        import entry
+        from jev_relevance import RelevanceUnavailable
+        cases = [
+            ('choose_locations', {'locations': ['Houston'], 'location_choices': [{'mention': 'Houston'}]}),
+            ('classify', {**RECORD, 'locations': ['Houston'], 'location_status': 'matched'}),
+            ('classify_text', {'locations': []}),
+        ]
+        for method, entities in cases:
+            client = Mock()
+            getattr(client, method).side_effect = RelevanceUnavailable('private response body', kind='http_503')
+            with self.subTest(stage=method), patch.object(entry, 'extract_entities', return_value=entities), \
+                    patch('jev_relevance.get_relevance_client', return_value=client), \
+                    self.assertRaises(testing.AnalysisUnavailable) as raised:
+                testing.analyze_locally('Flood in Houston')
+            self.assertEqual(raised.exception.code, 'jev_busy')
+            self.assertNotIn('private', str(raised.exception))
+
+    def test_endpoint_sends_only_allowlisted_failure_codes_and_copy(self):
+        analyzer = Mock(side_effect=testing.AnalysisUnavailable('private details', code='jev_busy'))
+        app = Flask('provider-failure-test')
+        testing.register_test_endpoint(app, analyzer)
+        with patch.dict(testing.os.environ, {'CRISIS_TEST_API_TOKEN': TOKEN}), app.test_client() as client:
+            response = client.post('/demo/analyze', json={'text': 'Flood'},
+                                   headers={'Authorization': 'Bearer ' + TOKEN})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json, {'code': 'jev_busy', 'error': testing.ERROR_MESSAGES['jev_busy']})
+
+    def test_remote_preserves_known_error_kind_without_forwarding_provider_body(self):
+        env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
+        session = Mock()
+        session.post.return_value.status_code = 503
+        with patch.dict(testing.os.environ, env), patch.object(testing.requests, 'Session') as factory:
+            factory.return_value.__enter__.return_value = session
+            for code in ('jev_busy', 'jev_access', 'location_unavailable', 'unknown', ['invalid']):
+                session.post.return_value.json.return_value = {'code': code, 'error': 'private provider body'}
+                with self.assertRaises(testing.AnalysisUnavailable) as raised:
+                    testing.analyze_remote('Flood')
+                self.assertNotIn('private', str(raised.exception))
+                if isinstance(code, str) and code in testing.ERROR_MESSAGES:
+                    self.assertEqual(str(raised.exception), testing.ERROR_MESSAGES[code])
+                else:
+                    self.assertIn('test backend', str(raised.exception))
+
     def test_test_marker_does_not_change_dataset_counts(self):
         from sample_feed import load_samples
         with patch.object(dashboard, 'PIPELINE_MODE', 'sample'), patch.object(dashboard, 'SAMPLES', load_samples()):

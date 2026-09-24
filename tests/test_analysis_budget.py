@@ -83,6 +83,68 @@ class AnalysisBudgetTests(unittest.TestCase):
         self.assertFalse(future.cancelled())
         client.session.post.assert_not_called()
 
+    def test_brief_503_recovers_once_after_cooldown_and_caches_real_result(self):
+        now = [100.]
+        sent_at = []
+        answers = {'decision': {'type': 'boolean', 'probability': .95}}
+        responses = iter([Mock(status_code=503, headers={}),
+                          Mock(status_code=200, json=lambda: {'answers': answers})])
+
+        def send(*args, **kwargs):
+            sent_at.append(now[0])
+            return next(responses)
+
+        client = JevRelevance('fixture-secret', session=Mock(), min_interval=1)
+        client.session.post.side_effect = send
+        with patch('analysis_budget.time.monotonic', side_effect=lambda: now[0]), \
+                patch('jev_relevance.time.sleep', side_effect=lambda delay: now.__setitem__(0, now[0] + delay)), \
+                analysis_deadline(12):
+            self.assertEqual(client._evaluate({}, {'decision': {'type': 'boolean'}}), answers)
+            self.assertEqual(client._evaluate({}, {'decision': {'type': 'boolean'}}), answers)
+        self.assertEqual(sent_at, [100, 102])
+        self.assertEqual(client.calls, 2)
+        self.assertEqual(client.diagnostics()['jev_successful_calls'], 1)
+
+    def test_repeated_503_stops_after_one_retry_and_never_caches_failure(self):
+        now = [100.]
+        client = JevRelevance('fixture-secret', session=Mock())
+        client.session.post.return_value = Mock(status_code=503, headers={})
+        with patch('analysis_budget.time.monotonic', side_effect=lambda: now[0]), \
+                patch('jev_relevance.time.sleep', side_effect=lambda delay: now.__setitem__(0, now[0] + delay)), \
+                self.assertRaises(RelevanceUnavailable) as raised, analysis_deadline(12):
+            client._evaluate({}, {})
+        self.assertEqual(raised.exception.kind, 'http_503')
+        self.assertEqual(client.session.post.call_count, 2)
+        self.assertEqual(client.cache, {})
+        self.assertEqual(client._inflight, {})
+
+    def test_long_retry_after_or_short_budget_returns_without_retry(self):
+        for seconds, retry_after in ((12, '90'), (5, '4')):
+            client = JevRelevance('fixture-secret', session=Mock())
+            client.session.post.return_value = Mock(status_code=503, headers={'Retry-After': retry_after})
+            with patch('analysis_budget.time.monotonic', return_value=100), \
+                    patch('jev_relevance.time.sleep') as sleep, \
+                    self.assertRaises(RelevanceUnavailable), analysis_deadline(seconds):
+                client._evaluate({}, {})
+            sleep.assert_not_called()
+            self.assertEqual(client.session.post.call_count, 1)
+
+    def test_rate_limit_and_access_failures_never_auto_retry(self):
+        for status in (401, 402, 403, 429):
+            client = JevRelevance('fixture-secret', session=Mock())
+            client.session.post.return_value = Mock(status_code=status, headers={})
+            with self.assertRaises(RelevanceUnavailable) as raised, analysis_deadline(12):
+                client._evaluate({}, {})
+            self.assertEqual(raised.exception.kind, f'http_{status}')
+            self.assertEqual(client.session.post.call_count, 1)
+
+    def test_background_503_has_no_new_automatic_retry(self):
+        client = JevRelevance('fixture-secret', session=Mock())
+        client.session.post.return_value = Mock(status_code=503, headers={})
+        with self.assertRaises(RelevanceUnavailable):
+            client._evaluate({}, {})
+        self.assertEqual(client.session.post.call_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

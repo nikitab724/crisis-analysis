@@ -243,6 +243,8 @@ def analyze_post(idx, row, relevance, *, classify=False, diagnostics=None):
                 relevance_stats['location_checked'] = relevance_stats.get('location_checked', 0) + len(choices)
                 relevance_stats['location_resolved'] = relevance_stats.get('location_resolved', 0) + len(chosen_locations)
             except RelevanceUnavailable as exc:
+                if remaining_time() is not None:
+                    raise
                 relevance_stats['location_errors'] = relevance_stats.get('location_errors', 0) + 1
                 print(str(exc))
         resolved_mentions = {loc['location'] for loc in chosen_locations}
@@ -343,6 +345,8 @@ def analyze_post(idx, row, relevance, *, classify=False, diagnostics=None):
     except AnalysisTimeout:
         raise
     except RelevanceUnavailable as exc:
+        if remaining_time() is not None:
+            raise
         relevance_stats['relevance_errors'] = relevance_stats.get('relevance_errors', 0) + 1
         print(str(exc))
     except Exception as e:
