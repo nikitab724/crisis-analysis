@@ -207,7 +207,7 @@ def filter_posts(df: pd.DataFrame, on_progress=None, relevance_stats=None, *,
     return pd.DataFrame(records, columns=required_columns)
 
 
-def analyze_post(idx, row, relevance, *, classify=False):
+def analyze_post(idx, row, relevance, *, classify=False, diagnostics=None):
     """A worker returns data only; progress, CSV writes, and acknowledgement stay serial."""
     processed_rows, relevance_stats, errors = [], {}, 0
     try:
@@ -220,6 +220,9 @@ def analyze_post(idx, row, relevance, *, classify=False):
             raise ValueError('The model returned no valid entity data')
         if entity_result.get('location_status') == 'error':
             raise ValueError('Location lookup unavailable; keep the post queued.')
+        if diagnostics is not None:
+            diagnostics.update({key: entity_result.get(key) for key in (
+                'locations', 'location_status', 'location_choices', 'unresolved_locations')})
         if entity_result.get('skipped_non_crisis') is True:
             relevance_stats['rule_skipped'] = relevance_stats.get('rule_skipped', 0) + 1
 
@@ -244,6 +247,8 @@ def analyze_post(idx, row, relevance, *, classify=False):
         resolved_mentions = {loc['location'] for loc in chosen_locations}
         unresolved = [loc for loc in entity_result.get('unresolved_locations', [])
                       if loc not in resolved_mentions]
+        if diagnostics is not None:
+            diagnostics['unresolved_locations'] = unresolved
         location_review = entity_result.get('location_review', '')
         if 'unresolved_locations' in entity_result:
             location_review = 'Unresolved mentions: ' + '; '.join(dict.fromkeys(unresolved)) if unresolved else ''
@@ -319,6 +324,8 @@ def analyze_post(idx, row, relevance, *, classify=False):
             identity = tuple(loc.get(key) for key in ('city', 'state', 'latitude', 'longitude'))
             unique_locations.setdefault(identity, loc)
         location_rows = list(unique_locations.values())
+        if diagnostics is not None:
+            diagnostics['resolved_locations'] = len(location_rows)
 
         if relevance and location_rows:
             decide = relevance.classify if classify else relevance.screen

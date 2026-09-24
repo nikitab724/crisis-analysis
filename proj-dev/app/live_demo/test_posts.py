@@ -26,6 +26,27 @@ def validate_text(text):
     return text.strip()
 
 
+def location_guidance(diagnostics):
+    """Explain why a recognized crisis was not plotted, without choosing a city."""
+    if diagnostics.get('resolved_locations'):
+        return 'A US location was found, but the crisis could not be linked to it. Make the incident location explicit.'
+    unresolved = set(diagnostics.get('unresolved_locations') or [])
+    for group in diagnostics.get('location_choices') or []:
+        if group.get('mention') not in unresolved:
+            continue
+        candidates = group.get('candidates') or []
+        examples = [f'{item["city"]}, {item["state"]}' for item in candidates
+                    if is_us_location(item) and item.get('city')]
+        if examples:
+            return (f'“{group["mention"]}” matches multiple US places. '
+                    f'Add a state, such as “{examples[0]}”, and analyze again.')
+    if diagnostics.get('location_status') == 'ambiguous':
+        return 'The place name matches multiple US locations. Add a city and state, then analyze again.'
+    if not diagnostics.get('locations'):
+        return 'No place name was detected. Add a US city and state, then analyze again.'
+    return 'The place could not be matched to a supported US location. Include the city and state, then analyze again.'
+
+
 def analyze_locally(text):
     """Use the live analysis worker, without its writer, queue, or acknowledgement."""
     from entry import analyze_post
@@ -36,7 +57,9 @@ def analyze_locally(text):
     if client is None:
         raise AnalysisUnavailable("Real analysis is not configured.")
     published_at = datetime.now(timezone.utc).isoformat()
-    rows, stats, errors = analyze_post(0, {'text': text, 'created_at': published_at}, client, classify=True)
+    diagnostics = {}
+    rows, stats, errors = analyze_post(0, {'text': text, 'created_at': published_at}, client,
+                                      classify=True, diagnostics=diagnostics)
     if errors or any(stats.get(key) for key in ('model_errors', 'location_errors', 'relevance_errors')):
         raise AnalysisUnavailable("The analyzer is unavailable. Please try again shortly.")
     records = []
@@ -53,7 +76,7 @@ def analyze_locally(text):
     labels = classification['disasters']
     return {'status': 'unmapped' if labels else 'skipped', 'text': text, 'records': [],
             'disasters': labels, 'analysis': 'live',
-            'message': ('Crisis detected, but no supported US location could be confidently matched.'
+            'message': (location_guidance(diagnostics)
                         if labels else 'No current crisis detected in this post.')}
 
 

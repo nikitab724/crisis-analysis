@@ -60,6 +60,37 @@ class TestPostTests(unittest.TestCase):
             relevance.classify_text.return_value = {'disasters': []}
             self.assertEqual(testing.analyze_locally('Coffee time.')['status'], 'skipped')
 
+    def test_ambiguous_houston_explains_state_needed_without_plotting(self):
+        # Exercise the real worker with controlled NLP/Jev responses. Lowercase
+        # Houston is already recognized; ambiguity must not become a Texas guess.
+        import entry
+        choices = [{'mention': 'houston', 'candidates': [
+            RECORD, {**RECORD, 'state': 'Mississippi', 'latitude': 33.89845, 'longitude': -88.99923}]}]
+        entities = {'locations': ['houston'], 'disasters': [], 'location_status': 'ambiguous',
+                    'location_choices': choices, 'unresolved_locations': ['houston']}
+        relevance = Mock()
+        relevance.choose_locations.return_value = []
+        relevance.classify_text.return_value = {'disasters': ['Flood']}
+        with patch.object(entry, 'extract_entities', return_value=entities) as extract, \
+                patch('jev_relevance.get_relevance_client', return_value=relevance):
+            result = testing.analyze_locally('so much rain in houston people are struggling')
+        self.assertEqual(result['status'], 'unmapped')
+        self.assertEqual(result['records'], [])
+        self.assertIn('“houston” matches multiple US places', result['message'])
+        self.assertIn('Add a state, such as “Houston, Texas”', result['message'])
+        extract.assert_called_once_with('so much rain in houston people are struggling', rule_gate=False)
+
+    def test_guidance_distinguishes_missing_unresolved_and_unlinked_places(self):
+        self.assertIn('No place name was detected', testing.location_guidance({'locations': []}))
+        self.assertIn('could not be matched', testing.location_guidance({'locations': ['Nowhere']}))
+        self.assertIn('multiple US locations', testing.location_guidance({'location_status': 'ambiguous'}))
+        self.assertIn('could not be linked', testing.location_guidance({'locations': ['Houston'], 'resolved_locations': 1}))
+
+    def test_resolved_choice_does_not_leave_stale_ambiguity_guidance(self):
+        diagnostics = {'locations': ['Houston'], 'unresolved_locations': [], 'resolved_locations': 1,
+                       'location_choices': [{'mention': 'Houston', 'candidates': [RECORD]}]}
+        self.assertNotIn('multiple', testing.location_guidance(diagnostics))
+
     def test_analysis_error_never_becomes_a_negative_or_fixture(self):
         for result in [([], {}, 1), ([], {'location_errors': 1}, 0), ([], {'relevance_errors': 1}, 0)]:
             with patch('entry.analyze_post', return_value=result), \

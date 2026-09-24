@@ -34,6 +34,8 @@ The JSON dataset is `proj-dev/app/live_demo/fixtures/interview_feed.json`. The r
 
 Test text is limited to 1,000 characters, with one real test in flight on the Mac at a time. It uses the existing Jev/location analysis worker without entering the collector queue, fetching a user profile, writing CSVs, or acknowledging posts. A locationless crisis can be identified but stays unplotted; unrelated text is explicitly rejected. Provider and network failures are reported as unavailable, never replaced by a predefined outcome. Custom tests can still encounter the live provider's rate limits. The Mac and tunnel can be offline without affecting replay.
 
+An ambiguous place produces an actionable explanation. For example, lowercase “houston” is recognized, but the gazetteer contains multiple places with that name. Add “Houston, Texas” to identify the intended city. The suggested city/state pair is an example from the database, not an automatic selection or a claim that Texas was inferred. Missing place names, unmatched places, and crises that cannot be linked to a resolved place have separate messages.
+
 ## Deploy and restore
 
 Use the existing Free Render service with the normal build/start commands. Set `CRISIS_PIPELINE_MODE=sample` and deploy the latest commit. `/health` should return `mode: sample`, `status: healthy`, and `posts: 24`.
