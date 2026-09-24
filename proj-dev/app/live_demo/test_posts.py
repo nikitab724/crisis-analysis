@@ -1,6 +1,9 @@
 """Isolated, explicit real-analysis requests for the interview dashboard."""
 
 from datetime import datetime, timezone
+from collections import OrderedDict
+from copy import deepcopy
+import hashlib
 import hmac
 import logging
 import math
@@ -24,12 +27,25 @@ ERROR_MESSAGES = {
     'location_unavailable': 'Location analysis is temporarily unavailable. Please try again shortly.',
 }
 _slot = threading.BoundedSemaphore(1)
+_remote_http = threading.local()
+_result_cache = OrderedDict()
+_cache_lock = threading.Lock()
+RESULT_CACHE_SECONDS = 60
+RESULT_CACHE_SIZE = 128
 
 
 class AnalysisUnavailable(RuntimeError):
     def __init__(self, message, *, code=None):
         super().__init__(message)
         self.code = code
+
+
+def remote_session():
+    """Reuse TLS connections without sharing a mutable Session across workers."""
+    if not hasattr(_remote_http, 'session'):
+        _remote_http.session = requests.Session()
+        _remote_http.session.trust_env = False
+    return _remote_http.session
 
 
 def validate_text(text):
@@ -157,12 +173,21 @@ def analyze_remote(text):
     if (url.scheme != 'https' or not url.hostname or url.username or url.password
             or url.path or url.query or url.fragment or len(token) < 32):
         raise AnalysisUnavailable('The test backend is offline. The sample replay still works.')
+    # Cache only validated real decisions. Changes to the destination or credential
+    # invalidate the key; text stays case-sensitive to preserve extraction behavior.
+    cache_key = hashlib.sha256((origin + '\0' + token + '\0' + text).encode()).hexdigest()
+    with _cache_lock:
+        now = time.monotonic()
+        for key, (expires, _) in list(_result_cache.items()):
+            if expires <= now:
+                del _result_cache[key]
+        if cache_key in _result_cache:
+            _result_cache.move_to_end(cache_key)
+            return deepcopy(_result_cache[cache_key][1])
     try:
-        with requests.Session() as session:
-            session.trust_env = False
-            response = session.post(origin + '/demo/analyze', json={'text': text},
-                                    headers={'Authorization': f'Bearer {token}'},
-                                    timeout=(3, ANALYSIS_SECONDS + 4), allow_redirects=False)
+        response = remote_session().post(origin + '/demo/analyze', json={'text': text},
+                                         headers={'Authorization': f'Bearer {token}'},
+                                         timeout=(3, ANALYSIS_SECONDS + 4), allow_redirects=False)
         if response.status_code == 429:
             raise AnalysisUnavailable('Another test is running. Please try again shortly.')
         if response.status_code == 504:
@@ -192,6 +217,10 @@ def analyze_remote(text):
                 raise ValueError('Invalid map records')
         elif result['records'] or not isinstance(result.get('message'), str):
             raise ValueError('Invalid decision')
+        with _cache_lock:
+            _result_cache[cache_key] = (time.monotonic() + RESULT_CACHE_SECONDS, deepcopy(result))
+            while len(_result_cache) > RESULT_CACHE_SIZE:
+                _result_cache.popitem(last=False)
         return result
     except (requests.RequestException, ValueError):
         raise AnalysisUnavailable('The test backend did not respond. Please try again shortly.') from None

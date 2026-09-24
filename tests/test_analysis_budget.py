@@ -104,6 +104,16 @@ class AnalysisBudgetTests(unittest.TestCase):
         self.assertEqual(sent_at, [100, 102])
         self.assertEqual(client.calls, 2)
         self.assertEqual(client.diagnostics()['jev_successful_calls'], 1)
+        self.assertEqual(client.diagnostics()['jev_request_interval_seconds'], 1)
+        self.assertEqual(client._next_request_at, 103)
+
+    def test_interactive_success_does_not_retain_bulk_request_spacing(self):
+        client = JevRelevance('fixture-secret', session=Mock(), min_interval=1)
+        client._request_interval = 30
+        client.session.post.return_value = Mock(status_code=200, json=lambda: {'answers': {}})
+        with patch('analysis_budget.time.monotonic', return_value=100), analysis_deadline(12):
+            client._evaluate({}, {})
+        self.assertEqual(client._next_request_at, 101)
 
     def test_repeated_503_stops_after_one_retry_and_never_caches_failure(self):
         now = [100.]

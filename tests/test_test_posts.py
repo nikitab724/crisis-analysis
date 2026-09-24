@@ -1,7 +1,9 @@
 """Real test posts never publish, save, acknowledge, or substitute fixture decisions."""
 
 from pathlib import Path
+from copy import deepcopy
 import sys
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -19,6 +21,13 @@ RECORD = {'country': 'US', 'city': 'Houston', 'state': 'Texas', 'disasters': ['F
 
 
 class TestPostTests(unittest.TestCase):
+    def setUp(self):
+        with testing._cache_lock:
+            testing._result_cache.clear()
+        http = patch.object(testing, '_remote_http', threading.local())
+        http.start()
+        self.addCleanup(http.stop)
+
     def test_endpoint_auth_validation_and_backpressure(self):
         analyzer = Mock(return_value={'status': 'mapped', 'records': [RECORD], 'analysis': 'live'})
         app = Flask('test-posts')
@@ -153,17 +162,17 @@ class TestPostTests(unittest.TestCase):
         session.post.return_value.status_code = 200
         session.post.return_value.json.return_value = {'status': 'mapped', 'records': [RECORD], 'analysis': 'live'}
         with patch.dict(testing.os.environ, env), patch.object(testing.requests, 'Session') as factory:
-            factory.return_value.__enter__.return_value = session
+            factory.return_value = session
             self.assertEqual(testing.analyze_remote('Flood')['status'], 'mapped')
             self.assertFalse(session.post.call_args.kwargs['allow_redirects'])
             self.assertEqual(session.post.call_args.kwargs['timeout'], (3, 16))
             self.assertEqual(session.post.call_args.kwargs['json'], {'text': 'Flood'})
             session.post.return_value.status_code = 503
             with self.assertRaises(testing.AnalysisUnavailable):
-                testing.analyze_remote('Flood')
+                testing.analyze_remote('Another flood')
             session.post.return_value.status_code = 504
             with self.assertRaisesRegex(testing.AnalysisUnavailable, 'taking too long'):
-                testing.analyze_remote('Flood')
+                testing.analyze_remote('Another flood')
 
     def test_provider_failure_is_identified_at_every_analysis_stage(self):
         import entry
@@ -198,7 +207,7 @@ class TestPostTests(unittest.TestCase):
         session = Mock()
         session.post.return_value.status_code = 503
         with patch.dict(testing.os.environ, env), patch.object(testing.requests, 'Session') as factory:
-            factory.return_value.__enter__.return_value = session
+            factory.return_value = session
             for code in ('jev_busy', 'jev_access', 'location_unavailable', 'unknown', ['invalid']):
                 session.post.return_value.json.return_value = {'code': code, 'error': 'private provider body'}
                 with self.assertRaises(testing.AnalysisUnavailable) as raised:
@@ -208,6 +217,84 @@ class TestPostTests(unittest.TestCase):
                     self.assertEqual(str(raised.exception), testing.ERROR_MESSAGES[code])
                 else:
                     self.assertIn('test backend', str(raised.exception))
+
+    def test_real_result_cache_expires_and_isolates_mutable_results(self):
+        env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
+        session = Mock()
+        decision = {'status': 'mapped', 'records': [RECORD], 'analysis': 'live'}
+        session.post.return_value.status_code = 200
+        session.post.return_value.json.side_effect = lambda: deepcopy(decision)
+        now = [100.]
+        with patch.dict(testing.os.environ, env), patch.object(testing, 'remote_session', return_value=session), \
+                patch.object(testing.time, 'monotonic', side_effect=lambda: now[0]):
+            first = testing.analyze_remote('Flood')
+            first['records'][0]['city'] = 'Mutated'
+            now[0] = 159
+            second = testing.analyze_remote('Flood')
+            self.assertEqual(second['records'][0]['city'], 'Houston')
+            second['records'].clear()
+            self.assertEqual(len(testing.analyze_remote('Flood')['records']), 1)
+            self.assertEqual(session.post.call_count, 1)
+            now[0] = 160
+            testing.analyze_remote('Flood')
+            self.assertEqual(session.post.call_count, 2)
+
+    def test_cache_keys_preserve_text_and_backend_identity(self):
+        env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
+        session = Mock()
+        session.post.return_value.status_code = 200
+        session.post.return_value.json.return_value = {'status': 'mapped', 'records': [RECORD], 'analysis': 'live'}
+        with patch.dict(testing.os.environ, env), patch.object(testing, 'remote_session', return_value=session):
+            testing.analyze_remote('Flood')
+            testing.analyze_remote('flood')
+            testing.os.environ['LIVE_DASHBOARD_URL'] = 'https://new-backend.example'
+            testing.analyze_remote('Flood')
+            testing.os.environ['CRISIS_TEST_API_TOKEN'] = TOKEN + '-rotated'
+            testing.analyze_remote('Flood')
+            self.assertEqual(session.post.call_count, 4)
+
+    def test_failures_and_malformed_responses_are_never_cached(self):
+        env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
+        session = Mock()
+        with patch.dict(testing.os.environ, env), patch.object(testing, 'remote_session', return_value=session):
+            for status, body in ((503, {'code': 'jev_busy'}), (200, {'analysis': 'predefined'})):
+                session.post.return_value.status_code = status
+                session.post.return_value.json.return_value = body
+                with self.assertRaises(testing.AnalysisUnavailable):
+                    testing.analyze_remote('Flood')
+            self.assertEqual(testing._result_cache, {})
+            session.post.return_value.status_code = 200
+            session.post.return_value.json.return_value = {'status': 'mapped', 'records': [RECORD], 'analysis': 'live'}
+            testing.analyze_remote('Flood')
+            testing.analyze_remote('Flood')
+            self.assertEqual(session.post.call_count, 3)
+
+    def test_result_cache_has_a_fixed_memory_bound(self):
+        env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
+        session = Mock()
+        session.post.return_value.status_code = 200
+        session.post.return_value.json.return_value = {'status': 'mapped', 'records': [RECORD], 'analysis': 'live'}
+        with patch.dict(testing.os.environ, env), patch.object(testing, 'remote_session', return_value=session), \
+                patch.object(testing, 'RESULT_CACHE_SIZE', 2):
+            for text in ('first', 'second', 'third'):
+                testing.analyze_remote(text)
+            self.assertEqual(len(testing._result_cache), 2)
+            testing.analyze_remote('first')
+            self.assertEqual(session.post.call_count, 4)
+
+    def test_backend_connection_is_reused_only_within_its_worker_thread(self):
+        sessions = []
+        with patch.object(testing.requests, 'Session', side_effect=lambda: Mock()) as factory:
+            first = testing.remote_session()
+            self.assertIs(first, testing.remote_session())
+            worker = threading.Thread(target=lambda: sessions.append(testing.remote_session()))
+            worker.start()
+            worker.join(timeout=2)
+            self.assertFalse(worker.is_alive())
+            self.assertIsNot(first, sessions[0])
+            self.assertFalse(first.trust_env)
+            self.assertFalse(sessions[0].trust_env)
+            self.assertEqual(factory.call_count, 2)
 
     def test_test_marker_does_not_change_dataset_counts(self):
         from sample_feed import load_samples

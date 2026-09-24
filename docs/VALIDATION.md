@@ -2,6 +2,14 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Interactive throughput checkpoint
+
+On September 24, 2026, two identical test submissions through the actual Render analysis callback took **2.009 and 3.643 seconds**, followed by map callbacks of **0.289 and 0.264 seconds**. Repeated submissions were doing fresh model work, and interactive requests shared the batch processor's persistent adaptive pacing. Added a 60-second, 128-entry cache for validated real responses at the Render caller, per-thread connection reuse, and interactive pacing that preserves the configured minimum interval and failure cooldown without accumulating the batch cadence. The background collector/processor behavior and model decisions are unchanged.
+
+**230 regression tests passed**, including cache expiration, mutation isolation, backend/credential/text key separation, fixed memory bounds, no cached failures, per-thread connection reuse, interactive recovery spacing, and preserved provider cooldowns and background throttling. Fresh predictions and outage retries remain dependent on network and provider latency; these changes do not make new text a predefined demo result.
+
+The updated local preview, using the real backend tunnel, returned an initial San Mateo flood prediction in **3.598 seconds**, the identical cached submission in **0.004 seconds**, and a different flood sentence in **3.104 seconds**. The two fresh requests each required recovery from a Jev 503; their NLP/location steps took **0.18 and 0.09 seconds**. These measurements isolate provider retry time as the remaining dominant cost in those checks; local cached timing excludes the visitor-to-Render network trip.
+
 ## Interactive analysis latency checkpoint
 
 A follow-up traced the generic “test backend unavailable” message to Jev HTTP 503 responses while the Mac model, tunnel, and Render layout endpoints all returned 200. Added one bounded retry per interactive evaluation for transient 502/503/504 responses, honoring the full cooldown and leaving the overall 12-second budget unchanged. Typed, allowlisted error codes distinguish provider failures from location-service and connection failures without forwarding provider bodies. **224 regression tests passed**, including recovery after a single 503, stopping after a repeated 503, respecting long Retry-After values, never retrying rate/access failures, unchanged background retry behavior, and safe error propagation from location choice and both classification paths. The test process's inherited 200-call setting was separately corrected to the previously requested uncapped setting; it had made only five calls when the observed service error occurred.

@@ -311,7 +311,8 @@ class JevRelevance:
                 delay = self._next_request_at - now
                 if delay <= 0:
                     self.calls += 1
-                    self._next_request_at = now + self._request_interval
+                    interval = self.min_interval if remaining is not None else self._request_interval
+                    self._next_request_at = now + interval
                     return
                 if remaining is not None and delay >= remaining:
                     raise AnalysisTimeout('The next model request is outside the analysis time budget.')
@@ -380,6 +381,7 @@ class JevRelevance:
                 self._inflight.pop(cache_key, None)
 
     def _request_answers(self, payload, questions):
+        interactive = remaining_time() is not None
         response = None
         try:
             response = self._session().post(
@@ -414,9 +416,14 @@ class JevRelevance:
                 self._stable_successes = 0
                 if status in (429, 503):
                     self._throttled_calls += 1
-                    self._request_interval = min(30, max(.5, self._request_interval * 2))
+                    # Bulk ingestion backs off its sustained throughput. Human
+                    # tests use one slot and the explicit failure cooldown below,
+                    # without retaining a slow batch cadence after recovery.
+                    if not interactive:
+                        self._request_interval = min(30, max(.5, self._request_interval * 2))
+                    interval = self.min_interval if interactive else self._request_interval
                     self._next_request_at = max(self._next_request_at,
-                                                time.monotonic() + self._request_interval)
+                                                time.monotonic() + interval)
                 delay = min(30, 2 ** self._failures)
                 if status in (401, 402, 403, 429):
                     delay = 30
