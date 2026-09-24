@@ -1,6 +1,6 @@
 # Live dashboard on Render Free
 
-For the interview, the public service now uses the [independent sample replay](INTERVIEW_DEMO.md). Set `CRISIS_PIPELINE_MODE=sample` and deploy to run it without the Mac. The following instructions restore the live gateway; first remove that explicit sample setting. Neither mode change edits the Mac's saved queue or CSVs, or resumes a paused collector.
+For the interview, the public service now uses the [independent saved-post demo](INTERVIEW_DEMO.md). Set `CRISIS_PIPELINE_MODE=sample` and deploy to run it without the Mac. The following instructions restore the live gateway; first remove that explicit sample setting. Neither mode change edits the Mac's saved queue or CSVs, or resumes a paused collector.
 
 The existing Render service can serve the real dashboard while the Mac runs NLP, Jev, ingestion, and CSV storage. The processing architecture stays on one host:
 
@@ -19,7 +19,7 @@ This gives the app its stable `onrender.com` address without paying for a larger
 3. In Render's Environment settings, set **`LIVE_DASHBOARD_URL`** to the current HTTPS tunnel origin, for example `https://your-current-tunnel.trycloudflare.com`. Supply no trailing path, query parameters, or credentials. This URL is public, not an API key. The Free service does not need Supabase or Gateway credentials.
 4. Deploy the latest commit. Automatic deployments remain disabled. Open the Render URL and verify `/health` reports `mode=live`, `/_proxy/health` reports `mode=proxy`, and `/activity` shows live processor updates. The map, post filters, and all other dashboard callbacks go through the same Render URL.
 
-The launcher selects forwarding mode when `LIVE_DASHBOARD_URL` is set and `CRISIS_PIPELINE_MODE` is not `sample`. Otherwise it serves the bundled sample replay independently. To deliberately choose the interview replay, set `CRISIS_PIPELINE_MODE=sample` and redeploy. An unavailable live backend never silently becomes sample data.
+The launcher selects forwarding mode when `LIVE_DASHBOARD_URL` is set and `CRISIS_PIPELINE_MODE` is not `sample`. Otherwise it serves the bundled saved-post demo independently. To deliberately choose the saved-post demo, set `CRISIS_PIPELINE_MODE=sample` and redeploy. An unavailable live backend never silently becomes sample data.
 
 To rehearse the forwarding service locally with the lightweight Render dependencies:
 

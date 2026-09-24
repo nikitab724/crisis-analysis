@@ -1,5 +1,14 @@
 # Cleanup audit and validation
 
+## Saved public-post demo — September 24, 2026
+
+Replaced the authored replay with a read-only snapshot of **453 distinct public Bluesky posts** and **586 saved US location records** from the already processed CSV. Export verification matched every post's stored text and original date, and every saved location, category, and coordinate to the source file, with no rows excluded. A post with multiple locations appears once in the feed. The export allowlist omits internal diagnostics and credentials; the source file SHA-256 is recorded in the dataset. This preserves historical predictions without asserting they are correct or current alerts.
+
+The map loads all saved records immediately. The feed loads 50 posts at a time, newest first, with original dates and source links; state filtering matches any of a post's saved locations. Removed the synthetic examples, outcome headings, replay timer, and playback counters. Custom test submissions still use real analysis separately. Browsing the saved feed does not call Bluesky, the model, Jev, or the gazetteer, and is independent of live retention and files.
+
+**231 regression tests passed**, including multi-location preservation, export field filtering and deduplication, network-free startup and callbacks, state filtering, pagination/reset, map totals, and isolation of the custom test marker. Desktop and mobile browser checks confirmed post text, source links, working load-more/filter controls, and no horizontal overflow. The existing collection pause marker and stopped backlog process were verified; no live posts were fetched or queued data removed.
+
+
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
 ## Interactive throughput checkpoint

@@ -2,7 +2,7 @@
 
 A college prototype that turns public social posts into a geographic view of potential crisis reports.
 
-**[Open the interview demo](https://crisis-analysis-interview-demo.onrender.com)** — replay 24 synthetic posts mixed with sample weather alerts. The map and feed show predefined outcomes, without waiting on a live API. This mode runs directly on Render Free; it does not need the Mac backend. The original live pipeline remains available separately.
+**[Open the interview demo](https://crisis-analysis-interview-demo.onrender.com)** — browse 453 previously processed Bluesky posts and their saved map results, without waiting on a live API. This mode runs directly on Render Free; it does not need the Mac backend. The original live pipeline remains available separately.
 
 ## The problem
 
@@ -51,9 +51,9 @@ The disaster pipeline is assembled from a pretrained English transformer and the
 
 The live pipeline supports [Jev semantic classification](docs/JEV_CLASSIFICATION.md), including Drowning and Power Outage, after a broad candidate filter. It reads bounded reply/headline context while the original transformer and gazetteer still resolve places. The original rules and offline fixture remain available. A classified emergency still needs a supported US location before it can appear on the map.
 
-## Run the interview replay
+## Run the saved-post demo
 
-The recommended presentation mode uses **24 authored posts with predefined outcomes**, including ordinary conversation, weather alerts, implied flooding, figurative language, local emergencies, and an unresolved place name. Fourteen reports appear at twelve US locations. These are synthetic examples, not real alerts or measured Jev predictions.
+The recommended presentation mode contains **453 real public posts collected on September 23, 2026**, with 586 saved US location records from the existing pipeline. It preserves the stored text, dates, source links, classifications, and coordinates. These are historical model results, not verified incidents or current alerts.
 
 ```sh
 git clone https://github.com/nikitab724/crisis-analysis.git
@@ -64,9 +64,9 @@ python -m pip install -r requirements-demo.txt
 CRISIS_PIPELINE_MODE=sample python proj-dev/app/live_demo/dash_client.py
 ```
 
-Open **http://localhost:8051**. The complete dataset appears immediately. **Replay demo** starts a three-second-per-post walkthrough; **Pause**, **Next post**, and **Show all** let you control it. Each browser has its own playback position. Refreshing restores the complete dataset. On PowerShell, set `$env:CRISIS_PIPELINE_MODE = "sample"` before running the dashboard.
+Open **http://localhost:8051**. The map loads all saved results immediately. The feed shows the newest 50 posts; **Load more posts** reveals another 50. Filter by state to see its posts. A post with multiple saved locations appears once in the feed and contributes its location records to the map. On PowerShell, set `$env:CRISIS_PIPELINE_MODE = "sample"` before running the dashboard.
 
-Replay makes no calls to Bluesky, Jev, Supabase, or the NLP service and writes no queue or report files. It reuses the dashboard's actual location aggregation and circle sizing. The displayed outcomes are authored in `proj-dev/app/live_demo/fixtures/interview_feed.json`; no live classifier is evaluated during playback.
+Browsing the saved feed makes no calls to Bluesky, Jev, Supabase, or the NLP service and writes no queue or report files. It reuses the dashboard's actual location aggregation and circle sizing. The snapshot in `proj-dev/app/live_demo/fixtures/interview_feed.json` was exported from existing processed reports; loading it does not rerun classification. It remains available for rehearsal regardless of the live feed's 24-hour expiry.
 
 The separate **Try a test post** box can analyze arbitrary text through the real Mac backend. Its result appears as a diamond on the map, only in your browser, and is never posted to Bluesky or saved into the live reports. That optional feature requires the Mac/tunnel and Jev API; errors are shown explicitly. See the [two-minute walkthrough, test-box setup, and live-mode distinction](docs/INTERVIEW_DEMO.md).
 
@@ -96,9 +96,9 @@ The browser's geographic basemap requires access to Plotly's geographic assets. 
 
 ## Deploy to Render Free
 
-The recommended interview deployment serves the sample replay directly. Set **`CRISIS_PIPELINE_MODE=sample`** in Render's Environment settings and deploy the latest commit. This explicit setting takes priority over a saved `LIVE_DASHBOARD_URL`, making the switch reversible without deleting the old tunnel configuration.
+The recommended interview deployment serves the saved-post demo directly. Set **`CRISIS_PIPELINE_MODE=sample`** in Render's Environment settings and deploy the latest commit. This explicit setting takes priority over a saved `LIVE_DASHBOARD_URL`, making the switch reversible without deleting the old tunnel configuration.
 
-For the **live pipeline**, unset `CRISIS_PIPELINE_MODE` and [use the Free gateway setup](docs/RENDER_FREE.md): set `LIVE_DASHBOARD_URL` to the Mac's current public tunnel origin. The Mac and tunnel must stay online. An unavailable live backend never silently switches to sample data. With no `LIVE_DASHBOARD_URL`, the launcher defaults to the sample replay.
+For the **live pipeline**, unset `CRISIS_PIPELINE_MODE` and [use the Free gateway setup](docs/RENDER_FREE.md): set `LIVE_DASHBOARD_URL` to the Mac's current public tunnel origin. The Mac and tunnel must stay online. An unavailable live backend never silently switches to sample data. With no `LIVE_DASHBOARD_URL`, the launcher defaults to the saved-post demo.
 
 [Deploy the sample demo to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fnikitab724%2Fcrisis-analysis%2Ftree%2Fpolish%2Finterview-demo)
 
@@ -112,9 +112,9 @@ Sign in to Render, follow the link, and create the Blueprint from the `polish/in
 | Health check | `/_dash-layout` |
 | Instance plan | Free |
 
-In sample mode, the launcher reads the bundled dataset and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard carries a single “Sample data” label; this README and the walkthrough explain the predefined results. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
+In sample mode, the launcher reads the bundled dataset and runs one Gunicorn worker on the host's `PORT`. It requires no secrets, model weights, Supabase, or Bluesky access. The public dashboard carries a single “Saved posts” label and displays original dates and source links. It does not expose the model or ingestion APIs. Automatic deployments are disabled so a later push cannot interrupt interview rehearsal; redeploy manually when ready.
 
-Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the sample label, map, and playback controls. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
+Render supplies the public `onrender.com` address after the service becomes live. Open that address and verify the Saved posts label, map, state filter, and original post links. [Free instances sleep after 15 minutes without traffic](https://render.com/docs/free) and can take about a minute to wake. Open the page before your interview and keep the local demo available as a backup. No paid resources are defined by this Blueprint.
 
 To rehearse the same server startup locally (stop any other app using port 8051 first):
 

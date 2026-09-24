@@ -11,7 +11,7 @@ from pipeline_status import read_status
 from gazetteer import US_STATE_NAMES
 from us_scope import us_records
 from retention import recent_posts
-from sample_feed import load_samples, mapped_posts, visible_samples
+from sample_feed import load_samples, mapped_posts, source_url
 import math
 from pathlib import Path
 
@@ -20,7 +20,7 @@ PIPELINE_MODE = os.environ.get("CRISIS_PIPELINE_MODE", "")
 if PIPELINE_MODE != "sample" and (DATA_DIR / "fixture-demo.json").is_file():
     PIPELINE_MODE = "fixture"
 SAMPLES = load_samples() if PIPELINE_MODE == "sample" else []
-REPLAY_INPUTS = [Input("replay-state", "data")] if SAMPLES else []
+FEED_INPUTS = [Input("feed-limit", "data")] if SAMPLES else []
 TEST_INPUTS = [Input("test-result", "data")] if SAMPLES else []
 
 # Create the Dash app
@@ -45,7 +45,7 @@ def activity_is_stale(status):
 
 def activity_snapshot():
     if PIPELINE_MODE == "sample":
-        return {"source": "synthetic", "analysis": "predefined", "posts": len(SAMPLES)}
+        return {"source": "saved_bluesky", "analysis": "saved", "posts": len(SAMPLES)}
     status = read_status(DATA_DIR)
     scraper = os.environ.get('SCRAPER_SERVER_URL')
     if PIPELINE_MODE == 'live' and scraper:
@@ -81,9 +81,9 @@ def health_check():
             return {"status": "unavailable", "component": "collector"}, 503
     return {"status": "healthy", "mode": PIPELINE_MODE or "dashboard"}
 
-def load_dashboard_posts(replay_state=None):
+def load_dashboard_posts():
     if PIPELINE_MODE == "sample":
-        return mapped_posts(SAMPLES, replay_state)
+        return mapped_posts(SAMPLES)
     posts = us_records(pd.read_csv(DATA_DIR / 'filtered_posts.csv'))
     return recent_posts(posts) if PIPELINE_MODE == 'live' else posts
 
@@ -188,23 +188,13 @@ def marker_diameter(count):
     return MAP_BASE_DIAMETER_PX * math.sqrt(min(count, MAP_SIZE_CAP_RECORDS))
 
 
-MODE_LABELS = {"sample": "Sample data", "fixture": "Sample data", "demo": "Sample data", "live": "Bluesky"}
+MODE_LABELS = {"sample": "Saved posts", "fixture": "Sample data", "demo": "Sample data", "live": "Bluesky"}
 app.title = "Crisis Analysis"
 app.layout = html.Main(className="app-shell", children=[
     html.Header(className="page-header", children=[
         html.H1("Crisis Analysis"),
         html.Span(MODE_LABELS.get(PIPELINE_MODE, "Dashboard"), className="mode-label"),
     ]),
-    *([html.Section(className="replay-toolbar", **{"aria-label": "Demo playback"}, children=[
-        html.P(id="replay-progress", className="replay-progress", role="status"),
-        html.Div(className="replay-buttons", children=[
-            html.Button("Replay demo", id="replay-play", n_clicks=0, className="primary-button"),
-            html.Button("Next post", id="replay-next", n_clicks=0, disabled=True),
-            html.Button("Show all", id="replay-all", n_clicks=0, disabled=True),
-        ]),
-        dcc.Store(id="replay-state", data={"cursor": len(SAMPLES), "playing": False}),
-        dcc.Interval(id="replay-clock", interval=3000, n_intervals=0, disabled=True),
-    ])] if SAMPLES else []),
     html.Div(id="pipeline-activity"),
     html.Section(className="map-section", **{"aria-labelledby": "map-heading"}, children=[
         html.Div(className="section-heading", children=[
@@ -236,13 +226,17 @@ app.layout = html.Main(className="app-shell", children=[
     ])] if SAMPLES else []),
     html.Section(className="posts-section", children=[
         html.Div(className="posts-toolbar", children=[
-            html.H2("Sample feed" if SAMPLES else "Recent posts", id="posts-heading"),
+            html.H2("Posts" if SAMPLES else "Recent posts", id="posts-heading"),
             html.Div(className="state-filter", role="group", **{"aria-labelledby": "state-filter-label"}, children=[
                 html.Label("Filter posts by state", id="state-filter-label", htmlFor="state-dropdown", className="sr-only"),
                 dcc.Dropdown(id="state-dropdown", placeholder="All states", clearable=True),
             ]),
         ]),
         html.Div(id="posts-table"),
+        *([dcc.Store(id="feed-limit", data=50),
+           html.Div(className="replay-buttons feed-more", children=[
+               html.Button("Load more posts", id="feed-more", n_clicks=0),
+           ])] if SAMPLES else []),
     ]),
     dcc.Interval(id="interval-component", interval=2000, n_intervals=0, disabled=bool(SAMPLES)),
 ])
@@ -264,43 +258,16 @@ if SAMPLES:
             return no_update, no_update
         return run_test_post(text)
 
-    # Playback stays in each browser; it cannot mutate the live queue or CSVs.
-    app.clientside_callback(
-        """function(play, next, all, tick, state) {
-            const total = TOTAL_POSTS;
-            let cursor = Number.isInteger(state?.cursor) ? Math.max(0, Math.min(state.cursor, total)) : total;
-            let playing = state?.playing === true;
-            const trigger = dash_clientside.callback_context.triggered_id;
-            const restarting = trigger === 'replay-play' && cursor === total;
-            if (trigger === 'replay-play') {
-                if (cursor === total) { cursor = 0; playing = true; }
-                else { playing = !playing; }
-            } else if (trigger === 'replay-next') {
-                cursor = Math.min(cursor + 1, total); playing = false;
-            } else if (trigger === 'replay-all') {
-                cursor = total; playing = false;
-            } else if (trigger === 'replay-clock' && playing) {
-                cursor = Math.min(cursor + 1, total);
-            }
-            if (cursor === total) playing = false;
-            return [{cursor, playing}, !playing,
-                playing ? 'Pause' : cursor === total ? 'Replay demo' : 'Play',
-                cursor === total, cursor === total,
-                restarting ? null : dash_clientside.no_update];
-        }""".replace("TOTAL_POSTS", str(len(SAMPLES))),
-        [Output("replay-state", "data"), Output("replay-clock", "disabled"),
-         Output("replay-play", "children"), Output("replay-next", "disabled"),
-         Output("replay-all", "disabled"), Output("state-dropdown", "value")],
-        [Input("replay-play", "n_clicks"), Input("replay-next", "n_clicks"),
-         Input("replay-all", "n_clicks"), Input("replay-clock", "n_intervals")],
-        State("replay-state", "data"),
+    @app.callback(
+        [Output("feed-limit", "data"), Output("feed-more", "style")],
+        [Input("feed-more", "n_clicks"), Input("state-dropdown", "value")],
+        State("feed-limit", "data"),
     )
-
-    @app.callback(Output("replay-progress", "children"), Input("replay-state", "data"))
-    def update_replay_progress(state):
-        posts = visible_samples(SAMPLES, state)
-        mapped = sum(post["outcome"] == "mapped" for post in posts)
-        return f"{len(posts)} / {len(SAMPLES)} posts · {mapped} mapped · {len(posts) - mapped} not mapped"
+    def show_more_posts(clicks, selected_state, limit):
+        total = len(saved_posts_for_state(selected_state))
+        limit = limit if type(limit) is int and limit >= 50 else 50
+        limit = min(limit + 50, total) if ctx.triggered_id == "feed-more" else min(50, total)
+        return limit, ({"display": "none"} if limit >= total else {})
 
 
 def run_test_post(text):
@@ -319,25 +286,26 @@ def run_test_post(text):
         return None, html.P(str(exc), className="test-error")
 
 
-def render_sample_feed(selected_state, replay_state):
-    posts = visible_samples(SAMPLES, replay_state)
-    if selected_state:
-        posts = [post for post in posts if post.get("state") == selected_state]
+def saved_posts_for_state(selected_state):
+    return [post for post in reversed(SAMPLES)
+            if not selected_state or any(record["state"] == selected_state for record in post["records"])]
+
+
+def render_sample_feed(selected_state, limit=50):
+    posts = saved_posts_for_state(selected_state)
     if not posts:
-        return html.P("No matching posts yet." if selected_state else "Press Play or Next post to begin.",
-                      className="empty-state")
+        return html.P("No posts for this state.", className="empty-state")
+    limit = max(0, min(limit, len(posts))) if type(limit) is int else 50
     rows = []
-    for post in reversed(posts):
-        mapped = post["outcome"] == "mapped"
-        label = f'{post["city"]}, {post["state"]} · {post["disaster"]}' if mapped else (
-            "Location unclear" if post["outcome"] == "unmapped" else "Skipped")
-        rows.append(html.Li(html.Article(className="report", children=[
-            html.Div(className="report-context", children=[
-                html.H3(label, className="report-location"),
+    for post in posts[:limit]:
+        posted = datetime.fromisoformat(post["created_at"].replace("Z", "+00:00")).astimezone(timezone.utc)
+        rows.append(html.Li(html.Article(className="report saved-post", children=[
+            html.Div(className="post-meta", children=[
+                html.A("View on Bluesky", href=source_url(post["uri"]),
+                       target="_blank", rel="noopener noreferrer"),
+                html.Time(posted.strftime("%b %d, %Y · %H:%M UTC"), dateTime=post["created_at"]),
             ]),
-            html.Div(className="report-content", children=[
-                html.P(post["text"], className="post-text"),
-            ]),
+            html.P(post["text"], className="post-text"),
         ])))
     return html.Ul(rows, className="reports-list", **{"aria-labelledby": "posts-heading"})
 
@@ -430,11 +398,10 @@ def style_figure(fig):
 
 @app.callback(
     Output('state-dropdown', 'options'),
-    [Input('interval-component', 'n_intervals'), *REPLAY_INPUTS]
+    [Input('interval-component', 'n_intervals')]
 )
-def update_dropdown_options(n_intervals, replay_state=None):
+def update_dropdown_options(n_intervals):
     try:
-        # Keep the sample filter stable while a replay moves back to the beginning.
         df = mapped_posts(SAMPLES) if PIPELINE_MODE == 'sample' else load_dashboard_counts()
         return [{'label': state, 'value': state} for state in sorted(df['state'].dropna().unique()) if state]
     except Exception as e:
@@ -489,12 +456,12 @@ def map_points_from_posts(posts):
     return sorted(points.values(), key=lambda point: (-point["count"], point["location"], point["disaster"]))
 
 
-@app.callback(Output('crisis-map', 'figure'), [Input('interval-component', 'n_intervals'), *REPLAY_INPUTS, *TEST_INPUTS])
-def update_crisis_map(n_intervals, replay_state=None, test_result=None):
+@app.callback(Output('crisis-map', 'figure'), [Input('interval-component', 'n_intervals'), *TEST_INPUTS])
+def update_crisis_map(n_intervals, test_result=None):
     fig = go.Figure()
     try:
         # One atomic CSV snapshot gives actual counts for each city/state location.
-        points = map_points_from_posts(load_dashboard_posts(replay_state))
+        points = map_points_from_posts(load_dashboard_posts())
         for disaster in sorted({point["disaster"] for point in points}):
             group = [point for point in points if point["disaster"] == disaster]
             fig.add_trace(go.Scattergeo(
@@ -541,11 +508,11 @@ def update_crisis_map(n_intervals, replay_state=None, test_result=None):
 
 @app.callback(
     Output('posts-table', 'children'),
-    [Input('state-dropdown', 'value'), Input('interval-component', 'n_intervals'), *REPLAY_INPUTS]
+    [Input('state-dropdown', 'value'), Input('interval-component', 'n_intervals'), *FEED_INPUTS]
 )
-def update_table(selected_state, n_intervals, replay_state=None):
+def update_table(selected_state, n_intervals, feed_limit=50):
     if PIPELINE_MODE == 'sample':
-        return render_sample_feed(selected_state, replay_state)
+        return render_sample_feed(selected_state, feed_limit)
     try:
         posts = load_dashboard_posts()
         if selected_state:

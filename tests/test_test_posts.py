@@ -301,12 +301,12 @@ class TestPostTests(unittest.TestCase):
         with patch.object(dashboard, 'PIPELINE_MODE', 'sample'), patch.object(dashboard, 'SAMPLES', load_samples()):
             base = dashboard.update_crisis_map(0)
             result = {'records': [RECORD], 'analysis': 'live', 'status': 'mapped'}
-            with_test = dashboard.update_crisis_map(0, None, result)
+            with_test = dashboard.update_crisis_map(0, result)
             self.assertEqual(len(with_test.data), len(base.data) + 1)
             self.assertEqual(with_test.data[-1].name, 'Your test')
             self.assertEqual(with_test.data[-1].marker.symbol, 'diamond')
             self.assertEqual(with_test.data[-1].lat[0], 29.7604)
-            self.assertEqual(len(dashboard.load_dashboard_posts()), 14)
+            self.assertEqual(len(dashboard.load_dashboard_posts()), 586)
 
     def test_error_is_visible_and_clears_previous_marker(self):
         with patch.object(testing, 'analyze_remote', side_effect=testing.AnalysisUnavailable('Try again.')):

@@ -21,8 +21,6 @@ h2 { font-size: 18px; font-weight: 600; line-height: 1.4; }
 .app-shell { max-width: 1120px; margin: 0 auto; padding: 32px 32px 48px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-bottom: 28px; }
 .mode-label { color: var(--muted); font-size: 13px; white-space: nowrap; }
-.replay-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-bottom: 24px; }
-.replay-progress { font-size: 13px; font-variant-numeric: tabular-nums; }
 .replay-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .replay-buttons button { min-height: 44px; padding: 8px 14px; border: 1px solid #a5b2c3; border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .replay-buttons button:hover:not(:disabled) { background: #eef4fd; border-color: var(--accent); }
@@ -60,6 +58,9 @@ h2 { font-size: 18px; font-weight: 600; line-height: 1.4; }
 .reports-list { list-style: none; margin: 0; padding: 0; }
 .reports-list > li { border-top: 1px solid var(--line); }
 .report { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr); gap: 16px 32px; padding: 24px 0; }
+.saved-post { display: block; }
+.saved-post .post-meta { margin: 0 0 8px; }
+.feed-more { margin-top: 16px; }
 .report-location { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .report-type { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .report-content { min-width: 0; }
