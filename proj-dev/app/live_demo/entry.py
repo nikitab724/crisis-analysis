@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+from analysis_budget import AnalysisTimeout, http_timeout, remaining_time
 from pipeline_status import read_status, save_csv, write_status
 from us_scope import is_us_location, us_records
 from retention import live_retention_enabled, recent_posts
@@ -55,7 +56,7 @@ def extract_entities(text, *, rule_gate=True):
     response = model_session().post(
         f"{MODEL_SERVER_URL}/extract_entities",
         json={'text': text, **({'rule_gate': False} if not rule_gate else {})},
-        timeout=10
+        timeout=http_timeout(10)
     )
     response.raise_for_status()  # Will raise a requests.HTTPError if status not 200
     result = response.json()
@@ -330,6 +331,8 @@ def analyze_post(idx, row, relevance, *, classify=False, diagnostics=None):
         if relevance and location_rows:
             decide = relevance.classify if classify else relevance.screen
             screened = decide(row['text'], row.get('created_at', ''), location_rows, **context_args)
+            if classify and diagnostics is not None:
+                diagnostics['classification_completed'] = True
             relevance_stats['relevance_checked'] = relevance_stats.get('relevance_checked', 0) + len(location_rows)
             relevance_stats['relevance_excluded'] = relevance_stats.get('relevance_excluded', 0) + len(location_rows) - len(screened)
             location_rows = screened
@@ -337,10 +340,13 @@ def analyze_post(idx, row, relevance, *, classify=False, diagnostics=None):
             location['context_sources'] = '; '.join(item.get('uri', 'attached headline') for item in context)
         processed_rows.extend(location_rows)
 
+    except AnalysisTimeout:
+        raise
     except RelevanceUnavailable as exc:
         relevance_stats['relevance_errors'] = relevance_stats.get('relevance_errors', 0) + 1
         print(str(exc))
     except Exception as e:
+        remaining_time()
         print(f"Error processing row {idx}: {e}")
         errors += 1
         relevance_stats['model_errors'] = errors

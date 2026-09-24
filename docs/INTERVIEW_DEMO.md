@@ -10,6 +10,8 @@ Open the Render page before presenting so the Free service has time to wake. The
 4. Step to bare “Portland”: a crisis is present but there is insufficient location context, so no marker appears. The next post names Portland, Oregon and is mapped. A later example names Portland, Maine separately.
 5. Click **Show all**. Use the state filter to show Texas. Austin and Houston each have two reports, so their circles grow by report count. Circle size is not the physical area of a disaster.
 6. Optionally use **Try a test post** for a real prediction: enter “The streets in Houston, Texas are underwater and people are trapped in their homes.” Click **Analyze post**. A resolved result appears as a green diamond with its own label. **Clear test** removes it. Test results never affect the replay counts or another visitor's browser.
+
+Test posts share a 12-second budget across location lookup, model pacing, and model requests. A request that cannot fit returns a retry message and frees the test slot. Render's backend read timeout is 16 seconds, allowing for the tunnel. Provider cooldowns remain enforced; no automatic retries or sample results substitute for a failed prediction. Resolved locations receive one classification pass; an unresolved location may require a separate classification. Include the state when a city name is ambiguous, for example “flood in San Mateo, CA.” Ordinary illness alone does not meet the Pandemic definition.
 7. Close with the engineering tradeoff: controlled playback makes the product story reliable; live throughput, external rate limits, factual verification, and location accuracy still require evaluation.
 
 ## What actually runs

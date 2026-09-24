@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'proj-dev/app/live_demo'))
 import test_posts as testing  # noqa: E402
 import dash_client as dashboard  # noqa: E402
+from analysis_budget import AnalysisTimeout  # noqa: E402
 
 TOKEN = 'test-only-token-not-a-real-secret-123456789'
 RECORD = {'country': 'US', 'city': 'Houston', 'state': 'Texas', 'disasters': ['Flood'],
@@ -98,6 +99,54 @@ class TestPostTests(unittest.TestCase):
                 with self.assertRaises(testing.AnalysisUnavailable):
                     testing.analyze_locally('Flood in Houston.')
 
+    def test_resolved_negative_is_not_classified_twice(self):
+        import entry
+        relevance = Mock()
+        relevance.classify.return_value = []
+        entities = {**RECORD, 'locations': ['Houston'], 'disasters': [], 'location_status': 'matched'}
+        with patch.object(entry, 'extract_entities', return_value=entities), \
+                patch('jev_relevance.get_relevance_client', return_value=relevance):
+            result = testing.analyze_locally('I like the weather in Houston, Texas.')
+        self.assertEqual(result['status'], 'skipped')
+        self.assertIn('No current crisis could be linked', result['message'])
+        relevance.classify.assert_called_once()
+        relevance.classify_text.assert_not_called()
+
+    def test_timeout_releases_endpoint_slot_and_is_not_a_negative(self):
+        import entry
+        relevance = Mock()
+        relevance.choose_locations.side_effect = AnalysisTimeout('private pacing detail')
+        entities = {'locations': ['San Mateo'], 'location_choices': [{'mention': 'San Mateo'}]}
+        app = Flask('timed-test-posts')
+        testing.register_test_endpoint(app)
+        with patch.dict(testing.os.environ, {'CRISIS_TEST_API_TOKEN': TOKEN}), \
+                patch.object(entry, 'extract_entities', return_value=entities), \
+                patch('jev_relevance.get_relevance_client', return_value=relevance), app.test_client() as client:
+            response = client.post('/demo/analyze', json={'text': 'flood in san mateo'},
+                                   headers={'Authorization': 'Bearer ' + TOKEN})
+            self.assertEqual(response.status_code, 504)
+            self.assertEqual(response.json['code'], 'analysis_timeout')
+            self.assertNotIn('private', response.get_data(as_text=True))
+            with patch.object(entry, 'analyze_post', return_value=([RECORD], {}, 0)):
+                retry = client.post('/demo/analyze', json={'text': 'Flood in Houston, Texas'},
+                                    headers={'Authorization': 'Bearer ' + TOKEN})
+            self.assertEqual(retry.status_code, 200)
+        relevance.classify_text.assert_not_called()
+
+    def test_unresolved_second_place_still_gets_global_classification(self):
+        relevance = Mock()
+        relevance.classify_text.return_value = {'disasters': ['Flood']}
+
+        def analyze(*args, diagnostics, **kwargs):
+            diagnostics.update(classification_completed=True, unresolved_locations=['San Mateo'])
+            return [], {}, 0
+
+        with patch('entry.analyze_post', side_effect=analyze), \
+                patch('jev_relevance.get_relevance_client', return_value=relevance):
+            result = testing.analyze_locally('Austin is dry; flood in San Mateo.')
+        self.assertEqual(result['status'], 'unmapped')
+        relevance.classify_text.assert_called_once()
+
     def test_remote_request_is_bounded_and_secrets_stay_server_side(self):
         env = {'LIVE_DASHBOARD_URL': 'https://test-backend.example', 'CRISIS_TEST_API_TOKEN': TOKEN}
         session = Mock()
@@ -107,10 +156,13 @@ class TestPostTests(unittest.TestCase):
             factory.return_value.__enter__.return_value = session
             self.assertEqual(testing.analyze_remote('Flood')['status'], 'mapped')
             self.assertFalse(session.post.call_args.kwargs['allow_redirects'])
-            self.assertEqual(session.post.call_args.kwargs['timeout'], (3, 45))
+            self.assertEqual(session.post.call_args.kwargs['timeout'], (3, 16))
             self.assertEqual(session.post.call_args.kwargs['json'], {'text': 'Flood'})
             session.post.return_value.status_code = 503
             with self.assertRaises(testing.AnalysisUnavailable):
+                testing.analyze_remote('Flood')
+            session.post.return_value.status_code = 504
+            with self.assertRaisesRegex(testing.AnalysisUnavailable, 'taking too long'):
                 testing.analyze_remote('Flood')
 
     def test_test_marker_does_not_change_dataset_counts(self):

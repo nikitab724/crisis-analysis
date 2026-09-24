@@ -2,6 +2,14 @@
 
 Scope: interview preparation, reproducible model build, and one dependable demo path. The existing service boundaries, transformer, disaster rules, sentiment approach, and CSV architecture are retained.
 
+## Interactive analysis latency checkpoint
+
+On September 23, 2026, the San Mateo examples exposed an unbounded combination of model pacing and sequential classification calls. The interactive worker now shares a 12-second wait budget across model HTTP requests, semaphore waits, single-flight waits, and request pacing. Tests fail explicitly and release the endpoint slot; background ingestion retains its existing pacing and retry behavior. A completed negative classification at resolved locations no longer triggers a redundant global classification, unless other mentions remain unresolved.
+
+- Deadline, cooldown, slot-release, duplicate-call, and existing pipeline regression checks passed. Provider errors never become negative predictions or sample results. Sanitized outcome/timing logs support diagnosis without logging post text or credentials.
+- Real backend smoke tests returned “flood in san mateo” as Flood with a request for its state in **1.49 seconds**, “flood in san mateo ca” as Flood at **37.56299, -122.32553** in **0.56 seconds**, and “people are so sick in san mateo right now” with no current crisis detected in **3.88 seconds**. These are individual observations, not latency guarantees or an accuracy evaluation.
+- An intervening provider failure returned an explicit error in **1.02 seconds**. The live backlog was still using the same API account and reported previous HTTP 503 failures. The wait budget improves responsiveness; it cannot guarantee provider capacity. Bare San Mateo remains ambiguous, and vague illness does not establish a widespread infectious-disease outbreak.
+
 ## Independent replay and real test-post checkpoint
 
 On September 23, 2026, added a controlled interview mode with 24 synthetic posts and predefined outcomes. Fourteen mapped records aggregate into twelve points across nine states; nine unrelated/out-of-scope posts are skipped and an ambiguous Portland report remains unmapped. These authored decisions are not model predictions or an accuracy evaluation.

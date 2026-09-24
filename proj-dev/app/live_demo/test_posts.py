@@ -2,17 +2,22 @@
 
 from datetime import datetime, timezone
 import hmac
+import logging
 import math
 import os
 import threading
+import time
 from urllib.parse import urlsplit
 
 from flask import request
 import requests
+from analysis_budget import AnalysisTimeout, analysis_deadline
 from us_scope import is_us_location
 
 
 MAX_TEXT_LENGTH = 1000
+ANALYSIS_SECONDS = 12
+TIMEOUT_MESSAGE = 'Analysis is taking too long. Please try again shortly.'
 _slot = threading.BoundedSemaphore(1)
 
 
@@ -49,6 +54,11 @@ def location_guidance(diagnostics):
 
 def analyze_locally(text):
     """Use the live analysis worker, without its writer, queue, or acknowledgement."""
+    with analysis_deadline(ANALYSIS_SECONDS):
+        return _analyze_locally(text)
+
+
+def _analyze_locally(text):
     from entry import analyze_post
     from jev_relevance import get_relevance_client
 
@@ -61,6 +71,8 @@ def analyze_locally(text):
     rows, stats, errors = analyze_post(0, {'text': text, 'created_at': published_at}, client,
                                       classify=True, diagnostics=diagnostics)
     if errors or any(stats.get(key) for key in ('model_errors', 'location_errors', 'relevance_errors')):
+        logging.getLogger(__name__).warning('Test analysis unavailable: stages=%s provider=%s',
+                                            stats, client.diagnostics())
         raise AnalysisUnavailable("The analyzer is unavailable. Please try again shortly.")
     records = []
     for row in rows[:8]:
@@ -71,6 +83,9 @@ def analyze_locally(text):
         records.append(record)
     if records:
         return {'status': 'mapped', 'text': text, 'records': records, 'analysis': 'live'}
+    if diagnostics.get('classification_completed') and not diagnostics.get('unresolved_locations'):
+        return {'status': 'skipped', 'text': text, 'records': [], 'disasters': [], 'analysis': 'live',
+                'message': 'No current crisis could be linked to this US location.'}
     # Classification remains useful when a US location cannot be resolved.
     classification = client.classify_text(text, published_at)
     labels = classification['disasters']
@@ -97,13 +112,21 @@ def register_test_endpoint(server, analyzer=analyze_locally):
             return {'error': str(exc)}, 400
         if not _slot.acquire(blocking=False):
             return {'error': 'Another test is running. Please try again shortly.'}, 429
+        started = time.monotonic()
+        outcome = 'unavailable'
         try:
-            return analyzer(text)
+            result = analyzer(text)
+            outcome = result['status']
+            return result
+        except AnalysisTimeout:
+            outcome = 'timeout'
+            return {'error': TIMEOUT_MESSAGE, 'code': 'analysis_timeout'}, 504
         except Exception:
             # Never return provider bodies, credentials, or internal hostnames.
             return {'error': 'The analyzer is unavailable. Please try again shortly.'}, 503
         finally:
             _slot.release()
+            logging.getLogger(__name__).info('Test analysis: %s in %.2fs', outcome, time.monotonic() - started)
 
 
 def analyze_remote(text):
@@ -119,9 +142,11 @@ def analyze_remote(text):
             session.trust_env = False
             response = session.post(origin + '/demo/analyze', json={'text': text},
                                     headers={'Authorization': f'Bearer {token}'},
-                                    timeout=(3, 45), allow_redirects=False)
+                                    timeout=(3, ANALYSIS_SECONDS + 4), allow_redirects=False)
         if response.status_code == 429:
             raise AnalysisUnavailable('Another test is running. Please try again shortly.')
+        if response.status_code == 504:
+            raise AnalysisUnavailable(TIMEOUT_MESSAGE)
         if response.status_code != 200:
             raise AnalysisUnavailable('The test backend is unavailable. Please try again shortly.')
         result = response.json()

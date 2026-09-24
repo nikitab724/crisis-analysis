@@ -16,6 +16,7 @@ import os
 import time
 
 import requests
+from analysis_budget import AnalysisTimeout, http_timeout, remaining_time, request_slot
 from gazetteer import MAX_LOCATION_CANDIDATES
 from us_scope import is_us_location
 from crisis_classification import DISASTER_DEFINITIONS, TAXONOMY_VERSION
@@ -294,6 +295,7 @@ class JevRelevance:
     def _wait_for_request_turn(self):
         """Space all workers' request starts; recheck cooldown after every wait."""
         while True:
+            remaining = remaining_time()
             with self._lock:
                 if self.max_calls > 0 and self.calls >= self.max_calls:
                     raise RelevanceUnavailable('Jev request cap reached; classification unavailable.')
@@ -305,10 +307,13 @@ class JevRelevance:
                     self.calls += 1
                     self._next_request_at = now + self._request_interval
                     return
+                if remaining is not None and delay >= remaining:
+                    raise AnalysisTimeout('The next model request is outside the analysis time budget.')
             time.sleep(min(delay, .25))
 
     def _evaluate(self, state, questions):
         """Two concurrent calls share one atomic budget, cooldown, and result cache."""
+        remaining_time()
         if state.get('context'):
             questions = {name: {**question, 'instructions': question['instructions'] + ' ' + CONTEXT_GUIDANCE}
                          for name, question in questions.items()}
@@ -323,11 +328,15 @@ class JevRelevance:
             if owner:
                 future = self._inflight[cache_key] = Future()
         if not owner:
-            return future.result()
+            try:
+                return future.result(timeout=remaining_time())
+            except TimeoutError:
+                raise AnalysisTimeout('The shared model request is still busy.') from None
         try:
-            with self._slots:
+            with request_slot(self._slots):
                 self._wait_for_request_turn()
                 answers = self._request_answers(payload, questions)
+                remaining_time()
                 with self._lock:
                     self.cache[cache_key] = answers
                     if len(self.cache) > 512:
@@ -348,7 +357,7 @@ class JevRelevance:
                 ENDPOINT,
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json=payload,
-                timeout=(3, 6), allow_redirects=False,
+                timeout=http_timeout((3, 6)), allow_redirects=False,
             )
             if response.status_code != 200:
                 raise ValueError("Jev request failed")
