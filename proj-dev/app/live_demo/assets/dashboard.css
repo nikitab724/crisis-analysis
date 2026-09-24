@@ -42,6 +42,8 @@ h2 { font-size: 18px; font-weight: 600; line-height: 1.4; }
 .map-section { min-width: 0; padding: 20px 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
 .map-graph { height: 400px; }
+#crisis-map .modebar-group { border: 1px solid var(--line); border-radius: 6px; padding: 0; background: var(--surface); }
+#crisis-map .modebar-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }
 .map-size-key { display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: 13px; }
 .size-key-item { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .size-key-circle { display: inline-block; flex: none; border-radius: 50%; background: #71869d; }

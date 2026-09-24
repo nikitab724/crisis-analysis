@@ -2,6 +2,8 @@
 
 Open the Render page before presenting so the Free service has time to wake. The map shows all saved results immediately; the feed starts with the newest 50 posts. **Load more posts** shows the next 50. The original live collector and backlog are paused; browsing this dataset does not collect or analyze anything.
 
+Use the map's **Zoom in**, **Zoom out**, and **Reset** controls in the upper-right corner. You can also scroll over the map to zoom and drag to move around. Reset restores the full US view.
+
 ## A two-minute story
 
 1. Explain the problem: useful emergency reports are mixed with unrelated discussion and vague place names.

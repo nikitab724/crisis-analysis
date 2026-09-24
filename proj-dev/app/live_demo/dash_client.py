@@ -210,7 +210,8 @@ app.layout = html.Main(className="app-shell", children=[
             ], **{"aria-label": "Circle sizes: 1, 4, and 16 reports"}),
         ]),
         dcc.Graph(id="crisis-map", className="map-graph", responsive=True,
-                  config={"displayModeBar": False, "scrollZoom": False}),
+                  config={"displayModeBar": True, "displaylogo": False, "scrollZoom": True,
+                          "modeBarButtons": [["zoomInGeo", "zoomOutGeo", "resetGeo"]]}),
     ]),
     *([html.Section(className="test-section", **{"aria-labelledby": "test-heading"}, children=[
         html.H2("Try a test post", id="test-heading"),
@@ -392,7 +393,8 @@ def style_figure(fig):
                       paper_bgcolor="white", plot_bgcolor="white",
                       margin={"l": 18, "r": 18, "t": 12, "b": 40},
                       legend={"title_text": "", "orientation": "h", "y": -0.06, "x": 0},
-                      uirevision="constant")
+                      modebar={"color": "#526277", "activecolor": "#2459bd", "bgcolor": "white"},
+                      dragmode="pan", uirevision="constant")
     return fig
 
 
